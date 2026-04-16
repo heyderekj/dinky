@@ -788,6 +788,17 @@
       <p class="faq-a">Not yet — App Store distribution requires sandboxing that would limit how Dinky shells out to its compression engines. Direct download keeps things simple and free. The notarization warning on first launch is a one-time thing; after that it opens normally.</p>
     </div>
 
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        Only Mac?
+        <svg class="faq-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line class="icon-plus"  x1="9" y1="3" x2="9" y2="15"/><line class="icon-plus"  x1="3" y1="9" x2="15" y2="9"/>
+          <line class="icon-minus" x1="3" y1="9" x2="15" y2="9"/>
+        </svg>
+      </button>
+      <p class="faq-a">Yes — Dinky is Mac-only. It's built in SwiftUI with AppKit, uses macOS-native compression tools, and leans on OS frameworks like Vision and Core Graphics that don't exist elsewhere. A Windows or Linux port would essentially be a different app. The Mac is where the work happens anyway.</p>
+    </div>
+
   </section>
 
   <footer>
