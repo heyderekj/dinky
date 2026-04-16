@@ -90,3 +90,5 @@ Or skip that entirely and run this in Terminal:
 ```bash
 xattr -dr com.apple.quarantine /Applications/Dinky.app
 ```
+
+Once installed, Dinky updates itself — no browser, no re-drag, no quarantine step. A banner appears when a new version is out; click **Install Update** and the app downloads, installs, and relaunches on its own.

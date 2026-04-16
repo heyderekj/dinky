@@ -35,7 +35,7 @@
 - Website: https://dinkyimg.app
 - GitHub: https://github.com/heyderekj/dinky
 - Latest release: https://github.com/heyderekj/dinky/releases/latest
-- Download v1.2.1: https://github.com/heyderekj/dinky/releases/download/v1.2.1/Dinky-1.2.0.dmg
+- Download v1.2.2: https://github.com/heyderekj/dinky/releases/download/v1.2.2/Dinky-1.2.0.dmg
 
 ## Author
 
