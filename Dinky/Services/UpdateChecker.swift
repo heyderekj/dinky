@@ -154,7 +154,7 @@ final class UpdateChecker: ObservableObject {
             try await shell("/bin/cp", ["-Rf", source.path, dest.deletingLastPathComponent().path])
 
             // ── 4. Detach ─────────────────────────────────────────────
-            try? await shell("/usr/bin/hdiutil", ["detach", mountPoint, "-force"])
+            _ = try? await shell("/usr/bin/hdiutil", ["detach", mountPoint, "-force"])
             try? FileManager.default.removeItem(at: tempDMG)
 
             // ── 5. Relaunch ───────────────────────────────────────────
