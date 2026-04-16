@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dinky — Compresses images. Stays dinky.</title>
+  <meta name="description" content="A tiny macOS app that converts JPGs and PNGs to WebP, AVIF, or lossless PNG. Drag and drop, get smaller files back. 4.3 MB. Free and open source." />
+
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="apple-touch-icon" href="app-icon.png" />
+
+  <meta property="og:title" content="Dinky — Compresses images. Stays dinky." />
+  <meta property="og:description" content="A tiny macOS app that converts JPGs and PNGs to WebP, AVIF, or lossless PNG. Drag and drop, get smaller files back. 4.3 MB. Free and open source." />
+  <meta property="og:image" content="https://dinkyimg.app/screenshots/screenshot-drop-zone.png" />
+  <meta property="og:url" content="https://dinkyimg.app" />
+  <meta property="og:type" content="website" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Dinky — Compresses images. Stays dinky." />
+  <meta name="twitter:description" content="A tiny macOS app that converts JPGs and PNGs to WebP, AVIF, or lossless PNG. 4.3 MB. Free and open source." />
+  <meta name="twitter:image" content="https://dinkyimg.app/screenshots/screenshot-drop-zone.png" />
+
+  <style>
+    :root {
+      --bg: #fafafa;
+      --text: #1c1c1e;
+      --text-secondary: #6b6b70;
+      --brand: #3E7BE8;
+      --brand-hover: #2f6ad6;
+      --divider: #eaeaea;
+      --button-secondary-hover: #f1f1f3;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 80px 24px 40px;
+    }
+
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      max-width: 560px;
+      width: 100%;
+    }
+
+    .app-icon {
+      width: 128px;
+      height: 128px;
+      margin-bottom: 32px;
+      filter: drop-shadow(0 8px 24px rgba(62, 123, 232, 0.15));
+    }
+
+    h1 {
+      font-size: 72px;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      color: var(--brand);
+      line-height: 1;
+      margin-bottom: 16px;
+    }
+
+    .tagline {
+      font-size: 18px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+
+    .description {
+      font-size: 16px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 40px;
+      max-width: 480px;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: background 0.15s ease, transform 0.1s ease;
+      border: 1px solid transparent;
+    }
+
+    .btn-primary {
+      background: var(--brand);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--brand-hover);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border-color: var(--divider);
+    }
+
+    .btn-secondary:hover {
+      background: var(--button-secondary-hover);
+    }
+
+    .btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .version {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 8px;
+    }
+
+    .screenshots {
+      display: flex;
+      gap: 16px;
+      width: 100%;
+      max-width: 1100px;
+      margin-top: 80px;
+      padding: 0 8px;
+    }
+
+    .screenshots img {
+      flex: 1;
+      min-width: 0;
+      width: 100%;
+      height: auto;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    footer {
+      margin-top: 80px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+
+    footer a {
+      color: var(--text-secondary);
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 2px;
+    }
+
+    footer a:hover {
+      color: var(--text);
+    }
+
+    @media (max-width: 700px) {
+      body {
+        padding: 48px 20px 32px;
+      }
+
+      h1 {
+        font-size: 52px;
+      }
+
+      .tagline {
+        font-size: 17px;
+      }
+
+      .app-icon {
+        width: 104px;
+        height: 104px;
+        margin-bottom: 24px;
+      }
+
+      .screenshots {
+        flex-direction: column;
+        margin-top: 56px;
+      }
+
+      footer {
+        margin-top: 56px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <section class="hero">
+    <img src="app-icon.png" alt="Dinky app icon" class="app-icon" />
+    <h1>Dinky</h1>
+    <p class="tagline">Compresses images. Stays dinky.</p>
+    <p class="description">
+      A tiny macOS app that converts JPGs and PNGs into WebP, AVIF, or lossless PNG. Drag and drop, get smaller files back. 4.3 MB. Free and open source.
+    </p>
+
+    <div class="buttons">
+      <a class="btn btn-primary" href="https://github.com/heyderekj/dinky/releases/download/v1.0.0/Dinky-1.0.0.dmg">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" aria-hidden="true">
+          <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
+        </svg>
+        Download for macOS
+      </a>
+      <a class="btn btn-secondary" href="https://github.com/heyderekj/dinky">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+        </svg>
+        GitHub
+      </a>
+    </div>
+    <p class="version">v1.0.0 · Requires macOS 26 Tahoe</p>
+  </section>
+
+  <section class="screenshots">
+    <img src="screenshots/screenshot-drop-zone.png" alt="Dinky drop zone idle state" />
+    <img src="screenshots/screenshot-sidebar-format.png" alt="Dinky sidebar — format, max width, max file size, destination" />
+    <img src="screenshots/screenshot-sidebar-advanced.png" alt="Dinky sidebar — performance, notifications, advanced" />
+  </section>
+
+  <footer>
+    Built by <a href="https://www.heyderekj.com">Derek Castelli</a>.
+  </footer>
+</body>
+</html>
