@@ -24,6 +24,13 @@ Supports JPG, PNG, WebP, and AVIF. Outputs WebP or AVIF depending on your prefer
 - **Quirky idle animation** — three choreographed card-drop variants that loop then hold until you come back
 - 4.1 MB. Appropriately dinky.
 
+### What others don't do
+
+- **Actually changes the format** — ImageOptim squeezes your JPEG and hands it back as a JPEG. Dinky converts to WebP or AVIF, which is where 30–80% of the real savings live. Optimage does this too, but costs money and weighs 62 MB.
+- **Results you can act on** — most compression apps give you a done screen you can't do anything with. Dinky's results list works like Finder: select files, drag them somewhere else, double-click to open, right-click to remove individual items.
+- **Notifications with a personality** — other apps either don't notify at all or send a generic "Done." Dinky's notification changes based on how many files you compressed and how long it took. Small things, but they add up.
+- **Free, open source, and tiny** — Optimage is $69. ImageOptim is free but lossless only. Dinky is free, open source, converts formats, and fits in a fraction of the space either of them takes up.
+
 ## Why it exists
 
 Optimage crashed. Instead of finding a replacement, I figured it was a good excuse to build my own — this was my first macOS app.
