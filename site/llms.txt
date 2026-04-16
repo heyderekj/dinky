@@ -28,7 +28,7 @@
 - vs **ImageOptim**: ImageOptim is lossless-only — it squeezes a JPEG and returns a JPEG. Dinky converts formats, where the real savings are (30–80% vs same-format squeeze).
 - vs **TinyPNG**: TinyPNG uploads images to their servers. Dinky is 100% local.
 - vs **Squoosh**: Browser-based, one image at a time. Dinky is native, batch, offline.
-- vs **Optimage**: Similar feature set but Optimage costs $69 and weighs 62 MB. Dinky is free and 4.8 MB.
+- vs **Optimage**: Similar feature set but Optimage costs $15 and weighs 62 MB. Dinky is free and 4.8 MB.
 
 ## Links
 
