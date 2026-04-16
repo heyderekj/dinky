@@ -11,6 +11,7 @@ struct CompressionResult {
     let outputURL: URL
     let originalSize: Int64
     let outputSize: Int64
+    let detectedContentType: ContentType?   // nil when Smart Quality is off
 }
 
 enum CompressionError: LocalizedError {
@@ -27,10 +28,27 @@ enum CompressionError: LocalizedError {
     }
 }
 
-// Default quality per format (used when no file-size goal is set)
+// Default quality per format (used when Smart Quality is off, or as a fallback).
 private let defaultQuality: [CompressionFormat: Int] = [
     .webp: 82,
     .avif: 75,
+]
+
+// Smart Quality: per-content-type quality for each format.
+// UI/screenshots get higher quality to keep text crisp. Photos stay at our
+// tuned defaults. Mixed lands in between.
+private let qualityByContent: [ContentType: [CompressionFormat: Int]] = [
+    .photo: [.webp: 82, .avif: 75],
+    .ui:    [.webp: 92, .avif: 88],
+    .mixed: [.webp: 87, .avif: 82],
+]
+
+// Floor for the binary-search target-size mode. UI screenshots shouldn't
+// ever drop below this quality floor even when chasing a file size target.
+private let targetSizeFloor: [ContentType: Int] = [
+    .photo: 10,
+    .ui:    50,
+    .mixed: 25,
 ]
 
 actor CompressionService {
@@ -49,7 +67,8 @@ actor CompressionService {
         goals: CompressionGoals,
         stripMetadata: Bool,
         outputURL: URL,
-        moveToTrash: Bool = false
+        moveToTrash: Bool = false,
+        smartQuality: Bool = false
     ) async throws -> CompressionResult {
         let originalSize = fileSize(source)
 
@@ -63,17 +82,23 @@ actor CompressionService {
         let isTempWork = workURL != source
         defer { if isTempWork { try? FileManager.default.removeItem(at: workURL) } }
 
-        // Step 2: compress — lossless formats skip quality targeting
+        // Step 2: classify for Smart Quality. Always classify the original —
+        // resizing doesn't meaningfully change content type and keeps EXIF intact.
+        let detected: ContentType? = smartQuality ? ContentClassifier.classify(source) : nil
+
+        // Step 3: compress — lossless formats skip quality targeting
         if format == .png {
             try await compressAtQuality(source: workURL, quality: 0,
                                         format: format, strip: stripMetadata, output: outputURL)
         } else if let targetKB = goals.maxFileSizeKB {
+            let floor = detected.flatMap { targetSizeFloor[$0] } ?? 10
             try await compressToTargetSize(
                 source: workURL, targetBytes: Int64(targetKB) * 1024,
-                format: format, strip: stripMetadata, output: outputURL
+                format: format, strip: stripMetadata, output: outputURL,
+                qualityFloor: floor
             )
         } else {
-            let q = defaultQuality[format] ?? 82
+            let q = quality(for: format, content: detected)
             try await compressAtQuality(source: workURL, quality: q,
                                         format: format, strip: stripMetadata, output: outputURL)
         }
@@ -88,7 +113,14 @@ actor CompressionService {
 
         return CompressionResult(outputURL: outputURL,
                                  originalSize: originalSize,
-                                 outputSize: fileSize(outputURL))
+                                 outputSize: fileSize(outputURL),
+                                 detectedContentType: detected)
+    }
+
+    /// Resolve quality based on Smart Quality classification (if available).
+    private func quality(for format: CompressionFormat, content: ContentType?) -> Int {
+        if let content, let q = qualityByContent[content]?[format] { return q }
+        return defaultQuality[format] ?? 82
     }
 
     // MARK: - Resize (sips, built-in to macOS)
@@ -116,9 +148,10 @@ actor CompressionService {
 
     private func compressToTargetSize(
         source: URL, targetBytes: Int64,
-        format: CompressionFormat, strip: Bool, output: URL
+        format: CompressionFormat, strip: Bool, output: URL,
+        qualityFloor: Int = 10
     ) async throws {
-        var lo = 10, hi = 92
+        var lo = qualityFloor, hi = 92
         var bestURL: URL?
         let fm = FileManager.default
 
@@ -144,7 +177,7 @@ actor CompressionService {
             try fm.moveItem(at: best, to: output)
         } else {
             // Nothing met the target — use floor quality and let caller decide
-            try await compressAtQuality(source: source, quality: 10,
+            try await compressAtQuality(source: source, quality: qualityFloor,
                                         format: format, strip: strip, output: output)
         }
     }

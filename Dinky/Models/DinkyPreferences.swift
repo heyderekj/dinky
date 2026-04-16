@@ -79,6 +79,14 @@ final class DinkyPreferences: ObservableObject {
     @AppStorage("manualMode")           var manualMode: Bool = false
     @AppStorage("reduceMotion")         var reduceMotion: Bool = false
 
+    // MARK: Smart quality
+    @AppStorage("smartQuality")         var smartQuality: Bool = true
+
+    // MARK: Updates
+    @AppStorage("checkForUpdatesOnLaunch") var checkForUpdatesOnLaunch: Bool = true
+    @AppStorage("lastUpdateCheck")         var lastUpdateCheck: Double = 0
+    @AppStorage("dismissedUpdateVersion")  var dismissedUpdateVersion: String = ""
+
     // MARK: URL helpers
 
     func resolvedCustomFolder() -> URL? {

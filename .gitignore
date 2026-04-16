@@ -7,3 +7,4 @@ build/
 *.ipa
 *.dSYM.zip
 *.dSYM
+*.dmg

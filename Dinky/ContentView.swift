@@ -107,11 +107,13 @@ final class ContentViewModel: ObservableObject {
                 goals: goals,
                 stripMetadata: prefs.stripMetadata,
                 outputURL: outputURL,
-                moveToTrash: prefs.moveOriginalsToTrash
+                moveToTrash: prefs.moveOriginalsToTrash,
+                smartQuality: prefs.smartQuality
             )
             let savings = result.originalSize > 0
                 ? Double(result.originalSize - result.outputSize) / Double(result.originalSize) : 0
             await MainActor.run {
+                item.detectedContentType = result.detectedContentType
                 if result.outputSize >= result.originalSize {
                     item.status = .zeroGain(original: item.sourceURL)
                     try? FileManager.default.removeItem(at: result.outputURL)
@@ -208,6 +210,7 @@ struct PNGInputError: LocalizedError {
 
 struct ContentView: View {
     @EnvironmentObject var prefs: DinkyPreferences
+    @EnvironmentObject var updater: UpdateChecker
     @StateObject private var vm: ContentViewModel
     @State private var sidebarVisible = false
     @State private var isDropTargeted  = false
@@ -228,6 +231,10 @@ struct ContentView: View {
         ZStack(alignment: .leading) {
             // ── Main content (drop target covers the full surface) ──
             VStack(spacing: 0) {
+                if updater.shouldShow(dismissedVersion: prefs.dismissedUpdateVersion) {
+                    UpdateBanner(updater: updater)
+                        .environmentObject(prefs)
+                }
                 if vm.isEmpty {
                     DropZoneView(phase: dropPhase, onOpenPanel: openPanel, onLoop: { idleLoop += 1 })
                 } else {
@@ -235,6 +242,7 @@ struct ContentView: View {
                 }
                 bottomBar
             }
+            .animation(.easeInOut(duration: 0.25), value: updater.availableVersion)
             // Drop handler lives here, above the sidebar, so the overlay can't block it
             .onDrop(of: [.fileURL], isTargeted: $isDropTargeted, perform: handleDrop)
 
@@ -273,6 +281,19 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .dinkyOpenFiles)) { note in
             guard let urls = note.object as? [URL] else { return }
             vm.addAndCompress(urls)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .dinkyCheckUpdates)) { _ in
+            Task {
+                let result = await updater.check(manual: true)
+                presentManualUpdateResult(result, updater: updater)
+            }
+        }
+        .task {
+            // Defer the first check so the window settles before any network I/O.
+            if prefs.checkForUpdatesOnLaunch {
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                await updater.check()
+            }
         }
     }
 
@@ -420,4 +441,48 @@ struct ContentView: View {
             vm.addAndCompress(panel.urls)
         }
     }
+}
+
+// MARK: - Manual update check alerts
+
+/// Shows a short native dialog in response to the user explicitly picking
+/// `Dinky › Check for Updates…`. Automatic launch-time checks stay silent.
+@MainActor
+private func presentManualUpdateResult(_ result: UpdateChecker.CheckResult,
+                                       updater: UpdateChecker) {
+    let alert = NSAlert()
+    alert.alertStyle = .informational
+
+    switch result {
+    case .updateAvailable(let version):
+        alert.messageText = "A newer dinky has dropped."
+        alert.informativeText = "Version \(version) is out. You're on \(currentAppVersion()). Want it?"
+        alert.addButton(withTitle: "Download")
+        alert.addButton(withTitle: "What's new")
+        alert.addButton(withTitle: "Maybe later")
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn, let url = updater.downloadURL {
+            NSWorkspace.shared.open(url)
+        } else if response == .alertSecondButtonReturn, let url = updater.releaseURL {
+            NSWorkspace.shared.open(url)
+        }
+
+    case .upToDate:
+        alert.messageText = "All caught up."
+        alert.informativeText = "You're on Dinky \(currentAppVersion()) — the latest and dinkyest."
+        alert.addButton(withTitle: "Nice")
+        alert.runModal()
+
+    case .failed:
+        alert.alertStyle = .warning
+        alert.messageText = "Couldn't phone home."
+        alert.informativeText = "Dinky couldn't reach GitHub. Probably the internet. Try again in a sec?"
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+}
+
+private func currentAppVersion() -> String {
+    Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
 }

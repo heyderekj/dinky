@@ -4,21 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dinky makes images smaller.</title>
-  <meta name="description" content="A tiny macOS app that converts JPGs and PNGs to WebP, AVIF, or lossless PNG. Drag and drop, get smaller files back. 4.3 MB. Free and open source." />
+  <meta name="description" content="A tiny macOS app that converts JPGs and PNGs to WebP, AVIF, or lossless PNG. Drag and drop, get smaller files back. 4.7 MB. Free and open source." />
 
   <link rel="icon" type="image/png" href="favicon.png" />
   <link rel="apple-touch-icon" href="app-icon.webp" />
 
   <meta property="og:title" content="Dinky makes images smaller." />
-  <meta property="og:description" content="A tiny macOS app that converts JPGs and PNGs to WebP, AVIF, or lossless PNG. Drag and drop, get smaller files back. 4.3 MB. Free and open source." />
+  <meta property="og:description" content="A tiny macOS app that converts JPGs and PNGs to WebP, AVIF, or lossless PNG. Drag and drop, get smaller files back. 4.7 MB. Free and open source." />
   <meta property="og:image" content="https://dinkyimg.app/screenshots/screenshot-drop-zone.webp" />
   <meta property="og:url" content="https://dinkyimg.app" />
   <meta property="og:type" content="website" />
 
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Dinky makes images smaller." />
-  <meta name="twitter:description" content="A tiny macOS app that converts JPGs and PNGs to WebP, AVIF, or lossless PNG. 4.3 MB. Free and open source." />
+  <meta name="twitter:description" content="A tiny macOS app that converts JPGs and PNGs to WebP, AVIF, or lossless PNG. 4.7 MB. Free and open source." />
   <meta name="twitter:image" content="https://dinkyimg.app/screenshots/screenshot-drop-zone.webp" />
+
+  <!-- Fathom - beautiful, simple website analytics -->
+  <script src="https://cdn.usefathom.com/script.js" data-site="KGNDSOKI" defer></script>
+  <!-- / Fathom -->
 
   <style>
     :root {
@@ -184,6 +188,15 @@
       padding: 0 8px;
     }
 
+    .feature-icon {
+      width: 24px;
+      height: 24px;
+      color: var(--brand);
+      margin-bottom: 10px;
+      display: block;
+      fill: currentColor;
+    }
+
     .feature h3 {
       font-size: 15px;
       font-weight: 600;
@@ -269,7 +282,7 @@
     </p>
 
     <div class="buttons">
-      <a class="btn btn-primary" href="https://github.com/heyderekj/dinky/releases/download/v1.0.0/Dinky-1.0.0.dmg">
+      <a class="btn btn-primary" href="https://github.com/heyderekj/dinky/releases/download/v1.2.0/Dinky-1.2.0.dmg">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" aria-hidden="true">
           <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
         </svg>
@@ -282,7 +295,7 @@
         GitHub
       </a>
     </div>
-    <p class="version">4.3 MB · v1.0.0 · Requires macOS 26 Tahoe</p>
+    <p class="version">4.7 MB · v1.2.0 · Requires macOS 26 Tahoe</p>
   </section>
 
   <section class="screenshots">
@@ -293,53 +306,145 @@
   <p class="meta-note">Every screenshot on this page was compressed with Dinky. Obviously.</p>
 
   <section class="features">
+    <!-- Icons are recreations of Apple SF Symbols (referenced by name in comments). -->
     <div class="feature">
+      <!-- SF Symbol: square.and.arrow.down -->
+      <svg class="feature-icon" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M7 10H5.5A1.5 1.5 0 0 0 4 11.5v6A1.5 1.5 0 0 0 5.5 19h11a1.5 1.5 0 0 0 1.5-1.5v-6A1.5 1.5 0 0 0 16.5 10H15"/>
+        <path d="M11 3v11"/>
+        <path d="M7.5 10.5L11 14l3.5-3.5"/>
+      </svg>
       <h3>Drag and drop</h3>
       <p>Drop images on the window, or use the file picker.</p>
     </div>
     <div class="feature">
+      <!-- SF Symbol: arrow.left.arrow.right -->
+      <svg class="feature-icon" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 8h14"/>
+        <path d="M13.5 4.5L17 8l-3.5 3.5"/>
+        <path d="M19 14H5"/>
+        <path d="M8.5 10.5L5 14l3.5 3.5"/>
+      </svg>
       <h3>Format conversion</h3>
       <p>Output to WebP, AVIF, or lossless PNG. That's where the real savings live.</p>
     </div>
     <div class="feature">
+      <!-- SF Symbol: arrow.left.and.right -->
+      <svg class="feature-icon" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 11h16"/>
+        <path d="M6.5 7.5L3 11l3.5 3.5"/>
+        <path d="M15.5 7.5L19 11l-3.5 3.5"/>
+      </svg>
       <h3>Max width</h3>
       <p>Resize on the way out with common web presets or a custom value.</p>
     </div>
     <div class="feature">
+      <!-- SF Symbol: doc.badge.arrow.down -->
+      <svg class="feature-icon" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M13 3H6.5A1.5 1.5 0 0 0 5 4.5v13A1.5 1.5 0 0 0 6.5 19h9a1.5 1.5 0 0 0 1.5-1.5V7.5z"/>
+        <path d="M13 3v4.5h4"/>
+        <path d="M10.5 11v5"/>
+        <path d="M8.5 13.5l2 2 2-2"/>
+      </svg>
       <h3>Max file size</h3>
       <p>Binary-searches the quality level to hit an exact KB or MB target.</p>
     </div>
     <div class="feature">
+      <!-- SF Symbol: sparkles -->
+      <svg class="feature-icon" viewBox="0 0 22 22" aria-hidden="true">
+        <path fill="currentColor" d="M9.5 3c.2 0 .4.13.46.33l.84 2.87 2.87.84a.48.48 0 0 1 0 .92l-2.87.84-.84 2.87a.48.48 0 0 1-.92 0l-.84-2.87L5.33 7.96a.48.48 0 0 1 0-.92l2.87-.84.84-2.87A.48.48 0 0 1 9.5 3z"/>
+        <path fill="currentColor" d="M16.75 10c.17 0 .32.11.38.27l.55 1.55 1.55.55a.4.4 0 0 1 0 .76l-1.55.55-.55 1.55a.4.4 0 0 1-.76 0l-.55-1.55-1.55-.55a.4.4 0 0 1 0-.76l1.55-.55.55-1.55a.4.4 0 0 1 .38-.27z"/>
+        <path fill="currentColor" d="M5.25 14c.15 0 .28.09.33.23l.38 1.11 1.11.38a.35.35 0 0 1 0 .66l-1.11.38-.38 1.11a.35.35 0 0 1-.66 0l-.38-1.11-1.11-.38a.35.35 0 0 1 0-.66l1.11-.38.38-1.11A.35.35 0 0 1 5.25 14z"/>
+      </svg>
+      <h3>Smart quality</h3>
+      <p>Detects photo vs. screenshot per image and picks quality accordingly. Text stays crisp.</p>
+    </div>
+    <div class="feature">
+      <!-- SF Symbol: square.on.square -->
+      <svg class="feature-icon" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="7" y="3" width="12" height="12" rx="2.5"/>
+        <path d="M15 15v1.5A2.5 2.5 0 0 1 12.5 19h-7A2.5 2.5 0 0 1 3 16.5v-7A2.5 2.5 0 0 1 5.5 7H7"/>
+      </svg>
       <h3>Batch compression</h3>
       <p>Multiple files compress concurrently with live results as they finish.</p>
     </div>
     <div class="feature">
+      <!-- SF Symbol: checkmark.shield -->
+      <svg class="feature-icon" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M11 3l7 2.5v5c0 4.5-3 7.5-7 8.5-4-1-7-4-7-8.5v-5z"/>
+        <path d="M8 11l2 2 4-4"/>
+      </svg>
       <h3>PNG lossless</h3>
       <p>Run oxipng on PNGs when you need to keep transparency or format fidelity.</p>
     </div>
     <div class="feature">
+      <!-- SF Symbol: cursorarrow.click -->
+      <svg class="feature-icon" viewBox="0 0 22 22" aria-hidden="true">
+        <path fill="currentColor" d="M5 3.5c0-.4.41-.67.79-.52l10.6 4.2a.56.56 0 0 1 .01 1.04l-4.1 1.68a1.5 1.5 0 0 0-.8.81l-1.66 4.06a.56.56 0 0 1-1.04 0l-3.8-10.27z"/>
+        <path fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" d="M15 15l3 3M14 18h3M18 14v3"/>
+      </svg>
       <h3>Manual mode</h3>
       <p>Drop files first, then right-click each one to pick a format individually.</p>
     </div>
     <div class="feature">
+      <!-- SF Symbol: list.bullet -->
+      <svg class="feature-icon" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="4.5" cy="6" r="0.9" fill="currentColor"/>
+        <circle cx="4.5" cy="11" r="0.9" fill="currentColor"/>
+        <circle cx="4.5" cy="16" r="0.9" fill="currentColor"/>
+        <path d="M8 6h11"/>
+        <path d="M8 11h11"/>
+        <path d="M8 16h11"/>
+      </svg>
       <h3>Finder-like results</h3>
       <p>Select, drag, double-click to open, right-click for per-file actions.</p>
     </div>
     <div class="feature">
+      <!-- SF Symbol: bolt.fill -->
+      <svg class="feature-icon" viewBox="0 0 22 22" aria-hidden="true">
+        <path fill="currentColor" d="M12.5 2.2c.3-.5 1.1-.3 1.1.3v6h3.8c.5 0 .8.6.5 1L9.5 19.7c-.3.5-1.1.3-1.1-.3v-6H4.6c-.5 0-.8-.6-.5-1L12.5 2.2z"/>
+      </svg>
       <h3>Quick Actions</h3>
       <p>Compress straight from Finder's right-click menu, no app launch needed.</p>
     </div>
     <div class="feature">
+      <!-- SF Symbol: speedometer -->
+      <svg class="feature-icon" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 16a8 8 0 1 1 16 0"/>
+        <path d="M11 14l4.5-4.5"/>
+        <circle cx="11" cy="14" r="1.1" fill="currentColor" stroke="none"/>
+      </svg>
       <h3>Performance</h3>
       <p>Fast runs one at a time. Fastest uses every core, no waiting.</p>
     </div>
     <div class="feature">
+      <!-- SF Symbol: folder -->
+      <svg class="feature-icon" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4L10 6.5h7.5A1.5 1.5 0 0 1 19 8v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 16.5z"/>
+      </svg>
       <h3>Smart destination</h3>
       <p>Save next to the original, pick a custom folder, or trash originals after.</p>
     </div>
     <div class="feature">
+      <!-- SF Symbol: face.smiling -->
+      <svg class="feature-icon" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/>
+        <path d="M7.5 13s1.2 2 3.5 2 3.5-2 3.5-2"/>
+        <circle cx="8.5" cy="9" r="0.7" fill="currentColor" stroke="none"/>
+        <circle cx="13.5" cy="9" r="0.7" fill="currentColor" stroke="none"/>
+      </svg>
       <h3>Quirky personality</h3>
       <p>Notifications that change with the count and time. Animations with character.</p>
+    </div>
+    <div class="feature">
+      <!-- SF Symbol: arrow.down.circle -->
+      <svg class="feature-icon" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/>
+        <path d="M11 7v7"/>
+        <path d="M7.5 10.5L11 14l3.5-3.5"/>
+      </svg>
+      <h3>Update-aware</h3>
+      <p>Checks GitHub for new releases on launch. No need to revisit the repo.</p>
     </div>
   </section>
 

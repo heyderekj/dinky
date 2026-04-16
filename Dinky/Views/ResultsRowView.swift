@@ -8,10 +8,18 @@ struct ResultsRowView: View {
         HStack(spacing: 12) {
             FileTypeIcon(ext: item.sourceURL.pathExtension)
 
-            Text(item.filename)
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 6) {
+                Text(item.filename)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+
+                if let type = item.detectedContentType {
+                    contentTypeChip(type)
+                        .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .animation(.easeInOut(duration: 0.2), value: item.detectedContentType)
 
             sizeInfo
             statusChip
@@ -110,6 +118,27 @@ struct ResultsRowView: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(color))
+    }
+
+    // Small, muted chip shown next to the filename when Smart Quality is on.
+    // It's secondary info — colors are soft so the row's primary content still leads.
+    @ViewBuilder
+    private func contentTypeChip(_ type: ContentType) -> some View {
+        let (bg, fg): (Color, Color) = {
+            switch type {
+            case .photo: return (Color.orange.opacity(0.14), Color.orange)
+            case .ui:    return (Color.blue.opacity(0.14),   Color.blue)
+            case .mixed: return (Color.secondary.opacity(0.18), Color.secondary)
+            }
+        }()
+        Text(type.label)
+            .font(.system(size: 9, weight: .semibold).lowercaseSmallCaps())
+            .foregroundStyle(fg)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 1.5)
+            .background(
+                RoundedRectangle(cornerRadius: 4, style: .continuous).fill(bg)
+            )
     }
 
 private func bytes(_ n: Int64) -> String {

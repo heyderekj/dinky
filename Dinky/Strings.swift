@@ -3,8 +3,9 @@
 import Foundation
 
 extension Notification.Name {
-    static let dinkyOpenPanel = Notification.Name("dinkyOpenPanel")
-    static let dinkyOpenFiles = Notification.Name("dinkyOpenFiles")
+    static let dinkyOpenPanel     = Notification.Name("dinkyOpenPanel")
+    static let dinkyOpenFiles     = Notification.Name("dinkyOpenFiles")
+    static let dinkyCheckUpdates  = Notification.Name("dinkyCheckUpdates")
 }
 
 enum S {

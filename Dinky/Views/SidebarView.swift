@@ -170,6 +170,20 @@ struct SidebarView: View {
 
             // ── Advanced ──────────────────────────────────────────
             sectionGroup(icon: "slider.horizontal.3", title: "Advanced") {
+                Toggle("Smart quality", isOn: Binding(
+                    get: { prefs.smartQuality },
+                    set: { prefs.smartQuality = $0 }
+                ))
+                .font(.caption)
+
+                if prefs.smartQuality {
+                    helper("Auto-picks quality per image. Screenshots stay crisp. Photos squeeze harder.")
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .top).combined(with: .opacity.animation(.easeInOut(duration: 0.15).delay(0.1))),
+                            removal:   .move(edge: .top).combined(with: .opacity.animation(.easeIn(duration: 0.08)))
+                        ))
+                }
+
                 Toggle("Open folder when done", isOn: Binding(
                     get: { prefs.openFolderWhenDone },
                     set: { prefs.openFolderWhenDone = $0 }
@@ -227,6 +241,7 @@ struct SidebarView: View {
         .animation(.easeInOut(duration: 0.2), value: prefs.maxFileSizeEnabled)
         .animation(.easeInOut(duration: 0.2), value: prefs.sanitizeFilenames)
         .animation(.easeInOut(duration: 0.2), value: prefs.manualMode)
+        .animation(.easeInOut(duration: 0.2), value: prefs.smartQuality)
     }
 
     // MARK: - Folder picker

@@ -3,29 +3,102 @@ import AppKit
 
 struct PreferencesView: View {
     @EnvironmentObject var prefs: DinkyPreferences
+    @EnvironmentObject var updater: UpdateChecker
 
     var body: some View {
         TabView {
+            GeneralTab()
+                .tabItem { Label("General", systemImage: "gearshape") }
+                .environmentObject(prefs)
+                .environmentObject(updater)
             OutputTab()
                 .tabItem { Label("Output", systemImage: "folder") }
                 .environmentObject(prefs)
-            BehaviorTab()
-                .tabItem { Label("Behavior", systemImage: "gearshape") }
-                .environmentObject(prefs)
         }
-        .frame(width: 420, height: 280)
+        .frame(width: 460, height: 360)
     }
 }
 
-// MARK: - Output tab
+// MARK: - General
+
+private struct GeneralTab: View {
+    @EnvironmentObject var prefs: DinkyPreferences
+    @EnvironmentObject var updater: UpdateChecker
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Smart quality", isOn: Binding(
+                    get: { prefs.smartQuality },
+                    set: { prefs.smartQuality = $0 }
+                ))
+                Text("Detects photos vs. screenshots and adjusts quality so text stays crisp and photos squeeze harder.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Toggle("Skip already-optimized files", isOn: Binding(
+                    get: { prefs.skipAlreadyOptimized },
+                    set: { prefs.skipAlreadyOptimized = $0 }
+                ))
+                Text("Skips files where savings would be less than 2%.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Toggle("Preserve original timestamps", isOn: Binding(
+                    get: { prefs.preserveTimestamps },
+                    set: { prefs.preserveTimestamps = $0 }
+                ))
+            } header: {
+                Text("Compression")
+            }
+
+            Section {
+                Toggle("Play sound when done", isOn: Binding(
+                    get: { prefs.playSoundEffects },
+                    set: { prefs.playSoundEffects = $0 }
+                ))
+            } header: {
+                Text("Notifications")
+            }
+
+            Section {
+                Toggle("Reduce motion", isOn: Binding(
+                    get: { prefs.reduceMotion },
+                    set: { prefs.reduceMotion = $0 }
+                ))
+                Text("Replaces the drop zone animation with a still arrangement of cards.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("Accessibility")
+            }
+
+            Section {
+                Toggle("Check for updates automatically", isOn: Binding(
+                    get: { prefs.checkForUpdatesOnLaunch },
+                    set: { prefs.checkForUpdatesOnLaunch = $0 }
+                ))
+                Text("Dinky will quietly check GitHub for a new release when you launch the app.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("Updates")
+            }
+        }
+        .formStyle(.grouped)
+        .padding(.top, 8)
+    }
+}
+
+// MARK: - Output
 
 private struct OutputTab: View {
     @EnvironmentObject var prefs: DinkyPreferences
 
     var body: some View {
         Form {
-            Section("Save Location") {
-                Picker("Where to save", selection: Binding(
+            Section {
+                Picker("Save to", selection: Binding(
                     get: { prefs.saveLocation },
                     set: { prefs.saveLocation = $0 }
                 )) {
@@ -48,10 +121,12 @@ private struct OutputTab: View {
                             .buttonStyle(.bordered)
                     }
                 }
+            } header: {
+                Text("Save Location")
             }
 
-            Section("Filename") {
-                Picker("Output name", selection: Binding(
+            Section {
+                Picker("Filename", selection: Binding(
                     get: { prefs.filenameHandling },
                     set: { prefs.filenameHandling = $0 }
                 )) {
@@ -74,6 +149,8 @@ private struct OutputTab: View {
                         .frame(width: 120)
                     }
                 }
+            } header: {
+                Text("Filename")
             }
         }
         .formStyle(.grouped)
@@ -93,49 +170,5 @@ private struct OutputTab: View {
             }
             prefs.saveLocation = .custom
         }
-    }
-}
-
-// MARK: - Behavior tab
-
-private struct BehaviorTab: View {
-    @EnvironmentObject var prefs: DinkyPreferences
-
-    var body: some View {
-        Form {
-            Section("Compression") {
-                Toggle("Skip already-optimized files", isOn: Binding(
-                    get: { prefs.skipAlreadyOptimized },
-                    set: { prefs.skipAlreadyOptimized = $0 }
-                ))
-                Text("Skips files where savings would be less than 2%.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Toggle("Preserve original timestamps", isOn: Binding(
-                    get: { prefs.preserveTimestamps },
-                    set: { prefs.preserveTimestamps = $0 }
-                ))
-            }
-
-            Section("Sound") {
-                Toggle("Play sound when done", isOn: Binding(
-                    get: { prefs.playSoundEffects },
-                    set: { prefs.playSoundEffects = $0 }
-                ))
-            }
-
-            Section("Accessibility") {
-                Toggle("Reduce motion", isOn: Binding(
-                    get: { prefs.reduceMotion },
-                    set: { prefs.reduceMotion = $0 }
-                ))
-                Text("Replaces the drop zone animation with a still arrangement of cards.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .formStyle(.grouped)
-        .padding(.top, 8)
     }
 }

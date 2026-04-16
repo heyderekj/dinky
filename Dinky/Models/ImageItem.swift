@@ -24,6 +24,7 @@ final class ImageItem: ObservableObject, Identifiable {
     var formatOverride: CompressionFormat? = nil
 
     @Published var status: CompressionStatus = .pending
+    @Published var detectedContentType: ContentType? = nil
 
     init(sourceURL: URL) {
         self.sourceURL = sourceURL
