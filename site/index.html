@@ -389,9 +389,12 @@
       text-align: center;
     }
     .faq-item {
-      border-bottom: 1px solid var(--divider);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 4px;
+      background: transparent;
     }
-    .faq-item:first-of-type { border-top: 1px solid var(--divider); }
+    .faq-item:nth-child(even) { background: rgba(0,0,0,0.03); }
     .faq-q {
       width: 100%;
       background: none;
@@ -402,7 +405,7 @@
       font-weight: 500;
       color: var(--text);
       cursor: pointer;
-      padding: 16px 0;
+      padding: 14px 18px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -410,21 +413,25 @@
       letter-spacing: -0.01em;
     }
     .faq-q:hover { color: var(--brand); }
-    .faq-chevron {
+    .faq-icon {
       flex-shrink: 0;
-      width: 16px;
-      height: 16px;
+      width: 18px;
+      height: 18px;
       color: var(--text-secondary);
-      transition: transform 0.2s ease;
+      transition: color 0.15s ease;
     }
-    .faq-item.open .faq-chevron { transform: rotate(180deg); }
+    .faq-q:hover .faq-icon { color: var(--brand); }
+    .faq-icon .icon-minus { display: none; }
+    .faq-icon .icon-plus  { display: block; }
+    .faq-item.open .faq-icon .icon-minus { display: block; }
+    .faq-item.open .faq-icon .icon-plus  { display: none; }
     .faq-a {
       display: none;
       font-size: 14px;
       color: var(--text-secondary);
       line-height: 1.6;
-      padding-bottom: 16px;
-      max-width: 600px;
+      padding: 0 18px 16px;
+      max-width: 620px;
     }
     .faq-item.open .faq-a { display: block; }
     .faq-a a { color: var(--brand); text-decoration: none; }
@@ -691,8 +698,33 @@
 
     <div class="faq-item">
       <button class="faq-q" onclick="toggleFaq(this)">
+        What input formats does Dinky support?
+        <svg class="faq-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line class="icon-plus"  x1="9" y1="3" x2="9" y2="15"/><line class="icon-plus"  x1="3" y1="9" x2="15" y2="9"/>
+          <line class="icon-minus" x1="3" y1="9" x2="15" y2="9"/>
+        </svg>
+      </button>
+      <p class="faq-a">JPG, PNG, WebP, AVIF, TIFF, and BMP. Output is WebP, AVIF, or lossless PNG — your pick in the sidebar.</p>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        Is it actually free?
+        <svg class="faq-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line class="icon-plus"  x1="9" y1="3" x2="9" y2="15"/><line class="icon-plus"  x1="3" y1="9" x2="15" y2="9"/>
+          <line class="icon-minus" x1="3" y1="9" x2="15" y2="9"/>
+        </svg>
+      </button>
+      <p class="faq-a">Yes. Free to download, free to use, <a href="https://github.com/heyderekj/dinky" target="_blank">open source on GitHub</a> under MIT. No trial, no watermarks, no "pro" tier.</p>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
         Does Dinky send my images anywhere?
-        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        <svg class="faq-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line class="icon-plus"  x1="9" y1="3" x2="9" y2="15"/><line class="icon-plus"  x1="3" y1="9" x2="15" y2="9"/>
+          <line class="icon-minus" x1="3" y1="9" x2="15" y2="9"/>
+        </svg>
       </button>
       <p class="faq-a">Nope. Everything runs locally on your Mac. Your images never leave your machine — no servers, no accounts, no uploads.</p>
     </div>
@@ -700,7 +732,10 @@
     <div class="faq-item">
       <button class="faq-q" onclick="toggleFaq(this)">
         How is it different from ImageOptim?
-        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        <svg class="faq-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line class="icon-plus"  x1="9" y1="3" x2="9" y2="15"/><line class="icon-plus"  x1="3" y1="9" x2="15" y2="9"/>
+          <line class="icon-minus" x1="3" y1="9" x2="15" y2="9"/>
+        </svg>
       </button>
       <p class="faq-a">ImageOptim keeps your files in the same format — it squeezes a JPEG and hands it back as a JPEG. Dinky converts to WebP or AVIF, which is where the real savings are: typically 30–80% smaller than a JPEG at the same visual quality. If you need lossless PNG, Dinky runs <a href="https://github.com/shssoichiro/oxipng" target="_blank">oxipng</a> — same idea as ImageOptim, but as one option inside a broader tool.</p>
     </div>
@@ -708,7 +743,10 @@
     <div class="faq-item">
       <button class="faq-q" onclick="toggleFaq(this)">
         How is it different from TinyPNG or Squoosh?
-        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        <svg class="faq-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line class="icon-plus"  x1="9" y1="3" x2="9" y2="15"/><line class="icon-plus"  x1="3" y1="9" x2="15" y2="9"/>
+          <line class="icon-minus" x1="3" y1="9" x2="15" y2="9"/>
+        </svg>
       </button>
       <p class="faq-a">TinyPNG uploads your images to their servers to compress them. Squoosh is a browser tool — great, but one image at a time with no batch support. Dinky is local, runs natively on your Mac, and handles as many files as you can throw at it concurrently.</p>
     </div>
@@ -716,7 +754,10 @@
     <div class="faq-item">
       <button class="faq-q" onclick="toggleFaq(this)">
         How is it different from Optimage?
-        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        <svg class="faq-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line class="icon-plus"  x1="9" y1="3" x2="9" y2="15"/><line class="icon-plus"  x1="3" y1="9" x2="15" y2="9"/>
+          <line class="icon-minus" x1="3" y1="9" x2="15" y2="9"/>
+        </svg>
       </button>
       <p class="faq-a">Optimage is the closest comparison — it does lossy conversion and costs $69. Dinky is free, open source, and 4.7 MB versus Optimage's 62 MB. Optimage has more format output options; Dinky focuses on WebP, AVIF, and lossless PNG — the three formats that matter most for the web.</p>
     </div>
@@ -724,7 +765,10 @@
     <div class="faq-item">
       <button class="faq-q" onclick="toggleFaq(this)">
         What macOS version does it require?
-        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        <svg class="faq-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line class="icon-plus"  x1="9" y1="3" x2="9" y2="15"/><line class="icon-plus"  x1="3" y1="9" x2="15" y2="9"/>
+          <line class="icon-minus" x1="3" y1="9" x2="15" y2="9"/>
+        </svg>
       </button>
       <p class="faq-a">Dinky requires macOS 26 Tahoe. It's built with the latest SwiftUI APIs (including the glass material and new effects from Tahoe), so earlier versions aren't supported.</p>
     </div>
@@ -732,25 +776,12 @@
     <div class="faq-item">
       <button class="faq-q" onclick="toggleFaq(this)">
         Why isn't it on the Mac App Store?
-        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        <svg class="faq-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line class="icon-plus"  x1="9" y1="3" x2="9" y2="15"/><line class="icon-plus"  x1="3" y1="9" x2="15" y2="9"/>
+          <line class="icon-minus" x1="3" y1="9" x2="15" y2="9"/>
+        </svg>
       </button>
       <p class="faq-a">Not yet — App Store distribution requires sandboxing that would limit how Dinky shells out to its compression engines. Direct download keeps things simple and free. The notarization warning on first launch is a one-time thing; after that it opens normally.</p>
-    </div>
-
-    <div class="faq-item">
-      <button class="faq-q" onclick="toggleFaq(this)">
-        Is it actually free?
-        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
-      </button>
-      <p class="faq-a">Yes. Free to download, free to use, <a href="https://github.com/heyderekj/dinky" target="_blank">open source on GitHub</a> under MIT. No trial, no watermarks, no "pro" tier.</p>
-    </div>
-
-    <div class="faq-item">
-      <button class="faq-q" onclick="toggleFaq(this)">
-        What input formats does Dinky support?
-        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
-      </button>
-      <p class="faq-a">JPG, PNG, WebP, AVIF, TIFF, and BMP. Output is WebP, AVIF, or lossless PNG depending on what you pick in the sidebar.</p>
     </div>
 
   </section>
