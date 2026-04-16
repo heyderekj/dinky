@@ -301,7 +301,7 @@
     .install-steps li {
       counter-increment: steps;
       display: flex;
-      gap: 12px;
+      gap: 10px;
       align-items: flex-start;
       font-size: 14px;
       line-height: 1.5;
@@ -321,6 +321,10 @@
       font-weight: 600;
       flex-shrink: 0;
       margin-top: 1px;
+    }
+    .install-steps li span {
+      flex: 1;
+      min-width: 0;
     }
     .install-steps li kbd {
       font-family: inherit;
@@ -536,10 +540,10 @@
       <button class="modal-close" onclick="document.getElementById('install-modal').classList.remove('open')" aria-label="Close">✕</button>
       <h2>How to install</h2>
       <ol class="install-steps">
-        <li>Download the <strong>.dmg</strong> from the button above and open it.</li>
-        <li>Drag <strong>Dinky</strong> into your <strong>Applications</strong> folder.</li>
-        <li>Try to launch Dinky — macOS may block it on first run.</li>
-        <li>Go to <strong>System Settings → Privacy &amp; Security</strong>, scroll down, and click <strong>Open Anyway</strong>.</li>
+        <li><span>Download the <strong>.dmg</strong> from the button above and open it.</span></li>
+        <li><span>Drag <strong>Dinky</strong> into your <strong>Applications</strong> folder.</span></li>
+        <li><span>Try to launch Dinky — macOS may block it on first run.</span></li>
+        <li><span>Go to <strong>System Settings → Privacy &amp; Security</strong>, scroll down, and click <strong>Open Anyway</strong>.</span></li>
       </ol>
       <div class="modal-divider">or skip steps 3–4 with Terminal</div>
       <div class="code-block">
