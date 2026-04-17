@@ -172,7 +172,7 @@
 
     .screenshots {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: 2fr 3fr;
       align-items: start;
       gap: 16px;
       width: 100%;
@@ -186,6 +186,12 @@
       height: auto;
       border-radius: 12px;
       box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    .screenshots-left-col {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
     }
 
     .screenshots-right-col {
@@ -208,35 +214,6 @@
       box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
     }
 
-    .screenshot-pip {
-      position: relative;
-    }
-
-    .screenshot-pip .pip-main {
-      width: 100%;
-      height: auto;
-      border-radius: 12px;
-      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-      display: block;
-    }
-
-    .screenshot-pip .pip-thumb {
-      position: absolute;
-      bottom: 10px;
-      right: 10px;
-      width: 32%;
-      border-radius: 8px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
-      border: 2px solid rgba(255, 255, 255, 0.75);
-      cursor: pointer;
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
-    }
-
-    .screenshot-pip .pip-thumb:hover {
-      transform: scale(1.04);
-      box-shadow: 0 6px 22px rgba(0, 0, 0, 0.3);
-    }
-
     .meta-note {
       margin-top: 20px;
       font-size: 13px;
@@ -244,26 +221,6 @@
       text-align: center;
     }
 
-    .lightbox-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.75);
-      z-index: 9999;
-      align-items: center;
-      justify-content: center;
-      cursor: zoom-out;
-      padding: 24px;
-      backdrop-filter: blur(6px);
-    }
-    .lightbox-overlay.open { display: flex; }
-    .lightbox-overlay img {
-      max-width: min(860px, 100%);
-      max-height: 90vh;
-      border-radius: 12px;
-      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
-      pointer-events: none;
-    }
 
     .features {
       display: grid;
@@ -812,13 +769,15 @@
   </div>
 
   <section class="screenshots">
-    <img src="screenshots/screenshot-drop-zone.webp" alt="Dinky drop zone idle state" />
-    <img src="screenshots/screenshot-results.webp" alt="Dinky results list showing compressed files" />
-    <img src="screenshots/screenshot-before-after.webp" alt="Dinky before and after preview" />
+    <div class="screenshots-left-col">
+      <img src="screenshots/screenshot-drop-zone.webp" alt="Dinky drop zone idle state" />
+      <img src="screenshots/screenshot-results.webp" alt="Dinky results list showing compressed files" />
+    </div>
     <div class="screenshots-right-col">
+      <img src="screenshots/screenshot-before-after.webp" alt="Dinky before and after preview" />
       <div class="screenshots-pair">
-        <img src="screenshots/screenshot-sidebar-presets.webp" alt="Dinky sidebar with presets and format picker" style="cursor:zoom-in" onclick="openLightbox(this.src)" />
-        <img src="screenshots/screenshot-preset-selected.webp" alt="Dinky preset selected with settings summary" style="cursor:zoom-in" onclick="openLightbox(this.src)" />
+        <img src="screenshots/screenshot-sidebar-presets.webp" alt="Dinky sidebar with presets and format picker" />
+        <img src="screenshots/screenshot-preset-selected.webp" alt="Dinky preset selected with settings summary" />
       </div>
       <p class="meta-note">Every screenshot on this page was compressed with Dinky. Obviously.</p>
     </div>
@@ -1305,23 +1264,7 @@
     © Testament Made, LLC
   </footer>
 
-  <div class="lightbox-overlay" id="lightbox" onclick="closeLightbox()">
-    <img id="lightbox-img" src="" alt="" />
-  </div>
-
   <script>
-    function openLightbox(src) {
-      const overlay = document.getElementById('lightbox');
-      document.getElementById('lightbox-img').src = src;
-      overlay.classList.add('open');
-    }
-    function closeLightbox() {
-      document.getElementById('lightbox').classList.remove('open');
-    }
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') closeLightbox();
-    });
-
     function toggleFaq(btn) {
       const item = btn.closest('.faq-item');
       const wasOpen = item.classList.contains('open');
@@ -1342,15 +1285,6 @@
       if (e.key === 'Escape') document.getElementById('install-modal').classList.remove('open');
     });
 
-    function swapPip(thumb) {
-      const pip   = thumb.closest('.screenshot-pip');
-      const main  = pip.querySelector('.pip-main');
-      const tmp   = { src: main.src, alt: main.alt };
-      main.src    = thumb.src;
-      main.alt    = thumb.alt;
-      thumb.src   = tmp.src;
-      thumb.alt   = tmp.alt;
-    }
 
     let cmpCurrent = 0;
     const cmpNames = ['Dinky', 'ImageOptim', 'Optimage', 'Squoosh', 'TinyPNG'];
