@@ -40,7 +40,7 @@ struct SidebarView: View {
                     // Summary of active preset
                     if let active = prefs.savedPresets.first(where: { $0.id.uuidString == prefs.activePresetID }) {
                         presetSummary(active)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
+                            .transition(.opacity)
                     }
                 }
             }
@@ -172,6 +172,7 @@ struct SidebarView: View {
         }
         .padding(12)
         }
+        .clipped()
         .frame(width: 220)
         .frame(maxHeight: presetActive ? nil : .infinity, alignment: .top)
         .fixedSize(horizontal: false, vertical: presetActive)
@@ -213,11 +214,15 @@ struct SidebarView: View {
                 if preset.autoFormat    { summaryRow("sparkles", "Auto-format") }
                 if preset.maxWidthEnabled {
                     summaryRow("arrow.left.and.right", "Max \(preset.maxWidth) px")
+                } else {
+                    summaryRow("arrow.left.and.right", "No width limit")
                 }
                 if preset.maxFileSizeEnabled {
-                    let mb = String(format: preset.maxFileSizeKB >= 1024 ? "%.0f MB" : "%d KB",
-                                   preset.maxFileSizeKB >= 1024 ? Double(preset.maxFileSizeKB) / 1024 : Double(preset.maxFileSizeKB))
-                    summaryRow("gauge.medium", "Max \(mb)")
+                    let kb = preset.maxFileSizeKB
+                    let sizeLabel = kb >= 1024 ? String(format: "%.0f MB", Double(kb) / 1024) : "\(kb) KB"
+                    summaryRow("gauge.medium", "Max \(sizeLabel)")
+                } else {
+                    summaryRow("gauge.medium", "No size limit")
                 }
                 summaryRow("folder", saveLabel)
                 summaryRow("doc.text", filenameLabel)
