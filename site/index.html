@@ -188,6 +188,12 @@
       box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
     }
 
+    .screenshots-right-col {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
     .screenshots-pair {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -244,7 +250,7 @@
       gap: 32px 40px;
       width: 100%;
       max-width: 1100px;
-      margin-top: 80px;
+      margin-top: 40px;
       padding: 0 8px;
     }
 
@@ -602,12 +608,14 @@
     </div>
     <img src="screenshots/screenshot-results.webp" alt="Dinky results list showing compressed files" />
     <img src="screenshots/screenshot-before-after.webp" alt="Dinky before and after preview" />
-    <div class="screenshots-pair">
-      <img src="screenshots/screenshot-sidebar-presets.webp" alt="Dinky sidebar with presets and format picker" />
-      <img src="screenshots/screenshot-preset-selected.webp" alt="Dinky preset selected with settings summary" />
+    <div class="screenshots-right-col">
+      <div class="screenshots-pair">
+        <img src="screenshots/screenshot-sidebar-presets.webp" alt="Dinky sidebar with presets and format picker" />
+        <img src="screenshots/screenshot-preset-selected.webp" alt="Dinky preset selected with settings summary" />
+      </div>
+      <p class="meta-note">Every screenshot on this page was compressed with Dinky. Obviously.</p>
     </div>
   </section>
-  <p class="meta-note">Every screenshot on this page was compressed with Dinky. Obviously.</p>
 
   <section class="features">
     <!-- Heroicons v2 solid (heroicons.com) -->
