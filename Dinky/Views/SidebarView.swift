@@ -51,49 +51,51 @@ struct SidebarView: View {
                 // ── Format ──────────────────────────────────────────
                 sectionGroup(icon: "photo", title: "Format") {
                     let formatOptions: [(String, CompressionFormat?, String)] = [
-                        ("Auto",  nil,   "AVIF for photos, WebP for everything else"),
-                        ("WebP",  .webp, "Universal — works in every browser"),
-                        ("AVIF",  .avif, "Smallest files, slower to encode"),
-                        ("PNG",   .png,  "Lossless — best for screenshots"),
+                        ("Auto",  nil,   "Picks AVIF for photos, WebP for everything else."),
+                        ("WebP",  .webp, "Works everywhere. Great all-around compression."),
+                        ("AVIF",  .avif, "Smallest files. Slower to encode."),
+                        ("PNG",   .png,  "Lossless. Best for screenshots and graphics."),
                     ]
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 4) {
-                        ForEach(formatOptions, id: \.0) { label, fmt, description in
+                    let activeDescription = formatOptions.first(where: { opt in
+                        opt.1 == nil ? prefs.autoFormat : (!prefs.autoFormat && selectedFormat == opt.1)
+                    })?.2 ?? ""
+
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 4), spacing: 4) {
+                        ForEach(formatOptions, id: \.0) { label, fmt, _ in
                             let active: Bool = fmt == nil
                                 ? prefs.autoFormat
                                 : !prefs.autoFormat && selectedFormat == fmt
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(label)
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundStyle(active ? .white : .primary)
-                                Text(description)
-                                    .font(.system(size: 9))
-                                    .foregroundStyle(active ? .white.opacity(0.75) : .secondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .lineLimit(2)
-                            }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 7)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(
-                                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                    .fill(active
-                                          ? AnyShapeStyle(LinearGradient(
-                                                colors: [Color(red: 0.25, green: 0.55, blue: 1.0),
-                                                         Color(red: 0.45, green: 0.30, blue: 0.95)],
-                                                startPoint: .topLeading, endPoint: .bottomTrailing))
-                                          : AnyShapeStyle(Color.primary.opacity(0.06)))
-                            )
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                if let f = fmt {
-                                    prefs.autoFormat = false
-                                    selectedFormat = f
-                                } else {
-                                    prefs.autoFormat = true
+                            Text(label)
+                                .font(.system(size: 11, weight: active ? .semibold : .regular))
+                                .foregroundStyle(active ? .white : .secondary)
+                                .padding(.vertical, 4)
+                                .frame(maxWidth: .infinity)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                        .fill(active
+                                              ? AnyShapeStyle(LinearGradient(
+                                                    colors: [Color(red: 0.25, green: 0.55, blue: 1.0),
+                                                             Color(red: 0.45, green: 0.30, blue: 0.95)],
+                                                    startPoint: .leading, endPoint: .trailing))
+                                              : AnyShapeStyle(Color.primary.opacity(0.08)))
+                                )
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    if let f = fmt {
+                                        prefs.autoFormat = false
+                                        selectedFormat = f
+                                    } else {
+                                        prefs.autoFormat = true
+                                    }
                                 }
-                            }
                         }
                     }
+
+                    Text(activeDescription)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .animation(.easeInOut(duration: 0.15), value: activeDescription)
                 }
 
                 // ── Max Width ────────────────────────────────────────
