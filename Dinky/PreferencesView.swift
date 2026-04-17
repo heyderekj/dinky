@@ -345,8 +345,9 @@ private struct PresetsTab: View {
                     onSelect: { set(\.maxWidth, to: $0, for: snapshot) }
                 )
                 HStack(spacing: 6) {
-                    TextField("1920", value: binding(\.maxWidth, snapshot: snapshot), format: .number)
+                    TextField("", value: binding(\.maxWidth, snapshot: snapshot), format: .number)
                         .textFieldStyle(.roundedBorder).frame(width: 80)
+                        .labelsHidden()
                     Text("px").foregroundStyle(.secondary)
                 }
             }
@@ -361,8 +362,9 @@ private struct PresetsTab: View {
                     onSelect: { set(\.maxFileSizeKB, to: $0, for: snapshot) }
                 )
                 HStack(spacing: 6) {
-                    TextField("2", value: mbBinding(for: snapshot), format: .number)
+                    TextField("", value: mbBinding(for: snapshot), format: .number)
                         .textFieldStyle(.roundedBorder).frame(width: 80)
+                        .labelsHidden()
                     Text("MB").foregroundStyle(.secondary)
                 }
             }

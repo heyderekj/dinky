@@ -218,8 +218,8 @@ struct SidebarView: View {
                     summaryRow("arrow.left.and.right", "No width limit")
                 }
                 if preset.maxFileSizeEnabled {
-                    let kb = preset.maxFileSizeKB
-                    let sizeLabel = kb >= 1024 ? String(format: "%.0f MB", Double(kb) / 1024) : "\(kb) KB"
+                    let mb = Double(preset.maxFileSizeKB) / 1024.0
+                    let sizeLabel = mb < 1 ? String(format: "%.1f MB", mb) : String(format: "%.4g MB", mb)
                     summaryRow("gauge.medium", "Max \(sizeLabel)")
                 } else {
                     summaryRow("gauge.medium", "No size limit")
