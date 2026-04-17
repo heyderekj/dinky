@@ -29,12 +29,12 @@ Hey! I'm [Derek Castelli](https://www.heyderekj.com), a full-time freelance web 
 - **Show in Finder** — jump straight to any compressed file from the results list
 - **PNG lossless** — run oxipng on PNGs when you need to keep transparency or format fidelity
 - **Destination** — save next to the original, to Downloads, or pick a custom folder; presets can have their own unique output folder
-- **Performance** — Fast (one at a time) or Fastest (all cores)
-- **Notifications** — get a tap when a batch finishes, with messaging that varies by count and time
+- **Notifications** — sound and system notification when a batch finishes; sound scales with savings: a soft tink for tiny saves, a full chime for big ones
 - **Smart quality** — auto-detects photo vs. screenshot per image and picks quality accordingly; or force Photo, UI, or Mixed per preset
 - **Session history** — review past compression sessions with file counts and total bytes saved
 - **Apple Shortcuts** — compress images from automations via a native Shortcuts action
 - **Easy updating** — one click checks for a new release, installs, and relaunches; no browser, no re-drag
+- **Skip threshold** — skip files below a minimum savings target: Off, 2%, 5%, or 10%
 - **Advanced** — strip metadata, sanitize filenames for web, open output folder automatically, move originals to trash
 - **Quirky idle animation** — three choreographed card-drop variants that loop then hold until you come back
 - ~14 MB. Dinky style.

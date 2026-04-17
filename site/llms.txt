@@ -11,7 +11,8 @@
 - Smart quality: detects photos vs screenshots via Vision framework + EXIF, adjusts quality per content type
 - Finder Quick Actions — compress without opening the app
 - Manual mode: drop files, then right-click each one to pick format individually
-- Performance modes: Fast (serial) or Fastest (all cores)
+- Skip threshold: skip files below a minimum savings target — Off, 2%, 5%, or 10%
+- Completion sound scales with savings: Tink (< 100 KB), Pop (< 1 MB), Glass (< 5 MB), Hero (5 MB+)
 - Update checker: polls GitHub Releases on launch, shows banner if newer version exists
 
 ## Technical details
@@ -35,7 +36,7 @@
 - Website: https://dinkyimg.app
 - GitHub: https://github.com/heyderekj/dinky
 - Latest release: https://github.com/heyderekj/dinky/releases/latest
-- Download v1.4.2: https://github.com/heyderekj/dinky/releases/download/v1.4.2/Dinky-1.2.2.dmg
+- Download v1.6.0: https://github.com/heyderekj/dinky/releases/download/v1.6.0/Dinky-1.5.1.dmg
 
 ## Author
 
