@@ -50,52 +50,10 @@ struct SidebarView: View {
 
                 // ── Format ──────────────────────────────────────────
                 sectionGroup(icon: "photo", title: "Format") {
-                    let formatOptions: [(String, CompressionFormat?, String)] = [
-                        ("Auto",  nil,   "Picks AVIF for photos, WebP for everything else."),
-                        ("WebP",  .webp, "Works everywhere. Great all-around compression."),
-                        ("AVIF",  .avif, "Smallest files. Slower to encode."),
-                        ("PNG",   .png,  "Lossless. Best for screenshots and graphics."),
-                    ]
-                    let activeDescription = formatOptions.first(where: { opt in
-                        opt.1 == nil ? prefs.autoFormat : (!prefs.autoFormat && selectedFormat == opt.1)
-                    })?.2 ?? ""
-
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 4), spacing: 4) {
-                        ForEach(formatOptions, id: \.0) { label, fmt, _ in
-                            let active: Bool = fmt == nil
-                                ? prefs.autoFormat
-                                : !prefs.autoFormat && selectedFormat == fmt
-                            Text(label)
-                                .font(.system(size: 11, weight: active ? .semibold : .regular))
-                                .foregroundStyle(active ? .white : .secondary)
-                                .padding(.vertical, 4)
-                                .frame(maxWidth: .infinity)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                        .fill(active
-                                              ? AnyShapeStyle(LinearGradient(
-                                                    colors: [Color(red: 0.25, green: 0.55, blue: 1.0),
-                                                             Color(red: 0.45, green: 0.30, blue: 0.95)],
-                                                    startPoint: .leading, endPoint: .trailing))
-                                              : AnyShapeStyle(Color.primary.opacity(0.08)))
-                                )
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    if let f = fmt {
-                                        prefs.autoFormat = false
-                                        selectedFormat = f
-                                    } else {
-                                        prefs.autoFormat = true
-                                    }
-                                }
-                        }
-                    }
-
-                    Text(activeDescription)
-                        .font(.system(size: 10))
-                        .foregroundStyle(.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .animation(.easeInOut(duration: 0.15), value: activeDescription)
+                    FormatChipPicker(
+                        autoFormat: Binding(get: { prefs.autoFormat }, set: { prefs.autoFormat = $0 }),
+                        selectedFormat: $selectedFormat
+                    )
                 }
 
                 // ── Max Width ────────────────────────────────────────
@@ -156,11 +114,6 @@ struct SidebarView: View {
 
                 // ── Quality ───────────────────────────────────────────
                 sectionGroup(icon: "wand.and.stars", title: "Quality") {
-                    let contentOptions: [(String, String, String)] = [
-                        ("Photo", "photo", "Squeezes harder. Best for camera shots and real-world images."),
-                        ("UI",    "ui",    "Stays crisp. Best for screenshots, mockups, and text."),
-                        ("Mixed", "mixed", "Balanced. Good for images that blend photo and UI."),
-                    ]
                     Toggle("Smart quality", isOn: Binding(
                         get: { prefs.smartQuality }, set: { prefs.smartQuality = $0 }
                     )).font(.caption)
@@ -171,53 +124,14 @@ struct SidebarView: View {
                                 removal:   .move(edge: .top).combined(with: .opacity.animation(.easeIn(duration: 0.08)))
                             ))
                     } else {
-                        let activeDesc = contentOptions.first(where: { prefs.contentTypeHintRaw == $0.1 })?.2 ?? ""
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 3), spacing: 4) {
-                            ForEach(contentOptions, id: \.1) { label, raw, _ in
-                                let active = prefs.contentTypeHintRaw == raw
-                                Text(label)
-                                    .font(.system(size: 11, weight: active ? .semibold : .regular))
-                                    .foregroundStyle(active ? .white : .secondary)
-                                    .padding(.vertical, 4)
-                                    .frame(maxWidth: .infinity)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                            .fill(active
-                                                  ? AnyShapeStyle(LinearGradient(
-                                                        colors: [Color(red: 0.25, green: 0.55, blue: 1.0),
-                                                                 Color(red: 0.45, green: 0.30, blue: 0.95)],
-                                                        startPoint: .leading, endPoint: .trailing))
-                                                  : AnyShapeStyle(Color.primary.opacity(0.08)))
-                                    )
-                                    .contentShape(Rectangle())
-                                    .onTapGesture { prefs.contentTypeHintRaw = raw }
-                            }
-                        }
+                        ContentTypeChipPicker(contentTypeHintRaw: Binding(
+                            get: { prefs.contentTypeHintRaw }, set: { prefs.contentTypeHintRaw = $0 }
+                        ))
                         .transition(.asymmetric(
                             insertion: .move(edge: .top).combined(with: .opacity.animation(.easeInOut(duration: 0.15).delay(0.1))),
                             removal:   .move(edge: .top).combined(with: .opacity.animation(.easeIn(duration: 0.08)))
                         ))
-                        if !activeDesc.isEmpty {
-                            Text(activeDesc)
-                                .font(.system(size: 10))
-                                .foregroundStyle(.tertiary)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .animation(.easeInOut(duration: 0.15), value: activeDesc)
-                        }
                     }
-                }
-
-                // ── Performance ───────────────────────────────────────
-                sectionGroup(icon: "cpu", title: "Performance") {
-                    let levels: [(String, Int)] = [
-                        ("Fast", 1),
-                        ("Fastest", ProcessInfo.processInfo.activeProcessorCount)
-                    ]
-                    let nearest = levels.min(by: {
-                        abs($0.1 - prefs.concurrentTasks) < abs($1.1 - prefs.concurrentTasks)
-                    })?.1 ?? prefs.concurrentTasks
-                    chipGrid(presets: levels, current: nearest) { prefs.concurrentTasks = $0 }
-                    helper("Fast = one at a time. Fastest = all cores, no waiting.")
                 }
 
                 // ── Advanced ──────────────────────────────────────────
@@ -339,12 +253,7 @@ struct SidebarView: View {
                     .frame(maxWidth: .infinity)
                     .background(
                         RoundedRectangle(cornerRadius: 5, style: .continuous)
-                            .fill(active
-                                  ? AnyShapeStyle(LinearGradient(
-                                        colors: [Color(red: 0.25, green: 0.55, blue: 1.0),
-                                                 Color(red: 0.45, green: 0.30, blue: 0.95)],
-                                        startPoint: .leading, endPoint: .trailing))
-                                  : AnyShapeStyle(Color.primary.opacity(0.08)))
+                            .fill(active ? AnyShapeStyle(dinkyGradient) : AnyShapeStyle(Color.primary.opacity(0.08)))
                     )
                     .contentShape(Rectangle())
                     .onTapGesture { onSelect(value) }
@@ -400,4 +309,91 @@ struct SidebarView: View {
         .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.primary.opacity(0.05)))
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
+}
+
+/// MARK: - Shared chip pickers
+
+let dinkyGradient = LinearGradient(
+    colors: [Color(red: 0.25, green: 0.55, blue: 1.0), Color(red: 0.45, green: 0.30, blue: 0.95)],
+    startPoint: .leading, endPoint: .trailing
+)
+
+struct FormatChipPicker: View {
+    @Binding var autoFormat: Bool
+    @Binding var selectedFormat: CompressionFormat
+
+    private let options: [(label: String, format: CompressionFormat?, description: String)] = [
+        ("Auto",  nil,   "Picks AVIF for photos, WebP for everything else."),
+        ("WebP",  .webp, "Works everywhere. Great all-around compression."),
+        ("AVIF",  .avif, "Smallest files. Slower to encode."),
+        ("PNG",   .png,  "Lossless. Best for screenshots and graphics."),
+    ]
+
+    var body: some View {
+        let activeDesc = options.first(where: { opt in
+            opt.format == nil ? autoFormat : (!autoFormat && selectedFormat == opt.format)
+        })?.description ?? ""
+
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 4), spacing: 4) {
+            ForEach(options, id: \.label) { opt in
+                let active: Bool = opt.format == nil
+                    ? autoFormat
+                    : !autoFormat && selectedFormat == opt.format
+                chipCell(opt.label, active: active)
+                    .onTapGesture {
+                        if let f = opt.format { autoFormat = false; selectedFormat = f }
+                        else { autoFormat = true }
+                    }
+            }
+        }
+        if !activeDesc.isEmpty {
+            Text(activeDesc)
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+                .animation(.easeInOut(duration: 0.15), value: activeDesc)
+        }
+    }
+}
+
+struct ContentTypeChipPicker: View {
+    @Binding var contentTypeHintRaw: String
+
+    private let options: [(label: String, raw: String, description: String)] = [
+        ("Photo", "photo", "Squeezes harder. Best for camera shots and real-world images."),
+        ("UI",    "ui",    "Stays crisp. Best for screenshots, mockups, and text."),
+        ("Mixed", "mixed", "Balanced. Good for images that blend photo and UI."),
+    ]
+
+    var body: some View {
+        let activeDesc = options.first(where: { contentTypeHintRaw == $0.raw })?.description ?? ""
+
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 3), spacing: 4) {
+            ForEach(options, id: \.raw) { opt in
+                let active = contentTypeHintRaw == opt.raw
+                chipCell(opt.label, active: active)
+                    .onTapGesture { contentTypeHintRaw = opt.raw }
+            }
+        }
+        if !activeDesc.isEmpty {
+            Text(activeDesc)
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+                .animation(.easeInOut(duration: 0.15), value: activeDesc)
+        }
+    }
+}
+
+private func chipCell(_ label: String, active: Bool) -> some View {
+    Text(label)
+        .font(.system(size: 11, weight: active ? .semibold : .regular))
+        .foregroundStyle(active ? .white : .secondary)
+        .padding(.vertical, 5)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                .fill(active ? AnyShapeStyle(dinkyGradient) : AnyShapeStyle(Color.primary.opacity(0.08)))
+        )
+        .contentShape(Rectangle())
 }

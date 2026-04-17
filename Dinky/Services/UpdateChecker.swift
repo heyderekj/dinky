@@ -156,7 +156,7 @@ final class UpdateChecker: ObservableObject {
             // ── 3. Relaunch ───────────────────────────────────────────
             let appPath = dest.path
             Process.launchedProcess(launchPath: "/bin/sh",
-                                    arguments: ["-c", "sleep 0.6 && open '\(appPath)'"])
+                                    arguments: ["-c", "sleep 0.6 && open \"$1\"", "sh", appPath])
             NSApp.terminate(nil)
 
         } catch {

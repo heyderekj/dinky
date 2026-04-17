@@ -1,6 +1,11 @@
 import AppKit
+import UserNotifications
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        UNUserNotificationCenter.current().delegate = self
+    }
 
     // MARK: - Open with Dinky / drag onto Dock icon
 
@@ -44,5 +49,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func imageURLs(from urls: [URL]) -> [URL] {
         let exts = Set(["jpg","jpeg","png","webp","avif","tiff","bmp"])
         return urls.filter { exts.contains($0.pathExtension.lowercased()) }
+    }
+}
+
+// MARK: - UNUserNotificationCenterDelegate
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    // Allow banners to appear even when Dinky is in the foreground
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound])
     }
 }

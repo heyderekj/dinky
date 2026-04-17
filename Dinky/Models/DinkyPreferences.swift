@@ -68,7 +68,7 @@ final class DinkyPreferences: ObservableObject {
     @AppStorage("stripMetadata")        var stripMetadata: Bool = false
     @AppStorage("preserveTimestamps")   var preserveTimestamps: Bool = true
     @AppStorage("moveOriginalsToTrash") var moveOriginalsToTrash: Bool = false
-    @AppStorage("skipAlreadyOptimized") var skipAlreadyOptimized: Bool = true
+    @AppStorage("minimumSavingsPercent") var minimumSavingsPercent: Int = 2
     @AppStorage("concurrentTasks")      var concurrentTasks: Int = max(1, min(8, ProcessInfo.processInfo.activeProcessorCount))
     @AppStorage("playSoundEffects")     var playSoundEffects: Bool = true
 
@@ -78,7 +78,6 @@ final class DinkyPreferences: ObservableObject {
     @AppStorage("sanitizeFilenames")    var sanitizeFilenames: Bool = false
     @AppStorage("manualMode")           var manualMode: Bool = false
     @AppStorage("reduceMotion")         var reduceMotion: Bool = false
-    @AppStorage("menuBarMode")          var menuBarMode: Bool = false
     @AppStorage("folderWatchEnabled")   var folderWatchEnabled: Bool = false
     @AppStorage("watchedFolderPath")    var watchedFolderPath: String = ""
     @AppStorage("watchedFolderBookmark") var watchedFolderBookmark: Data = Data()

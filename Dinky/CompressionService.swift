@@ -56,7 +56,10 @@ actor CompressionService {
     static let shared = CompressionService()
 
     private let binDir: URL = {
-        Bundle.main.resourceURL!
+        guard let url = Bundle.main.resourceURL else {
+            fatalError("Bundle.main.resourceURL is nil — app bundle is malformed")
+        }
+        return url
     }()
 
     // MARK: - Public
@@ -99,18 +102,20 @@ actor CompressionService {
         // Step 3: compress — lossless formats skip quality targeting
         if format == .png {
             try await compressAtQuality(source: workURL, quality: 0,
-                                        format: format, strip: stripMetadata, output: outputURL)
+                                        format: format, strip: stripMetadata, output: outputURL,
+                                        content: detected)
         } else if let targetKB = goals.maxFileSizeKB {
             let floor = detected.flatMap { targetSizeFloor[$0] } ?? 10
             try await compressToTargetSize(
                 source: workURL, targetBytes: Int64(targetKB) * 1024,
                 format: format, strip: stripMetadata, output: outputURL,
-                qualityFloor: floor
+                qualityFloor: floor, content: detected
             )
         } else {
             let q = quality(for: format, content: detected)
             try await compressAtQuality(source: workURL, quality: q,
-                                        format: format, strip: stripMetadata, output: outputURL)
+                                        format: format, strip: stripMetadata, output: outputURL,
+                                        content: detected)
         }
 
         guard FileManager.default.fileExists(atPath: outputURL.path) else {
@@ -159,7 +164,8 @@ actor CompressionService {
     private func compressToTargetSize(
         source: URL, targetBytes: Int64,
         format: CompressionFormat, strip: Bool, output: URL,
-        qualityFloor: Int = 10
+        qualityFloor: Int = 10,
+        content: ContentType?
     ) async throws {
         var lo = qualityFloor, hi = 92
         var bestURL: URL?
@@ -171,7 +177,7 @@ actor CompressionService {
                 .appendingPathComponent("dinky_q\(mid)_\(UUID().uuidString)")
                 .appendingPathExtension(format.outputExtension)
 
-            try await compressAtQuality(source: source, quality: mid, format: format, strip: strip, output: tmp)
+            try await compressAtQuality(source: source, quality: mid, format: format, strip: strip, output: tmp, content: content)
 
             if fileSize(tmp) <= targetBytes {
                 if let prev = bestURL { try? fm.removeItem(at: prev) }
@@ -188,7 +194,8 @@ actor CompressionService {
         } else {
             // Nothing met the target — use floor quality and let caller decide
             try await compressAtQuality(source: source, quality: qualityFloor,
-                                        format: format, strip: strip, output: output)
+                                        format: format, strip: strip, output: output,
+                                        content: content)
         }
     }
 
@@ -196,26 +203,43 @@ actor CompressionService {
 
     private func compressAtQuality(
         source: URL, quality: Int,
-        format: CompressionFormat, strip: Bool, output: URL
+        format: CompressionFormat, strip: Bool, output: URL,
+        content: ContentType?
     ) async throws {
         switch format {
-        case .webp: try await runCwebp(source: source, quality: quality, strip: strip, output: output)
-        case .avif: try await runAvifenc(source: source, quality: quality, strip: strip, output: output)
+        case .webp: try await runCwebp(source: source, quality: quality, strip: strip, output: output, content: content)
+        case .avif: try await runAvifenc(source: source, quality: quality, strip: strip, output: output, content: content)
         case .png:  try await runOxipng(source: source, strip: strip, output: output)
         }
     }
 
-    private func runCwebp(source: URL, quality: Int, strip: Bool, output: URL) async throws {
+    private func runCwebp(source: URL, quality: Int, strip: Bool, output: URL, content: ContentType?) async throws {
         let binary = try binaryURL("cwebp")
-        var args = ["-q", String(quality)]
+        let q = String(quality)
+        // -preset must come first — it resets other flags.
+        var args: [String]
+        switch content {
+        case .photo:  args = ["-preset", "photo",   "-m", "6", "-sharp_yuv", "-pass", "6", "-af", "-q", q]
+        case .ui:     args = ["-preset", "text",    "-m", "6", "-alpha_q", "100", "-exact", "-q", q]
+        case .mixed:  args = ["-preset", "picture", "-m", "6", "-sharp_yuv", "-q", q]
+        case .none:   args = ["-preset", "picture", "-m", "6", "-q", q]
+        }
         if strip { args += ["-metadata", "none"] }
         args += [source.path, "-o", output.path]
         try await run(binary, args: args)
     }
 
-    private func runAvifenc(source: URL, quality: Int, strip: Bool, output: URL) async throws {
+    private func runAvifenc(source: URL, quality: Int, strip: Bool, output: URL, content: ContentType?) async throws {
         let binary = try binaryURL("avifenc")
-        var args = ["--qcolor", String(quality), "--qalpha", String(min(quality + 10, 100))]
+        let qColor = String(quality)
+        let qAlpha = String(min(quality + 10, 100))
+        var args: [String]
+        switch content {
+        case .photo:  args = ["--speed", "4", "--yuv", "420", "--jobs", "all", "--qcolor", qColor, "--qalpha", qAlpha]
+        case .ui:     args = ["--speed", "6", "--yuv", "444", "--jobs", "all", "--qcolor", qColor, "--qalpha", qAlpha]
+        case .mixed:  args = ["--speed", "5", "--yuv", "422", "--jobs", "all", "--qcolor", qColor, "--qalpha", qAlpha]
+        case .none:   args = ["--speed", "5", "--yuv", "420", "--jobs", "all", "--qcolor", qColor, "--qalpha", qAlpha]
+        }
         if strip { args += ["--ignore-exif", "--ignore-xmp"] }
         args += [source.path, output.path]
         try await run(binary, args: args)
@@ -225,7 +249,7 @@ actor CompressionService {
         let binary = try binaryURL("oxipng")
         // Copy source to output first — oxipng optimizes in-place with --out
         try FileManager.default.copyItem(at: source, to: output)
-        var args = ["--opt", "4"]
+        var args = ["--opt", "max"]
         if strip { args += ["--strip", "all"] }
         args += ["--out", output.path, output.path]
         try await run(binary, args: args)

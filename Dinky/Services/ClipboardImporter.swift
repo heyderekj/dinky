@@ -21,7 +21,7 @@ enum ClipboardImporter {
         let tmp = FileManager.default.temporaryDirectory
             .appendingPathComponent("dinky_paste_\(UUID().uuidString)")
             .appendingPathExtension(ext)
-        try? data.write(to: tmp)
+        try? data.write(to: tmp, options: .atomic)
         return tmp
     }
 

@@ -1,5 +1,4 @@
 import SwiftUI
-import AVFoundation
 import UniformTypeIdentifiers
 import UserNotifications
 
@@ -20,8 +19,9 @@ final class ContentViewModel: ObservableObject {
 
     var isEmpty: Bool { items.isEmpty }
 
-    func addAndCompress(_ urls: [URL]) {
+    func addAndCompress(_ urls: [URL], force: Bool = false) {
         let new = urls.map { ImageItem(sourceURL: $0) }
+        if force { new.forEach { $0.forceCompress = true } }
         items.append(contentsOf: new)
         if !prefs.manualMode { compress() }
     }
@@ -35,6 +35,13 @@ final class ContentViewModel: ObservableObject {
 
     func recompress(_ item: ImageItem, as format: CompressionFormat) {
         item.formatOverride = format
+        item.forceCompress = true
+        item.status = .pending
+        compress()
+    }
+
+    func forceCompress(_ item: ImageItem) {
+        item.forceCompress = true
         item.status = .pending
         compress()
     }
@@ -111,7 +118,7 @@ final class ContentViewModel: ObservableObject {
                     self.prefs.sessionHistory = Array(history.prefix(50))
                 }
 
-                if self.prefs.playSoundEffects { self.playCompletionSound() }
+                if self.prefs.playSoundEffects { self.playCompletionSound(savedBytes: batchSaved) }
 
                 let elapsed = Date.now.timeIntervalSince(self.compressionStartTime)
                 let doneItems = self.items.compactMap { item -> URL? in
@@ -130,6 +137,11 @@ final class ContentViewModel: ObservableObject {
     }
 
     private func compressItem(_ item: ImageItem, goals: CompressionGoals) async {
+        let wasForced = await MainActor.run { () -> Bool in
+            let f = item.forceCompress
+            item.forceCompress = false
+            return f
+        }
         var format = item.formatOverride ?? selectedFormat
         if prefs.autoFormat && item.formatOverride == nil {
             let ct = ContentClassifier.classify(item.sourceURL)
@@ -163,7 +175,7 @@ final class ContentViewModel: ObservableObject {
                 if result.outputSize >= result.originalSize {
                     item.status = .zeroGain(original: item.sourceURL)
                     try? FileManager.default.removeItem(at: result.outputURL)
-                } else if self.prefs.skipAlreadyOptimized && savings < 0.02 {
+                } else if self.prefs.minimumSavingsPercent > 0 && savings < Double(self.prefs.minimumSavingsPercent) / 100.0 && !wasForced {
                     item.status = .skipped
                     try? FileManager.default.removeItem(at: result.outputURL)
                 } else {
@@ -190,44 +202,52 @@ final class ContentViewModel: ObservableObject {
     }
 
     private func sendNotification(count: Int, seconds: Double) {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
-            guard granted else { return }
-            let body: String
-            switch (count, seconds) {
-            case (0, _):          body = "Done. Nothing got smaller though."
-            case (1, ..<3):       body = "1 image, considerably dinky-er."
-            case (1, _):          body = "1 image. Took a sec, worth it."
-            case (2...5, ..<5):   body = "\(count) images. Done before you blinked."
-            case (2...5, _):      body = "\(count) images, all shrunk down."
-            case (6...20, ..<10): body = "\(count) images compressed. The internet will thank you."
-            case (6...20, _):     body = "\(count) images. Your pages just got faster."
-            default:              body = "\(count) images. That's a lot of rectangles — all smaller now."
+        Task {
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
+            switch settings.authorizationStatus {
+            case .authorized, .provisional:
+                postNotification(count: count, seconds: seconds)
+            case .notDetermined:
+                let granted = (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])) ?? false
+                if granted { postNotification(count: count, seconds: seconds) }
+            default:
+                break
             }
-            let content = UNMutableNotificationContent()
-            content.title = "Dinky"
-            content.body = body
-            content.sound = .default
-            let req = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-            UNUserNotificationCenter.current().add(req)
         }
     }
 
-    private func playCompletionSound() {
-        let sr = 44100.0, dur = 0.35
-        let fc = AVAudioFrameCount(sr * dur)
-        let engine = AVAudioEngine(); let player = AVAudioPlayerNode()
-        engine.attach(player)
-        let fmt = AVAudioFormat(standardFormatWithSampleRate: sr, channels: 1)!
-        guard let buf = AVAudioPCMBuffer(pcmFormat: fmt, frameCapacity: fc) else { return }
-        buf.frameLength = fc
-        let d = buf.floatChannelData![0]
-        for i in 0..<Int(fc) {
-            let t = Double(i) / sr
-            d[i] = Float(max(0, 1 - t/dur)) * 0.22 * Float(sin(2 * .pi * (600 - 300*(t/dur)) * t))
+    private func postNotification(count: Int, seconds: Double) {
+        let body: String
+        switch (count, seconds) {
+        case (0, _):          body = "Done. Nothing got smaller though."
+        case (1, ..<3):       body = "1 image, considerably dinky-er."
+        case (1, _):          body = "1 image. Took a sec, worth it."
+        case (2...5, ..<5):   body = "\(count) images. Done before you blinked."
+        case (2...5, _):      body = "\(count) images, all shrunk down."
+        case (6...20, ..<10): body = "\(count) images compressed. The internet will thank you."
+        case (6...20, _):     body = "\(count) images. Your pages just got faster."
+        default:              body = "\(count) images. That's a lot of rectangles — all smaller now."
         }
-        engine.connect(player, to: engine.mainMixerNode, format: fmt)
-        try? engine.start(); player.scheduleBuffer(buf); player.play()
-        DispatchQueue.main.asyncAfter(deadline: .now() + dur + 0.1) { engine.stop() }
+        let content = UNMutableNotificationContent()
+        content.title = "Dinky"
+        content.body = body
+        content.sound = .default
+        content.interruptionLevel = .timeSensitive
+        let req = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(req) { error in
+            if let error { print("[Dinky] notification error: \(error)") }
+        }
+    }
+
+    private func playCompletionSound(savedBytes: Int64) {
+        let name: String
+        switch savedBytes {
+        case ..<102_400:   name = "Tink"  // < 100 KB
+        case ..<1_048_576: name = "Pop"   // < 1 MB
+        case ..<5_242_880: name = "Glass" // < 5 MB
+        default:           name = "Hero"  // 5 MB+
+        }
+        NSSound(named: name)?.play()
     }
 }
 
@@ -264,6 +284,7 @@ struct ContentView: View {
     @State private var idleLoop        = 0
     @State private var selectedIDs: Set<UUID> = []
     @State private var showingHistory  = false
+    @State private var hasAppearedOnce = false
 
     init(prefs: DinkyPreferences, vm: ContentViewModel) {
         self.vm = vm
@@ -282,7 +303,7 @@ struct ContentView: View {
             // ── Main content (drop target covers the full surface) ──
             VStack(spacing: 0) {
                 if updater.shouldShow(dismissedVersion: prefs.dismissedUpdateVersion) {
-                    UpdateBanner(updater: updater)
+                    UpdateBanner(updater: updater, itemCount: vm.items.count)
                         .environmentObject(prefs)
                 }
                 if vm.isEmpty {
@@ -348,6 +369,8 @@ struct ContentView: View {
             }
         }
         .onAppear {
+            guard !hasAppearedOnce else { return }
+            hasAppearedOnce = true
             prefs.activePresetID = ""
             prefs.maxWidthEnabled = false
             prefs.maxFileSizeEnabled = false
@@ -369,7 +392,7 @@ struct ContentView: View {
 
     private var resultsList: some View {
         List(vm.items, id: \.id, selection: $selectedIDs) { item in
-            ResultsRowView(item: item, selectedFormat: vm.selectedFormat)
+            ResultsRowView(item: item, selectedFormat: vm.selectedFormat, onForceCompress: { vm.forceCompress(item) })
                 .listRowInsets(EdgeInsets())
                 .listRowSeparator(.visible)
                 .listRowSeparatorTint(.primary.opacity(0.08))
@@ -399,6 +422,12 @@ struct ContentView: View {
                         }
                         Divider()
                     } else {
+                        if case .skipped = item.status {
+                            Button { vm.forceCompress(item) } label: {
+                                Label("Compress Anyway", systemImage: "arrow.clockwise")
+                            }
+                            Divider()
+                        }
                         Button { vm.recompress(item, as: .webp) } label: {
                             Label("Re-compress as WebP", systemImage: "photo")
                         }
@@ -487,6 +516,7 @@ struct ContentView: View {
 
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
         var collected: [URL] = []
+        let force = NSEvent.modifierFlags.contains(.option)
         let group = DispatchGroup()
         let lock  = NSLock()
 
@@ -507,7 +537,7 @@ struct ContentView: View {
 
         group.notify(queue: .main) {
             guard !collected.isEmpty else { return }
-            vm.addAndCompress(collected)
+            vm.addAndCompress(collected, force: force)
         }
         return true
     }

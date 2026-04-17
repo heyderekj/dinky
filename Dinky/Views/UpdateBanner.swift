@@ -7,6 +7,7 @@ import AppKit
 struct UpdateBanner: View {
     @ObservedObject var updater: UpdateChecker
     @EnvironmentObject var prefs: DinkyPreferences
+    var itemCount: Int = 0
 
     var body: some View {
         HStack(spacing: 10) {
@@ -60,6 +61,14 @@ struct UpdateBanner: View {
                 }
 
                 Button {
+                    if itemCount > 0 {
+                        let alert = NSAlert()
+                        alert.messageText = "Install update now?"
+                        alert.informativeText = "Your current results will be cleared when Dinky relaunches."
+                        alert.addButton(withTitle: "Install")
+                        alert.addButton(withTitle: "Cancel")
+                        guard alert.runModal() == .alertFirstButtonReturn else { return }
+                    }
                     Task { await updater.downloadAndInstall() }
                 } label: {
                     HStack(spacing: 4) {

@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UserNotifications
 
 struct PreferencesView: View {
     @EnvironmentObject var prefs: DinkyPreferences
@@ -15,7 +16,7 @@ struct PreferencesView: View {
                 .tabItem { Label("Output", systemImage: "folder") }
                 .environmentObject(prefs)
             WatchFoldersTab()
-                .tabItem { Label("Watch Folders", systemImage: "eye") }
+                .tabItem { Label("Watch", systemImage: "eye") }
                 .environmentObject(prefs)
             PresetsTab()
                 .tabItem { Label("Presets", systemImage: "slider.horizontal.3") }
@@ -56,11 +57,17 @@ private struct GeneralTab: View {
 
             // 2. How compression works
             Section {
-                Toggle("Skip already-optimized files", isOn: Binding(
-                    get: { prefs.skipAlreadyOptimized },
-                    set: { prefs.skipAlreadyOptimized = $0 }
-                ))
-                Text("Skips files where savings would be less than 2%.")
+                Picker("Skip if savings below", selection: Binding(
+                    get: { prefs.minimumSavingsPercent },
+                    set: { prefs.minimumSavingsPercent = $0 }
+                )) {
+                    Text("Off").tag(0)
+                    Text("2%").tag(2)
+                    Text("5%").tag(5)
+                    Text("10%").tag(10)
+                }
+                .pickerStyle(.segmented)
+                Text("Skip files where compression savings fall below this threshold.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -80,8 +87,14 @@ private struct GeneralTab: View {
                 ))
                 Toggle("Notify when done", isOn: Binding(
                     get: { prefs.notifyWhenDone },
-                    set: { prefs.notifyWhenDone = $0 }
+                    set: { newValue in
+                        prefs.notifyWhenDone = newValue
+                        if newValue { requestNotificationAuth() }
+                    }
                 ))
+                Text("To receive notifications during Focus or Do Not Disturb, allow Dinky in System Settings → Focus.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             } header: {
                 Text("Notifications")
             }
@@ -102,6 +115,21 @@ private struct GeneralTab: View {
         }
         .formStyle(.grouped)
         .padding(.top, 8)
+    }
+
+    private func requestNotificationAuth() {
+        Task {
+            let center = UNUserNotificationCenter.current()
+            let settings = await center.notificationSettings()
+            switch settings.authorizationStatus {
+            case .notDetermined:
+                _ = try? await center.requestAuthorization(options: [.alert, .sound])
+            case .denied:
+                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.notifications")!)
+            default:
+                break
+            }
+        }
     }
 }
 
@@ -168,45 +196,9 @@ private struct OutputTab: View {
                 Text("Filename")
             }
 
-            Section {
-                Toggle("Auto-watch folder", isOn: Binding(
-                    get: { prefs.folderWatchEnabled },
-                    set: { prefs.folderWatchEnabled = $0 }
-                ))
-
-                if prefs.folderWatchEnabled {
-                    HStack {
-                        Text(prefs.watchedFolderPath.isEmpty
-                             ? "No folder selected"
-                             : URL(fileURLWithPath: prefs.watchedFolderPath).lastPathComponent)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                        Spacer()
-                        Button("Choose…") { pickWatchFolder() }
-                            .buttonStyle(.bordered)
-                    }
-                    Text("New images added to this folder are automatically compressed.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            } header: {
-                Text("Watch Folder")
-            }
         }
         .formStyle(.grouped)
         .padding(.top, 8)
-    }
-
-    private func pickWatchFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Watch"
-        if panel.runModal() == .OK, let url = panel.url {
-            prefs.watchedFolderPath = url.path
-        }
     }
 
     private func pickCustomFolder() {
@@ -296,91 +288,20 @@ private struct PresetsTab: View {
             TextField("Preset name", text: binding(\.name, snapshot: snapshot))
         }
         Section("Format") {
-            let formatOptions: [(String, CompressionFormat?, String)] = [
-                ("Auto", nil,   "Picks AVIF for photos, WebP for everything else."),
-                ("WebP", .webp, "Works everywhere. Great all-around compression."),
-                ("AVIF", .avif, "Smallest files. Slower to encode."),
-                ("PNG",  .png,  "Lossless. Best for screenshots and graphics."),
-            ]
-            let livePreset = prefs.savedPresets.first(where: { $0.id == snapshot.id }) ?? snapshot
-            let activeFormatDesc = formatOptions.first(where: { opt in
-                opt.1 == nil ? livePreset.autoFormat : (!livePreset.autoFormat && livePreset.format == opt.1)
-            })?.2 ?? ""
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 4), spacing: 4) {
-                ForEach(formatOptions, id: \.0) { label, fmt, _ in
-                    let active: Bool = fmt == nil
-                        ? livePreset.autoFormat
-                        : !livePreset.autoFormat && livePreset.format == fmt
-                    Text(label)
-                        .font(.system(size: 11, weight: active ? .semibold : .regular))
-                        .foregroundStyle(active ? .white : .secondary)
-                        .padding(.vertical, 5)
-                        .frame(maxWidth: .infinity)
-                        .background(
-                            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                .fill(active
-                                      ? AnyShapeStyle(LinearGradient(
-                                            colors: [Color(red: 0.25, green: 0.55, blue: 1.0),
-                                                     Color(red: 0.45, green: 0.30, blue: 0.95)],
-                                            startPoint: .leading, endPoint: .trailing))
-                                      : AnyShapeStyle(Color.primary.opacity(0.08)))
-                        )
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            if let f = fmt {
-                                set(\.autoFormat, to: false, for: snapshot)
-                                set(\.format, to: f, for: snapshot)
-                            } else {
-                                set(\.autoFormat, to: true, for: snapshot)
-                            }
-                        }
-                }
-            }
-            Text(activeFormatDesc)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            FormatChipPicker(
+                autoFormat: binding(\.autoFormat, snapshot: snapshot),
+                selectedFormat: binding(\.format, snapshot: snapshot)
+            )
         }
         Section("Quality") {
             let liveForQuality = prefs.savedPresets.first(where: { $0.id == snapshot.id }) ?? snapshot
-            let contentOptions: [(String, String, String)] = [
-                ("Photo", "photo", "Squeezes harder. Best for camera shots and real-world images."),
-                ("UI",    "ui",    "Stays crisp. Best for screenshots, mockups, and text."),
-                ("Mixed", "mixed", "Balanced. Good for images that blend photo and UI."),
-            ]
             Toggle("Smart quality", isOn: binding(\.smartQuality, snapshot: snapshot))
-            if liveForQuality.smartQuality {
+            if !liveForQuality.smartQuality {
+                ContentTypeChipPicker(contentTypeHintRaw: binding(\.contentTypeHintRaw, snapshot: snapshot))
+            } else {
                 Text("Detects content type per image automatically.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-            } else {
-                let activeDesc = contentOptions.first(where: { liveForQuality.contentTypeHintRaw == $0.1 })?.2 ?? ""
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 3), spacing: 4) {
-                    ForEach(contentOptions, id: \.1) { label, raw, _ in
-                        let active = liveForQuality.contentTypeHintRaw == raw
-                        Text(label)
-                            .font(.system(size: 11, weight: active ? .semibold : .regular))
-                            .foregroundStyle(active ? .white : .secondary)
-                            .padding(.vertical, 5)
-                            .frame(maxWidth: .infinity)
-                            .background(
-                                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                    .fill(active
-                                          ? AnyShapeStyle(LinearGradient(
-                                                colors: [Color(red: 0.25, green: 0.55, blue: 1.0),
-                                                         Color(red: 0.45, green: 0.30, blue: 0.95)],
-                                                startPoint: .leading, endPoint: .trailing))
-                                          : AnyShapeStyle(Color.primary.opacity(0.08)))
-                            )
-                            .contentShape(Rectangle())
-                            .onTapGesture { set(\.contentTypeHintRaw, to: raw, for: snapshot) }
-                    }
-                }
-                if !activeDesc.isEmpty {
-                    Text(activeDesc)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
             }
         }
         Section("Max Width") {
@@ -422,8 +343,11 @@ private struct PresetsTab: View {
             Picker("Save to", selection: binding(\.saveLocationRaw, snapshot: snapshot)) {
                 Text("Same folder as original").tag("sameFolder")
                 Text("Downloads folder").tag("downloads")
-                if !prefs.customFolderDisplayPath.isEmpty {
-                    Text(URL(fileURLWithPath: prefs.customFolderDisplayPath).lastPathComponent).tag("custom")
+                if !prefs.customFolderDisplayPath.isEmpty || liveForDest.saveLocationRaw == "custom" {
+                    Text(prefs.customFolderDisplayPath.isEmpty
+                         ? "Global custom folder (not set)"
+                         : URL(fileURLWithPath: prefs.customFolderDisplayPath).lastPathComponent)
+                        .tag("custom")
                 }
                 Text("Unique folder…").tag("presetCustom")
             }
@@ -592,12 +516,7 @@ private struct PresetsTab: View {
                     .frame(maxWidth: .infinity)
                     .background(
                         RoundedRectangle(cornerRadius: 5, style: .continuous)
-                            .fill(active
-                                  ? AnyShapeStyle(LinearGradient(
-                                        colors: [Color(red: 0.25, green: 0.55, blue: 1.0),
-                                                 Color(red: 0.45, green: 0.30, blue: 0.95)],
-                                        startPoint: .leading, endPoint: .trailing))
-                                  : AnyShapeStyle(Color.primary.opacity(0.08)))
+                            .fill(active ? AnyShapeStyle(dinkyGradient) : AnyShapeStyle(Color.primary.opacity(0.08)))
                     )
                     .contentShape(Rectangle())
                     .onTapGesture { onSelect(value) }
@@ -683,91 +602,44 @@ private struct WatchFolderPresetRow: View {
 
     var body: some View {
         Toggle(live.name, isOn: enabledBinding)
-
         if live.watchFolderEnabled {
-            Picker("Folder", selection: modeBinding) {
-                Text("Same as destination").tag("destination")
-                Text("Unique folder…").tag("unique")
+            HStack {
+                Image(systemName: "folder")
+                    .imageScale(.small)
+                    .foregroundStyle(.secondary)
+                Text(resolvedFolderLabel)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
             }
             .padding(.leading, 20)
-
-            if live.watchFolderModeRaw == "destination" {
-                HStack {
-                    Text("Resolves to")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text(resolvedDestinationLabel)
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-                .padding(.leading, 20)
-            } else {
-                HStack {
-                    Text(live.watchFolderPath.isEmpty
-                         ? "No folder selected"
-                         : URL(fileURLWithPath: live.watchFolderPath).lastPathComponent)
-                        .foregroundStyle(live.watchFolderPath.isEmpty ? .tertiary : .secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                    Spacer()
-                    Button("Choose…") { pickWatchFolder() }
-                        .buttonStyle(.bordered)
-                }
-                .padding(.leading, 20)
-            }
         }
     }
 
-    private var resolvedDestinationLabel: String {
+    private var resolvedFolderLabel: String {
+        if live.watchFolderModeRaw == "unique" {
+            return live.watchFolderPath.isEmpty
+                ? "No folder set — configure in Presets"
+                : URL(fileURLWithPath: live.watchFolderPath).lastPathComponent
+        }
         switch live.saveLocationRaw {
-        case "downloads":
-            return "Downloads"
-        case "custom":
-            return prefs.customFolderDisplayPath.isEmpty
-                ? "Custom folder (not set)"
-                : URL(fileURLWithPath: prefs.customFolderDisplayPath).lastPathComponent
-        case "presetCustom":
-            return live.presetCustomFolderPath.isEmpty
-                ? "Unique output folder (not set)"
-                : URL(fileURLWithPath: live.presetCustomFolderPath).lastPathComponent
-        default:
-            return "Varies — same folder as each source file"
+        case "downloads":    return "Downloads"
+        case "custom":       return prefs.customFolderDisplayPath.isEmpty ? "Custom folder" : URL(fileURLWithPath: prefs.customFolderDisplayPath).lastPathComponent
+        case "presetCustom": return live.presetCustomFolderPath.isEmpty ? "Unique output folder" : URL(fileURLWithPath: live.presetCustomFolderPath).lastPathComponent
+        default:             return "Same folder as source"
         }
     }
 
     private var enabledBinding: Binding<Bool> {
         Binding(
             get: { live.watchFolderEnabled },
-            set: { write(\.watchFolderEnabled, $0) }
-        )
-    }
-
-    private var modeBinding: Binding<String> {
-        Binding(
-            get: { live.watchFolderModeRaw },
-            set: { write(\.watchFolderModeRaw, $0) }
-        )
-    }
-
-    private func write<T>(_ kp: WritableKeyPath<CompressionPreset, T>, _ value: T) {
-        guard let idx = prefs.savedPresets.firstIndex(where: { $0.id == preset.id }) else { return }
-        var list = prefs.savedPresets
-        list[idx][keyPath: kp] = value
-        prefs.savedPresets = list
-    }
-
-    private func pickWatchFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Watch"
-        if panel.runModal() == .OK, let url = panel.url {
-            write(\.watchFolderPath, url.path)
-            if let bookmark = try? url.bookmarkData(options: .withSecurityScope) {
-                write(\.watchFolderBookmark, bookmark)
+            set: { newValue in
+                guard let idx = prefs.savedPresets.firstIndex(where: { $0.id == preset.id }) else { return }
+                var list = prefs.savedPresets
+                list[idx].watchFolderEnabled = newValue
+                prefs.savedPresets = list
             }
-        }
+        )
     }
 }

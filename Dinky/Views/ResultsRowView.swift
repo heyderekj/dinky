@@ -3,9 +3,11 @@ import SwiftUI
 struct ResultsRowView: View {
     @ObservedObject var item: ImageItem
     let selectedFormat: CompressionFormat
+    var onForceCompress: () -> Void = {}
     @EnvironmentObject var prefs: DinkyPreferences
     @State private var showingError = false
     @State private var showingPreview = false
+    @State private var isHovering = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -38,6 +40,7 @@ struct ResultsRowView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 9)
+        .onHover { isHovering = $0 }
         .sheet(isPresented: $showingError) {
             if case .failed(let error) = item.status {
                 ErrorDetailView(filename: item.filename, error: error)
@@ -121,8 +124,28 @@ struct ResultsRowView: View {
             }
 
         case .skipped:
-            chip("Skipped", color: .secondary.opacity(0.35), fg: .primary)
-                .help("File was already optimized — savings would be less than 2%")
+            Group {
+                if isHovering {
+                    Button { onForceCompress() } label: {
+                        Text("Compress anyway")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                            .fixedSize()
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color.primary.opacity(0.08)))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Force compress even if savings are minimal")
+                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                } else {
+                    chip("Skipped", color: .secondary.opacity(0.35), fg: .primary)
+                        .help("File was already optimized — savings would be less than 2%")
+                        .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                }
+            }
+            .animation(.easeInOut(duration: 0.15), value: isHovering)
 
         case .zeroGain:
             chip("No gain", color: .secondary.opacity(0.35), fg: .primary)

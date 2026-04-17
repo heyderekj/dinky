@@ -15,7 +15,8 @@ final class FolderWatcher: ObservableObject {
         let callback: FSEventStreamCallback = { _, info, _, eventPaths, _, _ in
             guard let info else { return }
             let watcher = Unmanaged<FolderWatcher>.fromOpaque(info).takeUnretainedValue()
-            guard let paths = unsafeBitCast(eventPaths, to: NSArray.self) as? [String] else { return }
+            let cfPaths = Unmanaged<CFArray>.fromOpaque(eventPaths).takeUnretainedValue()
+            guard let paths = cfPaths as? [String] else { return }
             let now = Date()
             let imageExts = watcher.imageExtensions
             let urls = paths
@@ -37,7 +38,7 @@ final class FolderWatcher: ObservableObject {
             [path] as CFArray,
             FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
             1.5,
-            FSEventStreamCreateFlags(kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagNoDefer)
+            FSEventStreamCreateFlags(kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagUseCFTypes)
         )
         guard let stream else {
             Unmanaged<FolderWatcher>.fromOpaque(retained).release()

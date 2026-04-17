@@ -45,7 +45,7 @@ struct CompressionPreset: Codable, Identifiable {
         self.maxWidth = prefs.maxWidth
         self.maxFileSizeEnabled = prefs.maxFileSizeEnabled
         self.maxFileSizeKB = prefs.maxFileSizeKB
-        self.saveLocationRaw = prefs.saveLocationRaw
+        self.saveLocationRaw = "sameFolder"
         self.filenameHandlingRaw = prefs.filenameHandlingRaw
         self.customSuffix = prefs.customSuffix
         self.stripMetadata = prefs.stripMetadata
@@ -56,8 +56,8 @@ struct CompressionPreset: Codable, Identifiable {
         self.watchFolderModeRaw = "destination"
         self.watchFolderPath = prefs.watchedFolderPath
         self.watchFolderBookmark = prefs.watchedFolderBookmark
-        self.presetCustomFolderPath = prefs.customFolderDisplayPath
-        self.presetCustomFolderBookmark = prefs.customFolderBookmark
+        self.presetCustomFolderPath = ""
+        self.presetCustomFolderBookmark = Data()
         self.contentTypeHintRaw = prefs.contentTypeHintRaw
         self.createdAt = .now
     }
