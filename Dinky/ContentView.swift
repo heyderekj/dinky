@@ -350,7 +350,7 @@ struct ContentView: View {
             // Defer the first check so the window settles before any network I/O.
             if prefs.checkForUpdatesOnLaunch {
                 try? await Task.sleep(nanoseconds: 1_500_000_000)
-                await updater.check()
+                await updater.check(skipThrottle: true)
             }
         }
         .onAppear { updateFolderWatcher() }

@@ -47,11 +47,11 @@ final class UpdateChecker: ObservableObject {
     }
 
     @discardableResult
-    func check(manual: Bool = false) async -> CheckResult {
-        // Throttle automatic checks to once per 24h.
+    func check(manual: Bool = false, skipThrottle: Bool = false) async -> CheckResult {
+        // Throttle background rechecks to once per 24h. Launch and manual checks bypass this.
         let now = Date().timeIntervalSince1970
         let last = UserDefaults.standard.double(forKey: "lastUpdateCheck")
-        if !manual, last > 0, now - last < throttleSeconds {
+        if !manual, !skipThrottle, last > 0, now - last < throttleSeconds {
             return .upToDate
         }
 
