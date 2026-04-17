@@ -358,6 +358,9 @@ struct ContentView: View {
             prefs.contentTypeHintRaw = "auto"
             updateFolderWatcher()
         }
+        .task {
+            await updater.check()
+        }
         .onChange(of: prefs.folderWatchEnabled) { _, _ in updateFolderWatcher() }
         .onChange(of: prefs.watchedFolderPath)  { _, _ in updateFolderWatcher() }
     }
