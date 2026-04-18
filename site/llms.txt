@@ -37,7 +37,7 @@
 
 ## Links
 
-- Website: https://dinkyimg.app
+- Website: https://dinkyfiles.com
 - Support: help@dinkyfiles.com
 - GitHub: https://github.com/heyderekj/dinky
 - Latest release: https://github.com/heyderekj/dinky/releases/latest

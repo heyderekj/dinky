@@ -30,8 +30,8 @@ xattr -dr com.apple.quarantine /Applications/Dinky.app
 
 ## More
 
-Full marketing page with screenshots and comparison table: [dinkyimg.app](https://dinkyimg.app/)
+Full marketing page with screenshots and comparison table: [dinkyfiles.com](https://dinkyfiles.com/)
 
-Machine-readable site summary: [llms.txt](https://dinkyimg.app/llms.txt)
+Machine-readable site summary: [llms.txt](https://dinkyfiles.com/llms.txt)
 
 © Testament Made, LLC

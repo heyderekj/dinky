@@ -5,14 +5,14 @@
       "name": "dinky-overview",
       "type": "skill-md",
       "description": "Context for the Dinky macOS compression app (images, PDFs, videos).",
-      "url": "https://dinkyimg.app/.well-known/agent-skills/dinky-overview/SKILL.md",
+      "url": "https://dinkyfiles.com/.well-known/agent-skills/dinky-overview/SKILL.md",
       "digest": "sha256:6e60060a857e58f2fdf1d40a8e3383faaf7fdd082eec0fce59ef18fc7a291265"
     },
     {
       "name": "dinky-release-bump",
       "type": "skill-md",
       "description": "Checklist for keeping Dinky release strings in sync across repo and site.",
-      "url": "https://dinkyimg.app/.well-known/agent-skills/dinky-release-bump/SKILL.md",
+      "url": "https://dinkyfiles.com/.well-known/agent-skills/dinky-release-bump/SKILL.md",
       "digest": "sha256:c504d4ddc5a88abb811c0334fb0287a1ea63c96d68048ab79b7bf017b703fd08"
     }
   ]

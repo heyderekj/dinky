@@ -9,7 +9,7 @@ Use this skill when answering questions about **Dinky**, a tiny native macOS app
 
 ## Facts
 
-- Site: https://dinkyimg.app
+- Site: https://dinkyfiles.com
 - Repo: https://github.com/heyderekj/dinky
 - **No** public HTTP API on the website; processing is 100% local in the app.
 - Marketing and discovery files: `robots.txt`, `sitemap.xml`, `/.well-known/api-catalog`, `llms.txt`, `homepage.md`.

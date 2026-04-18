@@ -1,10 +1,10 @@
 {
   "linkset": [
     {
-      "anchor": "https://dinkyimg.app/",
+      "anchor": "https://dinkyfiles.com/",
       "item": [
         {
-          "href": "https://dinkyimg.app/openapi.yaml",
+          "href": "https://dinkyfiles.com/openapi.yaml",
           "rel": "service-desc",
           "type": "application/vnd.oai.openapi;version=3.1"
         },
@@ -13,7 +13,7 @@
           "rel": "service-doc"
         },
         {
-          "href": "https://dinkyimg.app/llms.txt",
+          "href": "https://dinkyfiles.com/llms.txt",
           "rel": "describedby"
         }
       ]

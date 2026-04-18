@@ -102,19 +102,19 @@ xattr -dr com.apple.quarantine /Applications/Dinky.app
 
 Updating Dinky is one click — no browser, no re-drag, no quarantine step. A banner appears when a new version is out; click **Install Update** and the app downloads, installs, and relaunches on its own.
 
-## Agent discovery (dinkyimg.app)
+## Agent discovery (dinkyfiles.com)
 
 The marketing site is a static Netlify deploy. These URLs are intentional for crawlers and tools:
 
 | URL | Role |
 |-----|------|
-| [https://dinkyimg.app/robots.txt](https://dinkyimg.app/robots.txt) | Crawl rules, AI bot entries, Content-Signals, sitemap pointer |
-| [https://dinkyimg.app/sitemap.xml](https://dinkyimg.app/sitemap.xml) | Canonical URL list |
-| [https://dinkyimg.app/.well-known/api-catalog](https://dinkyimg.app/.well-known/api-catalog) | RFC 9727 linkset (no public HTTP API; see `openapi.yaml`) |
-| [https://dinkyimg.app/openapi.yaml](https://dinkyimg.app/openapi.yaml) | Empty OpenAPI document describing “desktop app only” |
-| [https://dinkyimg.app/.well-known/agent-skills/index.json](https://dinkyimg.app/.well-known/agent-skills/index.json) | Agent Skills discovery index |
-| [https://dinkyimg.app/llms.txt](https://dinkyimg.app/llms.txt) | Concise product summary for LLMs |
-| [https://dinkyimg.app/homepage.md](https://dinkyimg.app/homepage.md) | Markdown homepage mirror |
+| [https://dinkyfiles.com/robots.txt](https://dinkyfiles.com/robots.txt) | Crawl rules, AI bot entries, Content-Signals, sitemap pointer |
+| [https://dinkyfiles.com/sitemap.xml](https://dinkyfiles.com/sitemap.xml) | Canonical URL list |
+| [https://dinkyfiles.com/.well-known/api-catalog](https://dinkyfiles.com/.well-known/api-catalog) | RFC 9727 linkset (no public HTTP API; see `openapi.yaml`) |
+| [https://dinkyfiles.com/openapi.yaml](https://dinkyfiles.com/openapi.yaml) | Empty OpenAPI document describing “desktop app only” |
+| [https://dinkyfiles.com/.well-known/agent-skills/index.json](https://dinkyfiles.com/.well-known/agent-skills/index.json) | Agent Skills discovery index |
+| [https://dinkyfiles.com/llms.txt](https://dinkyfiles.com/llms.txt) | Concise product summary for LLMs |
+| [https://dinkyfiles.com/homepage.md](https://dinkyfiles.com/homepage.md) | Markdown homepage mirror |
 
 Requests to `/` with `Accept: text/markdown` receive `homepage.md` with `Content-Type: text/markdown` (Netlify Edge Function).
 
