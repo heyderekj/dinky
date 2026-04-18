@@ -2,6 +2,13 @@ import SwiftUI
 import UniformTypeIdentifiers
 import UserNotifications
 import Darwin
+import AppKit
+
+enum PasteClipboardResult {
+    case added
+    case emptyClipboard
+    case duplicateInQueue
+}
 
 @MainActor
 final class ContentViewModel: ObservableObject {
@@ -40,7 +47,15 @@ final class ContentViewModel: ObservableObject {
     }
 
     func addAndCompress(_ urls: [URL], force: Bool = false, presetID: UUID? = nil) {
-        let new = urls.map { CompressionItem(sourceURL: $0, presetID: presetID) }
+        var seen = Set(items.map(\.sourceURL.path))
+        let newURLs = urls.filter { url in
+            let p = url.path
+            guard !seen.contains(p) else { return false }
+            seen.insert(p)
+            return true
+        }
+        guard !newURLs.isEmpty else { return }
+        let new = newURLs.map { CompressionItem(sourceURL: $0, presetID: presetID) }
         if force { new.forEach { $0.forceCompress = true } }
         items.append(contentsOf: new)
         // Smallest files first — quick wins land early, the big ones stack
@@ -114,9 +129,21 @@ final class ContentViewModel: ObservableObject {
         if items.isEmpty { phase = .idle }
     }
 
-    func pasteClipboard() {
-        guard let url = ClipboardImporter.importFromClipboard() else { return }
+    func pasteClipboard() -> PasteClipboardResult {
+        guard let url = ClipboardImporter.importFromClipboard() else { return .emptyClipboard }
+        if items.contains(where: { $0.sourceURL.path == url.path }) { return .duplicateInQueue }
         addAndCompress([url])
+        return .added
+    }
+
+    /// Removes selected items except those currently compressing (matches row context menu rules).
+    func removeSelection(with ids: Set<UUID>) {
+        let toRemove = items.filter { item in
+            guard ids.contains(item.id) else { return false }
+            if case .processing = item.status { return false }
+            return true
+        }
+        for item in toRemove { remove(item) }
     }
 
     private func cleanupPasteTemps(for targets: [CompressionItem]) {
@@ -290,10 +317,10 @@ final class ContentViewModel: ObservableObject {
             await MainActor.run {
                 item.detectedContentType = result.detectedContentType
                 if result.outputSize >= result.originalSize {
-                    item.status = .zeroGain(original: item.sourceURL)
+                    item.status = .zeroGain(attemptedSize: result.outputSize)
                     try? FileManager.default.removeItem(at: result.outputURL)
                 } else if self.prefs.minimumSavingsPercent > 0 && savings < Double(self.prefs.minimumSavingsPercent) / 100.0 && !wasForced {
-                    item.status = .skipped
+                    item.status = .skipped(savedPercent: savings * 100, threshold: self.prefs.minimumSavingsPercent)
                     try? FileManager.default.removeItem(at: result.outputURL)
                 } else {
                     item.status = .done(outputURL: result.outputURL,
@@ -396,10 +423,10 @@ final class ContentViewModel: ObservableObject {
                 ? Double(result.originalSize - outSize) / Double(result.originalSize) : 0
             await MainActor.run {
                 if outSize >= result.originalSize {
-                    item.status = .zeroGain(original: item.sourceURL)
+                    item.status = .zeroGain(attemptedSize: outSize)
                     try? FileManager.default.removeItem(at: producedURL)
                 } else if self.prefs.minimumSavingsPercent > 0 && savings < Double(self.prefs.minimumSavingsPercent) / 100.0 && !wasForced {
-                    item.status = .skipped
+                    item.status = .skipped(savedPercent: savings * 100, threshold: self.prefs.minimumSavingsPercent)
                     try? FileManager.default.removeItem(at: producedURL)
                 } else {
                     item.status = .done(outputURL: producedURL,
@@ -431,7 +458,11 @@ final class ContentViewModel: ObservableObject {
             return o
         }
         let preset = activePreset(for: item)
-        await MainActor.run { item.status = .processing }
+        await MainActor.run {
+            item.status = .processing
+            item.videoExportProgress = 0
+        }
+        defer { item.videoExportProgress = nil }
         let intendedOutput: URL = {
             if let pr = preset { return pr.outputURL(for: item.sourceURL, mediaType: .video, globalPrefs: prefs) }
             return prefs.outputURL(for: item.sourceURL, mediaType: .video)
@@ -469,6 +500,12 @@ final class ContentViewModel: ObservableObject {
             preservedModDate = (try? FileManager.default.attributesOfItem(atPath: sourceURL.path)[.modificationDate]) as? Date
         }
 
+        let progressHandler: @Sendable (Float) -> Void = { p in
+            Task { @MainActor in
+                item.videoExportProgress = Double(p)
+            }
+        }
+
         do {
             let result = try await CompressionService.shared.compressVideo(
                 asset: asset,
@@ -476,7 +513,8 @@ final class ContentViewModel: ObservableObject {
                 quality: videoQuality,
                 codec: codec,
                 removeAudio: removeAudio,
-                outputURL: workURL
+                outputURL: workURL,
+                progressHandler: progressHandler
             )
             let producedURL: URL
             if workURL.path != finalURL.path {
@@ -506,10 +544,10 @@ final class ContentViewModel: ObservableObject {
             await MainActor.run {
                 item.videoDuration = result.videoDuration
                 if outSize >= result.originalSize {
-                    item.status = .zeroGain(original: item.sourceURL)
+                    item.status = .zeroGain(attemptedSize: outSize)
                     try? FileManager.default.removeItem(at: producedURL)
                 } else if self.prefs.minimumSavingsPercent > 0 && savings < Double(self.prefs.minimumSavingsPercent) / 100.0 && !wasForced {
-                    item.status = .skipped
+                    item.status = .skipped(savedPercent: savings * 100, threshold: self.prefs.minimumSavingsPercent)
                     try? FileManager.default.removeItem(at: producedURL)
                 } else {
                     item.status = .done(outputURL: producedURL,
@@ -525,7 +563,9 @@ final class ContentViewModel: ObservableObject {
                 }
             }
         } catch VideoCompressionError.alreadyOptimized {
-            await MainActor.run { item.status = .skipped }
+            await MainActor.run {
+                item.status = .skipped(savedPercent: nil, threshold: self.prefs.minimumSavingsPercent)
+            }
         } catch {
             await MainActor.run { item.status = .failed(error) }
         }
@@ -623,6 +663,7 @@ struct ContentView: View {
     @State private var idleLoop        = 0
     @State private var selectedIDs: Set<UUID> = []
     @State private var showingHistory  = false
+    @AppStorage("manualModeHintDismissed") private var manualModeHintDismissed = false
 
     init(prefs: DinkyPreferences, vm: ContentViewModel) {
         self.vm = vm
@@ -643,6 +684,53 @@ struct ContentView: View {
         openSettings()
     }
 
+    private func handlePasteFromUser() {
+        switch vm.pasteClipboard() {
+        case .added: break
+        case .emptyClipboard:
+            showPasteAlert(title: S.pasteEmptyTitle, message: S.pasteEmptyMessage)
+        case .duplicateInQueue:
+            showPasteAlert(title: S.pasteDuplicateTitle, message: S.pasteDuplicateMessage)
+        }
+    }
+
+    private func showPasteAlert(title: String, message: String) {
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        alert.messageText = title
+        alert.informativeText = message
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+
+    private var manualModeHintBanner: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: "hand.tap")
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+            Text("Manual mode: files stay queued until you right-click a row or choose Compress Now (⌘↩) from the File menu.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            Button("Got it") {
+                manualModeHintDismissed = true
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+            Button("Settings…") {
+                revealPreferences(.general)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .adaptiveGlass(in: RoundedRectangle(cornerRadius: 0, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Manual mode is on. Files stay queued until you compress them from the row menu or File menu.")
+    }
+
     var body: some View {
         ZStack(alignment: .leading) {
             // ── Main content (drop target covers the full surface) ──
@@ -651,8 +739,11 @@ struct ContentView: View {
                     UpdateBanner(updater: updater, itemCount: vm.items.count)
                         .environmentObject(prefs)
                 }
+                if prefs.manualMode && !manualModeHintDismissed {
+                    manualModeHintBanner
+                }
                 if vm.isEmpty {
-                    DropZoneView(phase: dropPhase, onOpenPanel: openPanel, onPaste: { vm.pasteClipboard() }, onLoop: { idleLoop += 1 })
+                    DropZoneView(phase: dropPhase, onOpenPanel: openPanel, onPaste: handlePasteFromUser, onLoop: { idleLoop += 1 })
                 } else {
                     resultsList
                 }
@@ -697,6 +788,8 @@ struct ContentView: View {
                     Label("Toggle Sidebar", systemImage: "sidebar.left")
                         .symbolVariant(sidebarVisible ? .fill : .none)
                 }
+                .help(sidebarVisible ? "Hide the format sidebar" : "Show the format sidebar")
+                .accessibilityLabel(sidebarVisible ? "Hide format sidebar" : "Show format sidebar")
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .dinkyOpenPanel)) { _ in openPanel() }
@@ -705,7 +798,20 @@ struct ContentView: View {
             vm.addAndCompress(urls)
         }
         .onReceive(NotificationCenter.default.publisher(for: .dinkyPasteClipboard)) { _ in
-            vm.pasteClipboard()
+            handlePasteFromUser()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .dinkyClearAll)) { _ in
+            vm.clear()
+            selectedIDs = []
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .dinkyToggleSidebar)) { _ in
+            withAnimation(.spring(duration: 0.35)) { sidebarVisible.toggle() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .dinkyDeleteSelectedRows)) { _ in
+            vm.removeSelection(with: selectedIDs)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .dinkyStartCompression)) { _ in
+            vm.compress()
         }
         .onReceive(NotificationCenter.default.publisher(for: .dinkyShowHistory)) { _ in
             showingHistory = true
@@ -862,6 +968,10 @@ struct ContentView: View {
         .scrollContentBackground(.hidden)
         .onChange(of: vm.isEmpty) { _, isEmpty in
             if isEmpty { selectedIDs = [] }
+        }
+        .onChange(of: vm.items.map(\.id)) { _, _ in
+            let valid = Set(vm.items.map(\.id))
+            selectedIDs = selectedIDs.filter(valid.contains)
         }
     }
 

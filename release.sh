@@ -103,11 +103,12 @@ gh release create "v$VERSION" \
   "Dinky-$VERSION.zip" << NOTES
 ## Dinky $VERSION — files, not just images
 
-Dinky is now a **multi-format compressor** on macOS: **images**, **PDFs**, and **videos** in one small app. Drag in files (or use watch folders and presets) and get smaller outputs back.
+Dinky is now a **multi-format compressor** on macOS: **images**, **videos**, and **PDFs** in one small app. Drag in files (or use watch folders and presets) and get smaller outputs back.
 
 ### Highlights
-- **PDFs** — shrink while keeping text and links selectable, or flatten pages for maximum savings.
+- **Images** — WebP, AVIF, or lossless PNG with smart quality and resize options.
 - **Video** — export to MP4 with H.264 or HEVC and the same preset workflow as images.
+- **PDFs** — shrink while keeping text and links selectable, or flatten pages for maximum savings.
 - **One UI** — sidebar presets, batch results, smart quality, and history work across supported types.
 
 ## Install

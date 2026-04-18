@@ -136,6 +136,8 @@ struct SidebarView: View {
         .animation(.easeInOut(duration: 0.2), value: prefs.videoCodecFamilyRaw)
         .animation(.easeInOut(duration: 0.2), value: prefs.sidebarSimpleMode)
         .animation(.easeInOut(duration: 0.2), value: scopeRaw)
+        .accessibilityLabel("Compression settings")
+        .accessibilityHint("Choose format, quality, and output options for images, videos, and PDFs.")
         .onChange(of: prefs.showImagesSection) { _, _ in syncScopeIfNeeded() }
         .onChange(of: prefs.showPDFsSection) { _, _ in syncScopeIfNeeded() }
         .onChange(of: prefs.showVideosSection) { _, _ in syncScopeIfNeeded() }
@@ -276,7 +278,7 @@ struct SidebarView: View {
         if prefs.autoFormat {
             return "WebP or AVIF per image. Other types: use All options."
         }
-        return "Fine-tune PDF, video, and image defaults in All options."
+        return "Fine-tune image, video, and PDF defaults in All options."
     }
 
     // MARK: - Full sidebar (scoped)
@@ -428,7 +430,7 @@ struct SidebarView: View {
             get: { prefs.smartQuality }, set: { prefs.smartQuality = $0 }
         )).font(.system(size: 11))
         if prefs.smartQuality {
-            helper("For images: encoding strength from content. PDFs and videos: tier from each file (see those tabs).")
+            helper("For images: encoding strength from content. Videos and PDFs: tier from each file (see those tabs).")
                 .transition(.asymmetric(
                     insertion: .move(edge: .top).combined(with: .opacity.animation(.easeInOut(duration: 0.15).delay(0.1))),
                     removal:   .move(edge: .top).combined(with: .opacity.animation(.easeIn(duration: 0.08)))
@@ -697,6 +699,10 @@ struct SidebarView: View {
                 } else {
                     summaryRow("gauge.medium", "No size limit")
                 }
+                let vidCodec = VideoCodecFamily(rawValue: preset.videoCodecFamilyRaw) ?? .h264
+                let vidQ = VideoQuality(rawValue: preset.videoQualityRaw) ?? .medium
+                summaryRow("video",
+                           "\(vidCodec.chipLabel) · \(vidQ.displayName)\(preset.videoRemoveAudio ? " · no audio" : "")")
                 let pdfMode = PDFOutputMode(rawValue: preset.pdfOutputModeRaw) ?? .preserveStructure
                 if pdfMode == .flattenPages {
                     let pdfQ = PDFQuality(rawValue: preset.pdfQualityRaw) ?? .medium
@@ -705,10 +711,6 @@ struct SidebarView: View {
                 } else {
                     summaryRow("doc.richtext", "PDF preserve text & links")
                 }
-                let vidCodec = VideoCodecFamily(rawValue: preset.videoCodecFamilyRaw) ?? .h264
-                let vidQ = VideoQuality(rawValue: preset.videoQualityRaw) ?? .medium
-                summaryRow("video",
-                           "\(vidCodec.chipLabel) · \(vidQ.displayName)\(preset.videoRemoveAudio ? " · no audio" : "")")
                 summaryRow("folder", saveLabel)
                 summaryRow("doc.text", filenameLabel)
                 if preset.stripMetadata     { summaryRow("minus.circle",    "Strip metadata") }

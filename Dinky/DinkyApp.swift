@@ -48,6 +48,28 @@ struct DinkyApp: App {
                     NSApp.sendAction(Selector(("compressFromClipboard:")), to: nil, from: nil)
                 }
                 .keyboardShortcut("v", modifiers: [.command, .shift])
+
+                Divider()
+
+                Button("Compress Now") {
+                    NotificationCenter.default.post(name: .dinkyStartCompression, object: nil)
+                }
+                .keyboardShortcut(.return, modifiers: .command)
+
+                Button("Clear All") {
+                    NotificationCenter.default.post(name: .dinkyClearAll, object: nil)
+                }
+                .keyboardShortcut("k", modifiers: [.command, .option])
+
+                Button("Toggle Sidebar") {
+                    NotificationCenter.default.post(name: .dinkyToggleSidebar, object: nil)
+                }
+                .keyboardShortcut("\\", modifiers: [.command, .shift])
+
+                Button("Delete Selected") {
+                    NotificationCenter.default.post(name: .dinkyDeleteSelectedRows, object: nil)
+                }
+                .keyboardShortcut(.delete, modifiers: .command)
             }
             CommandGroup(replacing: .appInfo) {
                 Button("About Dinky") {
@@ -62,12 +84,94 @@ struct DinkyApp: App {
                     NotificationCenter.default.post(name: .dinkyShowHistory, object: nil)
                 }
             }
+            // Replace the default Help menu (which triggers the unhelpful
+            // "Help isn't available for Dinky" alert because we don't ship
+            // a `.help` bundle — adding one would add weight, see CLAUDE.md).
+            CommandGroup(replacing: .help) {
+                HelpMenuCommands(updater: updater)
+            }
         }
 
         Settings {
             PreferencesView()
                 .environmentObject(root.prefs)
                 .environmentObject(updater)
+        }
+
+        // Opened via the Help menu (⌘?). Single-instance; reuses the same
+        // window if it's already on screen.
+        Window("Dinky Help", id: "help") {
+            HelpWindow()
+        }
+        .defaultSize(width: 820, height: 600)
+        .commandsRemoved()
+    }
+}
+
+// MARK: - Help menu
+
+/// Wrapped in its own view so we can pull `openWindow` out of the environment
+/// (CommandGroup closures don't expose environment directly). `updater` is
+/// passed in explicitly because environment objects don't reliably propagate
+/// into command builders across all macOS versions.
+private struct HelpMenuCommands: View {
+    @Environment(\.openWindow) private var openWindow
+    @ObservedObject var updater: UpdateChecker
+
+    private static let repoURL = URL(string: "https://github.com/heyderekj/dinky")!
+    private static let issuesURL = URL(string: "https://github.com/heyderekj/dinky/issues/new")!
+    private static let siteURL = URL(string: "https://dinkyfiles.com")!
+
+    private var currentVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
+    }
+
+    /// Release notes for whichever version is more interesting: the available
+    /// update if one's been found, otherwise the version the user is on.
+    private var releaseNotesURL: URL {
+        if let url = updater.releaseURL { return url }
+        return URL(string: "https://github.com/heyderekj/dinky/releases/tag/v\(currentVersion)")!
+    }
+
+    private var versionLabel: String {
+        if let newer = updater.availableVersion {
+            return "Version \(currentVersion) — \(newer) available"
+        }
+        return "Version \(currentVersion)"
+    }
+
+    var body: some View {
+        // `?` requires shift; SwiftUI only fires when the modifier set matches the actual keystroke,
+        // so we must declare both. (Bare `.command` shows ⌘? in the menu but never triggers.)
+        Button("Dinky Help") { openWindow(id: "help") }
+            .keyboardShortcut("?", modifiers: [.command, .shift])
+
+        Divider()
+
+        // Info row — always disabled. Reflects update state when known.
+        Button(versionLabel) {}
+            .disabled(true)
+
+        Button("What's New…") {
+            NSWorkspace.shared.open(releaseNotesURL)
+        }
+        Button("Check for Updates…") {
+            NotificationCenter.default.post(name: .dinkyCheckUpdates, object: nil)
+        }
+
+        Divider()
+
+        Button("GitHub Repo") {
+            NSWorkspace.shared.open(Self.repoURL)
+        }
+        Button("Report a Bug…") {
+            NSWorkspace.shared.open(Self.issuesURL)
+        }
+        Button("Visit dinkyfiles.com") {
+            NSWorkspace.shared.open(Self.siteURL)
+        }
+        Button("Email Support…") {
+            NSWorkspace.shared.open(URL(string: "mailto:\(S.supportEmail)")!)
         }
     }
 }
@@ -143,6 +247,7 @@ private struct TransparentWindow: NSViewRepresentable {
             window.isOpaque = false
             window.backgroundColor = .clear
             window.titlebarAppearsTransparent = true
+            window.setFrameAutosaveName("DinkyMainWindow")
         }
         return view
     }
@@ -151,5 +256,6 @@ private struct TransparentWindow: NSViewRepresentable {
         window.isOpaque = false
         window.backgroundColor = .clear
         window.titlebarAppearsTransparent = true
+        window.setFrameAutosaveName("DinkyMainWindow")
     }
 }

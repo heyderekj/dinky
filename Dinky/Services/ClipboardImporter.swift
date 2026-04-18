@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 
 enum ClipboardImporter {
+    /// Same rules as drag-and-drop: any supported image, video, or PDF file URL.
     static func importFromClipboard() -> URL? {
         let pb = NSPasteboard.general
 
@@ -9,8 +10,7 @@ enum ClipboardImporter {
         let fileOpts: [NSPasteboard.ReadingOptionKey: Any] = [.urlReadingFileURLsOnly: true]
         if let urls = pb.readObjects(forClasses: [NSURL.self], options: fileOpts) as? [URL],
            let url = urls.first,
-           ["jpg", "jpeg", "png", "webp", "avif", "tiff", "bmp"]
-               .contains(url.pathExtension.lowercased()) {
+           MediaTypeDetector.detect(url) != nil {
             return url
         }
 
@@ -25,13 +25,13 @@ enum ClipboardImporter {
         return tmp
     }
 
-    static func isClipboardImage() -> Bool {
+    /// True when `importFromClipboard()` would return a URL.
+    static func isClipboardImportable() -> Bool {
         let pb = NSPasteboard.general
         let fileOpts: [NSPasteboard.ReadingOptionKey: Any] = [.urlReadingFileURLsOnly: true]
         if let urls = pb.readObjects(forClasses: [NSURL.self], options: fileOpts) as? [URL],
            let url = urls.first,
-           ["jpg", "jpeg", "png", "webp", "avif", "tiff", "bmp"]
-               .contains(url.pathExtension.lowercased()) {
+           MediaTypeDetector.detect(url) != nil {
             return true
         }
         return pb.data(forType: .png) != nil || pb.data(forType: .tiff) != nil

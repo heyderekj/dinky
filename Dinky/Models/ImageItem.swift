@@ -6,8 +6,13 @@ enum CompressionStatus {
     case pending
     case processing
     case done(outputURL: URL, originalSize: Int64, outputSize: Int64)
-    case skipped                 // already optimized
-    case zeroGain(original: URL) // compressed ≥ original
+    /// Compressed below the user's threshold. `savedPercent` is `nil` when the
+    /// encoder bailed early (e.g. video `alreadyOptimized`) without a number.
+    case skipped(savedPercent: Double?, threshold: Int)
+    /// Compressed ≥ original. `attemptedSize` is what the encoder produced
+    /// before we discarded it — used to show "would have been X MB" in the
+    /// detail sheet.
+    case zeroGain(attemptedSize: Int64)
     case failed(Error)
 
     var isTerminal: Bool {
@@ -38,6 +43,9 @@ final class CompressionItem: ObservableObject, Identifiable {
     var pdfQualityOverride: PDFQuality? = nil
     /// One-shot video quality + codec from the context menu; skips smart inference when set.
     var videoRecompressOverride: (quality: VideoQuality, codec: VideoCodecFamily)? = nil
+
+    /// `0...1` while `AVAssetExportSession` is running; `nil` otherwise.
+    @Published var videoExportProgress: Double? = nil
 
     init(sourceURL: URL, presetID: UUID? = nil) {
         self.sourceURL = sourceURL

@@ -10,8 +10,8 @@ enum MediaType: Equatable {
 enum PresetMediaScope: String, CaseIterable, Identifiable {
     case all
     case image
-    case pdf
     case video
+    case pdf
 
     var id: String { rawValue }
 

@@ -354,7 +354,8 @@ actor CompressionService {
         quality: VideoQuality,
         codec: VideoCodecFamily,
         removeAudio: Bool,
-        outputURL: URL
+        outputURL: URL,
+        progressHandler: (@Sendable (Float) -> Void)? = nil
     ) async throws -> CompressionResult {
         try await compressVideo(
             asset: VideoCompressor.makeURLAsset(url: source),
@@ -362,7 +363,8 @@ actor CompressionService {
             quality: quality,
             codec: codec,
             removeAudio: removeAudio,
-            outputURL: outputURL
+            outputURL: outputURL,
+            progressHandler: progressHandler
         )
     }
 
@@ -373,7 +375,8 @@ actor CompressionService {
         quality: VideoQuality,
         codec: VideoCodecFamily,
         removeAudio: Bool,
-        outputURL: URL
+        outputURL: URL,
+        progressHandler: (@Sendable (Float) -> Void)? = nil
     ) async throws -> CompressionResult {
         let originalSize = fileSize(source)
 
@@ -388,7 +391,8 @@ actor CompressionService {
             quality: quality,
             codec: codec,
             removeAudio: removeAudio,
-            outputURL: outputURL
+            outputURL: outputURL,
+            progressHandler: progressHandler
         )
 
         guard FileManager.default.fileExists(atPath: outputURL.path) else {

@@ -114,7 +114,8 @@ enum VideoCompressor {
         quality: VideoQuality,
         codec: VideoCodecFamily,
         removeAudio: Bool,
-        outputURL: URL
+        outputURL: URL,
+        progressHandler: (@Sendable (Float) -> Void)? = nil
     ) async throws -> Double? {
         try await compress(
             asset: makeURLAsset(url: source),
@@ -122,7 +123,8 @@ enum VideoCompressor {
             quality: quality,
             codec: codec,
             removeAudio: removeAudio,
-            outputURL: outputURL
+            outputURL: outputURL,
+            progressHandler: progressHandler
         )
     }
 
@@ -132,7 +134,8 @@ enum VideoCompressor {
         quality: VideoQuality,
         codec: VideoCodecFamily,
         removeAudio: Bool,
-        outputURL: URL
+        outputURL: URL,
+        progressHandler: (@Sendable (Float) -> Void)? = nil
     ) async throws -> Double? {
         let videoTracks = try await asset.loadTracks(withMediaType: .video)
         guard let videoTrack = videoTracks.first else {
@@ -197,8 +200,36 @@ enum VideoCompressor {
             session.fileLengthLimit = bounded
         }
 
-        try await session.export(to: outputURL, as: .mp4)
+        try await exportWithProgress(session: session, outputURL: outputURL, progressHandler: progressHandler)
         return CMTimeGetSeconds(duration)
+    }
+
+    /// Runs `export` concurrently with `states(updateInterval:)` for progress updates.
+    private static func exportWithProgress(
+        session: AVAssetExportSession,
+        outputURL: URL,
+        progressHandler: (@Sendable (Float) -> Void)?
+    ) async throws {
+        if let progressHandler {
+            let monitor = Task {
+                for await state in session.states(updateInterval: 0.1) {
+                    guard !Task.isCancelled else { break }
+                    switch state {
+                    case .pending, .waiting:
+                        break
+                    case .exporting(let progress):
+                        progressHandler(Float(progress.fractionCompleted))
+                    @unknown default:
+                        break
+                    }
+                }
+            }
+            defer { monitor.cancel() }
+            try await session.export(to: outputURL, as: .mp4)
+            progressHandler(1)
+        } else {
+            try await session.export(to: outputURL, as: .mp4)
+        }
     }
 
     private static func codecMatchesTarget(_ sub: CMVideoCodecType?, target: VideoCodecFamily) -> Bool {

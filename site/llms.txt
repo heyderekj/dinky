@@ -1,12 +1,12 @@
 # Dinky
 
-> A tiny macOS compression app for images, PDFs, and videos. Converts stills to WebP, AVIF, or lossless PNG; shrinks PDFs; exports video to smaller MP4 (H.264 or HEVC). Drag and drop, get smaller files back. Free, open source, and entirely local — files never leave your machine.
+> A tiny macOS compression app for images, videos, and PDFs. Converts stills to WebP, AVIF, or lossless PNG; exports video to smaller MP4 (H.264 or HEVC); shrinks PDFs. Drag and drop, get smaller files back. Free, open source, and entirely local — files never leave your machine.
 
 ## What it does
 
 - **Images** — JPG, PNG, WebP, AVIF, TIFF, BMP → WebP, AVIF, or lossless PNG
-- **PDFs** — preserve selectable text and links, or flatten pages to images for maximum shrink
 - **Videos** — common formats (e.g. MP4, MOV) → MP4 with H.264 or HEVC and quality presets
+- **PDFs** — preserve selectable text and links, or flatten pages to images for maximum shrink
 - Drag and drop or file picker; batch compression with live results
 - **Batch speed** — Fast (one at a time), Faster (up to three parallel), or Fastest (up to eight)
 - Max width resizing (common web presets or custom value)

@@ -1,8 +1,8 @@
 # Dinky
 
-A small macOS utility that compresses **images**, **PDFs**, and **videos**. Drop files in, get smaller ones back.
+A small macOS utility that compresses **images**, **videos**, and **PDFs**. Drop files in, get smaller ones back.
 
-For stills: supports JPG, PNG, WebP, AVIF, TIFF, and BMP. Outputs WebP, AVIF, or lossless PNG depending on your preference. For PDFs: shrink while preserving text and links, or flatten pages for maximum file size reduction. For video: export to MP4 with H.264 or HEVC and quality presets. Strips metadata (where applicable), respects max dimensions and file size targets for images, and saves next to the original by default.
+For stills: supports JPG, PNG, WebP, AVIF, TIFF, and BMP. Outputs WebP, AVIF, or lossless PNG depending on your preference. For video: export to MP4 with H.264 or HEVC and quality presets. For PDFs: shrink while preserving text and links, or flatten pages for maximum file size reduction. Strips metadata (where applicable), respects max dimensions and file size targets for images, and saves next to the original by default.
 
 <p align="center">
   <img src="site/screenshots/screenshot-drop-zone.webp" width="32%" alt="Drop zone idle state" />
@@ -16,7 +16,7 @@ Hey! I'm [Derek Castelli](https://www.heyderekj.com), a full-time freelance web 
 
 ## Features
 
-- **Drag and drop** — drop images, PDFs, or videos onto the window, the Dock icon, or the file picker
+- **Drag and drop** — drop images, videos, or PDFs onto the window, the Dock icon, or the file picker
 - **Clipboard compress** — paste a copied image straight into Dinky with ⌘⇧V
 - **Format conversion (images)** — Auto, WebP, AVIF, or lossless PNG; Auto picks the right format per image
 - **PDF compression** — preserve selectable text and links, or flatten pages to images for smaller files
@@ -65,7 +65,7 @@ Dinky takes a different approach for **images**: it converts to WebP, AVIF, or l
 
 Built entirely in Swift and SwiftUI, targeting macOS 15 Sequoia and later. On macOS 26 Tahoe you get the full liquid glass UI; on Sequoia it uses the frosted material fallback. No Electron, no web views, no third-party UI frameworks, no SPM dependencies. The whole app is ~14 MB, appropriately dinky.
 
-Compression runs through a native `actor`-based service. **Images** use bundled CLI encoders (cwebp, avifenc, oxipng). **PDFs** use PDFKit. **Video** uses AVFoundation export. Multiple files can run concurrently according to your batch speed setting.
+Compression runs through a native `actor`-based service. **Images** use bundled CLI encoders (cwebp, avifenc, oxipng). **Video** uses AVFoundation export. **PDFs** use PDFKit. Multiple files can run concurrently according to your batch speed setting.
 
 The sidebar stores preferences via `@AppStorage`. The results list updates live as each file finishes. Error details are tappable. The idle animation on the drop zone runs through three choreographed variants then holds — portrait, landscape, and wide cards dragged in by a pinch cursor from whatever corner the window is closest to.
 

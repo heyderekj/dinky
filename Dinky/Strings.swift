@@ -2,6 +2,13 @@
 
 import Foundation
 
+/// One row for Settings → Shortcuts and any in-app reference lists.
+struct KeyboardShortcutReference: Identifiable {
+    let title: String
+    let keys: String
+    var id: String { title }
+}
+
 extension Notification.Name {
     static let dinkyOpenPanel     = Notification.Name("dinkyOpenPanel")
     static let dinkyOpenFiles     = Notification.Name("dinkyOpenFiles")
@@ -10,6 +17,10 @@ extension Notification.Name {
     static let dinkyShowHistory     = Notification.Name("dinkyShowHistory")
     /// `object` is `PreferencesTab.rawValue` (Int)
     static let dinkySelectPreferencesTab = Notification.Name("dinkySelectPreferencesTab")
+    static let dinkyClearAll            = Notification.Name("dinkyClearAll")
+    static let dinkyToggleSidebar       = Notification.Name("dinkyToggleSidebar")
+    static let dinkyDeleteSelectedRows  = Notification.Name("dinkyDeleteSelectedRows")
+    static let dinkyStartCompression    = Notification.Name("dinkyStartCompression")
 }
 
 enum S {
@@ -25,7 +36,7 @@ enum S {
         "In big. Out dinky.",
         "Dinkify your files.",
         "Get dinky with it.",
-        "Images, PDFs, videos — all dinky.",
+        "Images, videos, PDFs — all dinky.",
     ]
     static func dropIdle(loop: Int) -> String {
         dropIdleTaglines[loop % dropIdleTaglines.count]
@@ -59,7 +70,7 @@ enum S {
     /// Wording matches the marketing site (“Fast / Fastest”) with a middle **Faster** step.
     static let concurrentCompressionPickerLabel = "Batch speed"
     static let concurrentCompressionFootnote =
-        "How many files crunch at once — not PDF/video/image quality. Fast is gentle; Fastest clears the queue sooner if your Mac is up for it."
+        "How many files crunch at once — not image, video, or PDF quality. Fast is gentle; Fastest clears the queue sooner if your Mac is up for it."
 
     static func concurrentCompressionTierOption(limit: Int) -> String {
         switch limit {
@@ -87,4 +98,29 @@ enum S {
 
     /// Shown in About, Settings, and linked with `mailto:`.
     static let supportEmail = "help@dinkyfiles.com"
+
+    // Paste from clipboard
+    static let pasteEmptyTitle = "Nothing to paste"
+    static let pasteEmptyMessage = "Copy a supported file in Finder, or copy an image (PNG or TIFF), then try again."
+    static let pasteDuplicateTitle = "Already in the list"
+    static let pasteDuplicateMessage = "That file is already queued — drop something new or clear the list first."
+
+    // Settings → Shortcuts (keep in sync with `DinkyApp` menu commands + standard Help / Settings)
+    static let shortcutsTabServicesFooter =
+        "Assign shortcuts for Finder’s “Compress with Dinky” in System Settings → Keyboard → Keyboard Shortcuts → Services."
+    static let shortcutsTabHelpFooter =
+        "For watch folders, presets, and full troubleshooting, open Dinky Help from the Help menu (⌘?)."
+    static let shortcutsAppDescription =
+        "Dinky exposes a Compress Images action to the Shortcuts app. Use it to pipe files from Finder or other actions through Dinky with a chosen format — same engine as in-app compression (Smart quality, resize, and metadata follow Settings)."
+
+    static let keyboardShortcutReference: [KeyboardShortcutReference] = [
+        .init(title: "Open Files…", keys: "⌘O"),
+        .init(title: "Compress from Clipboard", keys: "⌘⇧V"),
+        .init(title: "Compress Now", keys: "⌘↩"),
+        .init(title: "Clear All", keys: "⌘⌥K"),
+        .init(title: "Toggle Sidebar", keys: "⌘⇧\\"),
+        .init(title: "Delete Selected", keys: "⌘⌫"),
+        .init(title: "Settings", keys: "⌘,"),
+        .init(title: "Dinky Help", keys: "⌘?"),
+    ]
 }

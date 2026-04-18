@@ -36,6 +36,7 @@ enum PreferencesTab: Int, CaseIterable, Hashable {
     case output = 1
     case watch = 2
     case presets = 3
+    case shortcuts = 4
 
     static let pendingTabUserDefaultsKey = "prefs.pendingTab"
 
@@ -78,6 +79,9 @@ struct PreferencesView: View {
                 .tabItem { Label("Presets", systemImage: "slider.horizontal.3") }
                 .tag(PreferencesTab.presets)
                 .environmentObject(prefs)
+            ShortcutsTab()
+                .tabItem { Label("Shortcuts", systemImage: "keyboard") }
+                .tag(PreferencesTab.shortcuts)
         }
         .environment(\.openPreferencesRelatedTab, { selectedTab = $0 })
         .frame(width: 480, height: 520)
@@ -99,6 +103,7 @@ struct PreferencesView: View {
 private struct GeneralTab: View {
     @EnvironmentObject var prefs: DinkyPreferences
     @EnvironmentObject var updater: UpdateChecker
+    @State private var confirmResetLifetime = false
 
     var body: some View {
         Form {
@@ -135,7 +140,7 @@ private struct GeneralTab: View {
                     Text("10%").tag(10)
                 }
                 .pickerStyle(.segmented)
-                Text("Applies to images, PDFs, and videos. Skip files where savings fall below this threshold.")
+                Text("Applies to images, videos, and PDFs. Skip files where savings fall below this threshold.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -191,13 +196,25 @@ private struct GeneralTab: View {
                 .foregroundStyle(Color.accentColor)
             }
 
+            Section {
+                Button("Reset total saved statistics…") {
+                    confirmResetLifetime = true
+                }
+                .disabled(prefs.lifetimeSavedBytes == 0)
+                Text("Clears the running total shown in History. Session history is unchanged — clear that from the History window.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("Statistics")
+            }
+
             // 4. Sidebar
             Section {
                 Toggle("Use simple sidebar", isOn: Binding(
                     get: { prefs.sidebarSimpleMode },
                     set: { prefs.applySidebarSimpleMode($0) }
                 ))
-                Text("On by default: quick choices and plain-language summaries. Turn off to show every image, PDF, and video control in the sidebar.")
+                Text("On by default: quick choices and plain-language summaries. Turn off to show every image, video, and PDF control in the sidebar.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -238,6 +255,7 @@ private struct GeneralTab: View {
             }
 
             Section {
+                PreferencesRelatedTabLink(title: "Keyboard shortcuts…", tab: .shortcuts)
                 Link(S.supportEmail, destination: URL(string: "mailto:\(S.supportEmail)")!)
             } header: {
                 Text("Support")
@@ -245,6 +263,18 @@ private struct GeneralTab: View {
         }
         .formStyle(.grouped)
         .padding(.top, 8)
+        .confirmationDialog(
+            "Reset the running total of bytes saved across all sessions?",
+            isPresented: $confirmResetLifetime,
+            titleVisibility: .visible
+        ) {
+            Button("Reset", role: .destructive) {
+                prefs.lifetimeSavedBytes = 0
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This does not clear the per-session list in History.")
+        }
     }
 
     private func requestNotificationAuth() {
@@ -354,9 +384,9 @@ private struct OutputTab: View {
 
 // MARK: - Presets
 
-/// Sub-panel when **Applies to** is All (Image / PDF / Video); ignored for single-type presets.
+/// Sub-panel when **Applies to** is All (Image / Video / PDF); ignored for single-type presets.
 private enum PresetMediaSettingsTab: String, CaseIterable, Identifiable {
-    case image, pdf, video
+    case image, video, pdf
     var id: String { rawValue }
 }
 
@@ -481,8 +511,8 @@ private struct PresetsTab: View {
                 if presetMediaScope(for: snapshot) == .all {
                     Picker("Manual compression", selection: $presetMediaSettingsTab) {
                         Text("Image").tag(PresetMediaSettingsTab.image)
-                        Text("PDF").tag(PresetMediaSettingsTab.pdf)
                         Text("Video").tag(PresetMediaSettingsTab.video)
+                        Text("PDF").tag(PresetMediaSettingsTab.pdf)
                     }
                     .labelsHidden()
                     .pickerStyle(.segmented)
@@ -492,13 +522,13 @@ private struct PresetsTab: View {
                 switch effectiveMediaTab(for: snapshot) {
                 case .image:
                     ContentTypeChipPicker(contentTypeHintRaw: binding(\.contentTypeHintRaw, snapshot: snapshot))
-                case .pdf:
-                    presetManualCompressionPDFControls(snapshot)
                 case .video:
                     presetManualCompressionVideoControls(snapshot)
+                case .pdf:
+                    presetManualCompressionPDFControls(snapshot)
                 }
             } else {
-                Text("Adjusts compression from each file: image encoding from content, PDF tier from the document, video strength from resolution and bitrate.")
+                Text("Adjusts compression from each file: image encoding from content, video strength from resolution and bitrate, PDF tier from the document.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -512,8 +542,8 @@ private struct PresetsTab: View {
             if presetMediaScope(for: snapshot) == .all {
                 Picker("Media settings", selection: $presetMediaSettingsTab) {
                     Text("Image").tag(PresetMediaSettingsTab.image)
-                    Text("PDF").tag(PresetMediaSettingsTab.pdf)
                     Text("Video").tag(PresetMediaSettingsTab.video)
+                    Text("PDF").tag(PresetMediaSettingsTab.pdf)
                 }
                 .labelsHidden()
                 .pickerStyle(.segmented)
@@ -523,10 +553,10 @@ private struct PresetsTab: View {
             switch effectiveMediaTab(for: snapshot) {
             case .image:
                 presetImageControls(snapshot)
-            case .pdf:
-                presetPDFControls(snapshot)
             case .video:
                 presetVideoControls(snapshot)
+            case .pdf:
+                presetPDFControls(snapshot)
             }
         } header: {
             Text("Media")
@@ -996,5 +1026,87 @@ private struct WatchFolderPresetRow: View {
                 prefs.savedPresets = list
             }
         )
+    }
+}
+
+// MARK: - Shortcuts
+
+private struct ShortcutsTab: View {
+    var body: some View {
+        Form {
+            Section {
+                ForEach(S.keyboardShortcutReference) { row in
+                    HStack(spacing: 12) {
+                        Text(row.title)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        Spacer(minLength: 12)
+                        KeyComboView(combo: row.keys)
+                    }
+                    .padding(.vertical, 2)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(row.title), \(row.keys)")
+                }
+            } header: {
+                Text("Menu commands")
+            } footer: {
+                Text(S.shortcutsTabServicesFooter)
+                    .font(.caption)
+            }
+
+            Section {
+                Text(S.shortcutsAppDescription)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("Shortcuts app")
+            }
+
+            Section {
+                Text(S.shortcutsTabHelpFooter)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("More help")
+            }
+        }
+        .formStyle(.grouped)
+        .padding(.top, 8)
+    }
+}
+
+/// Renders a compact key combo like `⌘⇧V` as individual keycaps.
+private struct KeyComboView: View {
+    let combo: String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(Array(combo.enumerated()), id: \.offset) { _, ch in
+                KeyCapView(label: String(ch))
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+/// A single keycap, sized to its content but with a uniform minimum so modifier glyphs and letters line up.
+private struct KeyCapView: View {
+    let label: String
+
+    var body: some View {
+        Text(label)
+            .font(.system(size: 12, weight: .medium, design: .rounded))
+            .monospacedDigit()
+            .foregroundStyle(.primary)
+            .frame(minWidth: 22, minHeight: 22)
+            .padding(.horizontal, 5)
+            .background(
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(Color.primary.opacity(0.06))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .stroke(Color.primary.opacity(0.10), lineWidth: 0.5)
+            )
     }
 }
