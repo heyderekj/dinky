@@ -4,10 +4,10 @@
 
 A tiny macOS app for **images**, **PDFs**, and **videos**. Convert stills to WebP, AVIF, or lossless PNG; shrink PDFs while keeping text and links or flatten pages for maximum savings; export video to smaller MP4 with **H.264** or **HEVC**. Drag and drop, get smaller files back. Free and open source.
 
-- **Download:** [Dinky for macOS (DMG)](https://github.com/heyderekj/dinky/releases/download/v1.6.3/Dinky-1.6.3.dmg)
+- **Download:** [Dinky for macOS (DMG)](https://github.com/heyderekj/dinky/releases/download/v2.0.0/Dinky-2.0.0.dmg)
 - **Source:** [GitHub — heyderekj/dinky](https://github.com/heyderekj/dinky)
 - **Support:** [help@dinkyfiles.com](mailto:help@dinkyfiles.com)
-- **Version:** ~14 MB · v1.6.3 · Requires macOS 15 Sequoia or later
+- **Version:** ~14 MB · v2.0.0 · Requires macOS 15 Sequoia or later
 
 ## Highlights
 
