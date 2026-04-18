@@ -82,7 +82,9 @@ actor CompressionService {
         outputURL: URL,
         moveToTrash: Bool = false,
         smartQuality: Bool = false,
-        contentTypeHint: String = "auto"
+        contentTypeHint: String = "auto",
+        /// When Smart Quality is on and the caller already classified (e.g. Auto format), skip a second Vision pass.
+        preclassifiedContent: ContentType? = nil
     ) async throws -> CompressionResult {
         let originalSize = fileSize(source)
 
@@ -96,18 +98,21 @@ actor CompressionService {
         let isTempWork = workURL != source
         defer { if isTempWork { try? FileManager.default.removeItem(at: workURL) } }
 
-        // Step 2: classify for Smart Quality. Always classify the original —
-        // resizing doesn't meaningfully change content type and keeps EXIF intact.
-        // smartQuality ON = auto-detect per image. OFF = use explicit hint, or nil (no adjustment).
-        let detected: ContentType? = {
-            if smartQuality { return ContentClassifier.classify(source) }
+        // Step 2: classify for Smart Quality on the **original** URL (EXIF intact).
+        // Off-actor so Vision/pixel work doesn't serialize on this actor.
+        let detected: ContentType?
+        if smartQuality, let preclassifiedContent {
+            detected = preclassifiedContent
+        } else if smartQuality {
+            detected = await Task.detached { ContentClassifier.classify(source) }.value
+        } else {
             switch contentTypeHint {
-            case "photo": return .photo
-            case "ui":    return .ui
-            case "mixed": return .mixed
-            default:      return nil
+            case "photo": detected = .photo
+            case "ui":    detected = .ui
+            case "mixed": detected = .mixed
+            default:      detected = nil
             }
-        }()
+        }
 
         // Step 3: compress — lossless formats skip quality targeting
         if format == .png {
@@ -161,8 +166,13 @@ actor CompressionService {
             return source  // already within limit, skip resize
         }
 
-        let ext    = ["jpg", "jpeg", "png", "tiff"].contains(source.pathExtension.lowercased())
-                     ? source.pathExtension : "jpg"
+        // WebP / AVIF / BMP (etc.) must not round-trip through JPEG — use lossless TIFF.
+        let ext: String
+        if ["jpg", "jpeg", "png", "tiff"].contains(source.pathExtension.lowercased()) {
+            ext = source.pathExtension
+        } else {
+            ext = "tiff"
+        }
         let tmpURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("dinky_resize_\(UUID().uuidString)")
             .appendingPathExtension(ext)
@@ -180,9 +190,39 @@ actor CompressionService {
         qualityFloor: Int = 10,
         content: ContentType?
     ) async throws {
+        let fm = FileManager.default
+
+        // UI + WebP: binary-search `-near_lossless` (40…100) before lossy `-q`.
+        // Higher values = closer to lossless = larger files; we maximize nl that still fits the cap.
+        if format == .webp, content == .ui {
+            var nlLo = 40, nlHi = 100
+            var bestURL: URL?
+            while nlLo <= nlHi {
+                let mid = (nlLo + nlHi) / 2
+                let tmp = fm.temporaryDirectory
+                    .appendingPathComponent("dinky_nl\(mid)_\(UUID().uuidString)")
+                    .appendingPathExtension(format.outputExtension)
+                try await runCwebp(
+                    source: source, quality: 100, strip: strip, output: tmp,
+                    content: content, nearLossless: mid
+                )
+                if fileSize(tmp) <= targetBytes {
+                    if let prev = bestURL { try? fm.removeItem(at: prev) }
+                    bestURL = tmp
+                    nlLo = mid + 1
+                } else {
+                    try? fm.removeItem(at: tmp)
+                    nlHi = mid - 1
+                }
+            }
+            if let best = bestURL {
+                try fm.moveItem(at: best, to: output)
+                return
+            }
+        }
+
         var lo = qualityFloor, hi = 92
         var bestURL: URL?
-        let fm = FileManager.default
 
         while lo <= hi {
             let mid = (lo + hi) / 2
@@ -256,11 +296,11 @@ actor CompressionService {
         let qAlpha = String(min(quality + 10, 100))
         var args: [String]
         switch content {
-        case .photo:  args = ["--speed", "4", "--yuv", "420", "--jobs", "all", "--qcolor", qColor, "--qalpha", qAlpha]
+        case .photo:  args = ["--speed", "4", "--yuv", "420", "--depth", "10", "--jobs", "all", "--qcolor", qColor, "--qalpha", qAlpha]
         // UI: 4:4:4 keeps color edges sharp (no chroma subsampling).
         // Speed 4 (slower than the default 6) noticeably improves text crispness.
         case .ui:     args = ["--speed", "4", "--yuv", "444", "--jobs", "all", "--qcolor", qColor, "--qalpha", qAlpha]
-        case .mixed:  args = ["--speed", "5", "--yuv", "422", "--jobs", "all", "--qcolor", qColor, "--qalpha", qAlpha]
+        case .mixed:  args = ["--speed", "5", "--yuv", "422", "--depth", "10", "--jobs", "all", "--qcolor", qColor, "--qalpha", qAlpha]
         case .none:   args = ["--speed", "5", "--yuv", "420", "--jobs", "all", "--qcolor", qColor, "--qalpha", qAlpha]
         }
         if strip { args += ["--ignore-exif", "--ignore-xmp"] }

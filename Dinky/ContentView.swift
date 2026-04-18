@@ -284,10 +284,12 @@ final class ContentViewModel: ObservableObject {
         let strip = preset?.stripMetadata ?? prefs.stripMetadata
 
         var format = item.formatOverride ?? preset?.format ?? selectedFormat
+        var preclassifiedForSmartQ: ContentType? = nil
         if autoFmt, item.formatOverride == nil {
             let ct = ContentClassifier.classify(item.sourceURL)
             await MainActor.run { item.detectedContentType = ct }
             format = ct == .photo ? .avif : .webp
+            if smartQ { preclassifiedForSmartQ = ct }
         }
 
         if format == .png && item.sourceURL.pathExtension.lowercased() != "png" {
@@ -310,7 +312,8 @@ final class ContentViewModel: ObservableObject {
                 outputURL: outputURL,
                 moveToTrash: prefs.moveOriginalsToTrash,
                 smartQuality: smartQ,
-                contentTypeHint: hint
+                contentTypeHint: hint,
+                preclassifiedContent: preclassifiedForSmartQ
             )
             let savings = result.originalSize > 0
                 ? Double(result.originalSize - result.outputSize) / Double(result.originalSize) : 0

@@ -5,8 +5,9 @@
 // Signals, in order of confidence:
 //   1. EXIF/TIFF metadata (camera make/model, FNumber, ExposureTime) → photo
 //   2. Screenshot metadata hints (macOS / iOS screenshots add specific keys) → UI
-//   3. Vision text-rect detection — >18% text coverage → UI
-//   4. Pixel heuristics (unique-color count + flat-region ratio) → fallback
+//   3. Pixel sample on thumbnail — strong photo (many colors, low flatness) → photo (skip Vision)
+//   4. Vision text-rect detection — >18% text coverage → UI
+//   5. Pixel heuristics (unique-color count + flat-region ratio) → fallback
 //
 // All signals use Apple frameworks only (ImageIO, Vision, CoreGraphics).
 // No SPM/CocoaPods dependencies. Dinky stays dinky.
@@ -53,24 +54,26 @@ enum ContentClassifier {
         // Need a thumbnail for the remaining signals.
         guard let cg = makeThumbnail(url: url, maxPixel: 384) else { return .mixed }
 
-        // Signal 2: Vision text detection. UI/screenshots almost always carry
-        // a significant text region; photos rarely do.
+        let stats = sample(cgImage: cg)
+        if let stats {
+            // Strong photo signal: lots of unique colors + barely any flat regions — skip Vision.
+            if stats.uniqueColors > 10_000, stats.flatRatio < 0.10 {
+                return .photo
+            }
+        }
+
+        // Vision text detection. UI/screenshots almost always carry a significant text region.
         let textCoverage = detectTextCoverage(cgImage: cg)
         if textCoverage > 0.18 {
             return .ui
         }
 
-        // Signal 3: pixel heuristics (unique colors + flat regions).
-        if let stats = sample(cgImage: cg) {
+        if let stats {
             let (uniqueColors, flatRatio) = stats
 
             // Strong UI signal: few colors + large flat regions.
             if uniqueColors < 1_200, flatRatio > 0.30 {
                 return .ui
-            }
-            // Strong photo signal: lots of unique colors + barely any flat regions.
-            if uniqueColors > 10_000, flatRatio < 0.10 {
-                return .photo
             }
             // Weak UI: some text-ish regions even without Vision hit.
             if textCoverage > 0.08, flatRatio > 0.20 {

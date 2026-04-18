@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import PDFKit
 import CoreGraphics
 import ImageIO
@@ -121,7 +122,7 @@ enum PDFCompressor {
             let colorSpace = grayscale ? CGColorSpaceCreateDeviceGray() : CGColorSpaceCreateDeviceRGB()
             let bitmapInfo = grayscale
                 ? CGImageAlphaInfo.none.rawValue
-                : CGImageAlphaInfo.premultipliedLast.rawValue
+                : CGImageAlphaInfo.noneSkipLast.rawValue
             guard let ctx = CGContext(
                 data: nil,
                 width: pixelWidth,
@@ -143,19 +144,17 @@ enum PDFCompressor {
 
             guard let cgImage = ctx.makeImage() else { continue }
 
-            // Re-encode as JPEG into a temp file, then load back as PDFPage
-            let tmpURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent("dinky_pdf_p\(i)_\(UUID().uuidString).jpg")
-            defer { try? FileManager.default.removeItem(at: tmpURL) }
-
-            guard let dest = CGImageDestinationCreateWithURL(tmpURL as CFURL, "public.jpeg" as CFString, 1, nil) else {
+            // JPEG in memory — avoids disk + extra color-management roundtrip through `NSImage(contentsOf:)`.
+            let jpegData = NSMutableData()
+            guard let dest = CGImageDestinationCreateWithData(jpegData, "public.jpeg" as CFString, 1, nil) else {
                 continue
             }
             let opts: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: quality.jpegQuality]
             CGImageDestinationAddImage(dest, cgImage, opts as CFDictionary)
             guard CGImageDestinationFinalize(dest) else { continue }
 
-            guard let renderedPage = PDFPage(image: NSImage(contentsOf: tmpURL) ?? NSImage()) else { continue }
+            guard let nsImage = NSImage(data: jpegData as Data),
+                  let renderedPage = PDFPage(image: nsImage) else { continue }
             // Restore page bounds to original size (PDFPage from image defaults to pixel size at 72dpi)
             renderedPage.setBounds(bounds, for: .mediaBox)
             output.insert(renderedPage, at: output.pageCount)

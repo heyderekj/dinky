@@ -49,9 +49,13 @@ Hey! I'm [Derek Castelli](https://www.heyderekj.com), a full-time freelance web 
 ### What others don't do
 
 - **Actually changes the format (images)** — ImageOptim squeezes your JPEG and hands it back as a JPEG. Dinky converts to WebP, AVIF, or lossless PNG, which is where 30–80% of the real savings live. Optimage does this too, but costs money and weighs 62 MB.
+- **Images, videos, and PDFs in one app** — most "compression" apps stop at images. Dinky also re-encodes video to MP4 (H.264 or HEVC) with quality presets, and shrinks PDFs while keeping selectable text and links — or flattens them when you need the smallest possible file. One drop zone, three file types, same workflow.
 - **Results you can act on** — most compression apps give you a done screen you can't do anything with. Dinky's results list works like Finder: select files, drag them somewhere else, double-click to open, right-click to remove individual items.
-- **Notifications with a personality** — other apps either don't notify at all or send a generic "Done." Dinky's notification changes based on how many files you compressed and how long it took. Small things, but they add up.
-- **Free, open source, and tiny** — Optimage is $15. ImageOptim is free but lossless only. Dinky is free, open source, converts formats, and at ~16 MB fits in a fraction of the space either of them takes up.
+- **Watch folders that actually fit a workflow** — point Dinky at a folder and new files get compressed automatically. Global, or per-preset with its own folder, format, and destination — so screenshots, client video exports, and PDF receipts can all land in different places and come out optimized.
+- **Presets for everything, not just quality** — save format, quality, max width, max file size, destination, watch folder, and filename rules together, then apply in one click. Different presets for blog images, social video, and CMS PDFs without touching settings each time.
+- **Notifications with a personality** — other apps either don't notify at all or send a generic "Done." Dinky's notification (and chime) changes based on how many files you compressed and how much you saved. Small things, but they add up.
+- **Built into macOS** — Finder Quick Action, "Open with" handler, clipboard paste with ⌘⇧V, Dock-icon drops, and a native Apple Shortcuts action for automations. No browser tab, no upload, nothing leaves your Mac.
+- **Free, open source, and tiny** — Optimage is $15 and image-only. ImageOptim is free but lossless and image-only. Dinky is free, open source, handles images + video + PDFs, converts formats, and at ~16 MB fits in a fraction of the space either of them takes up.
 
 ## Why it exists
 

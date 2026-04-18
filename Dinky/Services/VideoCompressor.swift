@@ -196,7 +196,17 @@ enum VideoCompressor {
         if !usePassthrough, originalBytes > 0 {
             let factor = quality.targetSizeFactor(for: codec)
             let target = Int64(Double(originalBytes) * factor)
-            let bounded = max(Int64(512 * 1024), min(originalBytes - 1024, target))
+            var bounded = max(Int64(512 * 1024), min(originalBytes - 1024, target))
+            if let minBytes = try await minimumFileLengthLimitBytes(
+                quality: quality,
+                codec: codec,
+                videoTrack: videoTrack,
+                duration: duration
+            ) {
+                bounded = max(bounded, minBytes)
+            }
+            bounded = min(bounded, originalBytes - 1024)
+            bounded = max(Int64(512 * 1024), bounded)
             session.fileLengthLimit = bounded
         }
 
@@ -232,6 +242,37 @@ enum VideoCompressor {
         }
     }
 
+    /// Prevents ultra-low bitrates on busy 1080p+ footage when `fileLengthLimit` is very tight (especially HEVC low).
+    private static func minimumFileLengthLimitBytes(
+        quality: VideoQuality,
+        codec: VideoCodecFamily,
+        videoTrack: AVAssetTrack,
+        duration: CMTime
+    ) async throws -> Int64? {
+        guard quality == .low else { return nil }
+        let seconds = CMTimeGetSeconds(duration)
+        guard seconds > 0, seconds.isFinite else { return nil }
+
+        let size = try await videoTrack.load(.naturalSize)
+        let transform = try await videoTrack.load(.preferredTransform)
+        let transformed = size.applying(transform)
+        let w = abs(transformed.width)
+        let h = abs(transformed.height)
+        guard w >= 1, h >= 1 else { return nil }
+
+        var fps = Double(try await videoTrack.load(.nominalFrameRate))
+        if fps <= 0 || !fps.isFinite { fps = 30 }
+
+        let pixelsPerSecond = Double(w * h) * fps
+        let bppFloor: Double
+        switch codec {
+        case .hevc: bppFloor = 0.04
+        case .h264: bppFloor = 0.08
+        }
+        let minBitrate = pixelsPerSecond * bppFloor
+        return Int64(ceil((minBitrate * seconds) / 8.0))
+    }
+
     private static func codecMatchesTarget(_ sub: CMVideoCodecType?, target: VideoCodecFamily) -> Bool {
         guard let sub else { return false }
         switch target {
@@ -255,6 +296,9 @@ enum VideoCompressor {
         if removeAudio { return false }
 
         if codec == .hevc, quality != .low, isHEVC {
+            if estimatedRate > 0, Double(estimatedRate) >= quality.skipIfEstimatedBitrateBelow * 1.5 {
+                return false
+            }
             return true
         }
 
