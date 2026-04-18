@@ -9,5 +9,8 @@ build/
 *.dSYM
 *.dmg
 
+# Release archives — host on GitHub Releases, not in the repo
+Dinky-*.zip
+
 # Local Netlify folder
 .netlify
