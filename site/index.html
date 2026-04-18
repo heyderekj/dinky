@@ -229,7 +229,7 @@
       flex-direction: column;
       gap: 16px;
       width: 100%;
-      max-width: 1100px;
+      max-width: 960px;
       margin-top: 32px;
       padding: 0 8px;
     }
@@ -257,6 +257,14 @@
       width: 100%;
       height: auto;
       align-self: center;
+    }
+
+    /* Multi-feature rows: narrower max-width so the square screenshot isn't enormous */
+    .ss-row:not(:has(.ss-card.is-hero)) {
+      max-width: 760px;
+      margin-left: auto;
+      margin-right: auto;
+      width: 100%;
     }
 
     .ss-shot {
@@ -628,7 +636,7 @@
     /* Comparison */
     .comparison {
       width: 100%;
-      max-width: 1100px;
+      max-width: 960px;
       margin-top: 80px;
     }
     .cmp-row {
