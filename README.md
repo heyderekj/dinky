@@ -103,21 +103,3 @@ xattr -dr com.apple.quarantine /Applications/Dinky.app
 ```
 
 Updating Dinky is one click — no browser, no re-drag, no quarantine step. A banner appears when a new version is out; click **Install Update** and the app downloads, installs, and relaunches on its own.
-
-## Agent discovery (dinkyfiles.com)
-
-The marketing site is a static Netlify deploy. These URLs are intentional for crawlers and tools:
-
-| URL | Role |
-|-----|------|
-| [https://dinkyfiles.com/robots.txt](https://dinkyfiles.com/robots.txt) | Crawl rules, AI bot entries, Content-Signals, sitemap pointer |
-| [https://dinkyfiles.com/sitemap.xml](https://dinkyfiles.com/sitemap.xml) | Canonical URL list |
-| [https://dinkyfiles.com/.well-known/api-catalog](https://dinkyfiles.com/.well-known/api-catalog) | RFC 9727 linkset (no public HTTP API; see `openapi.yaml`) |
-| [https://dinkyfiles.com/openapi.yaml](https://dinkyfiles.com/openapi.yaml) | Empty OpenAPI document describing “desktop app only” |
-| [https://dinkyfiles.com/.well-known/agent-skills/index.json](https://dinkyfiles.com/.well-known/agent-skills/index.json) | Agent Skills discovery index |
-| [https://dinkyfiles.com/llms.txt](https://dinkyfiles.com/llms.txt) | Concise product summary for LLMs |
-| [https://dinkyfiles.com/homepage.md](https://dinkyfiles.com/homepage.md) | Markdown homepage mirror |
-
-Requests to `/` with `Accept: text/markdown` receive `homepage.md` with `Content-Type: text/markdown` (Netlify Edge Function).
-
-There is **no** OAuth/OIDC issuer, **no** protected HTTP API, and **no** hosted MCP server on this domain — so discovery documents for those are intentionally **not** published. If that changes later, add the appropriate `/.well-known` metadata only when real endpoints exist.
