@@ -842,6 +842,16 @@
       color: var(--brand);
     }
 
+    .cmp-label-cell,
+    .comparison-table thead th:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      background: var(--faq-row-even);
+    }
+    .comparison-table tbody tr:hover .cmp-label-cell {
+      background: var(--row-hover);
+    }
     .cmp-label-cell {
       text-align: left !important;
       padding-left: 24px !important;
