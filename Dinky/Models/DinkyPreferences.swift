@@ -284,6 +284,12 @@ final class DinkyPreferences: ObservableObject {
     @AppStorage("lastUpdateCheck")         var lastUpdateCheck: Double = 0
     @AppStorage("dismissedUpdateVersion")  var dismissedUpdateVersion: String = ""
 
+    // MARK: Diagnostics
+    /// Opt-in switch for receiving Apple's MetricKit crash diagnostics in-process.
+    /// Off by default to keep Dinky's "no telemetry" promise — even when on, nothing
+    /// leaves the Mac unless the user clicks Send in the post-crash sheet.
+    @AppStorage("crashReportingEnabled") var crashReportingEnabled: Bool = false
+
     // MARK: Keyboard shortcuts (customizable menu commands)
 
     @AppStorage("shortcut.openFiles") private var shortcutOpenFilesData: Data = Data()

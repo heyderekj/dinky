@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct ResultsRowView: View {
@@ -23,7 +24,7 @@ struct ResultsRowView: View {
                         .help(type.tooltipLabel)
                 } else if item.mediaType == .pdf, let pages = item.pageCount {
                     mediaChip("\(pages)p")
-                        .help("\(pages) pages")
+                        .help(String(localized: "\(pages) pages", comment: "Tooltip: PDF page count."))
                 } else if item.mediaType == .video {
                     if let type = item.detectedVideoContentType {
                         videoContentTypeChip(type)
@@ -35,11 +36,11 @@ struct ResultsRowView: View {
                         hdrBadge
                             .transition(.opacity.combined(with: .scale(scale: 0.9)))
                             .fixedSize()
-                            .help("HDR source — preserved with HEVC so highlights and color stay intact.")
+                            .help(String(localized: "HDR source — preserved with HEVC so highlights and color stay intact.", comment: "Tooltip for HDR badge."))
                     }
                     if let secs = item.videoDuration {
                         mediaChip(formattedDuration(secs))
-                            .help("Duration")
+                            .help(String(localized: "Duration", comment: "Tooltip for video duration chip."))
                     }
                 }
 
@@ -74,7 +75,7 @@ struct ResultsRowView: View {
         .padding(.vertical, 9)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityRowLabel)
-        .accessibilityHint("Double-click to open in the default app. Drag the row to move the file.")
+        .accessibilityHint(String(localized: "Double-click to open in the default app. Drag the row to move the file.", comment: "VoiceOver hint for result row."))
         .onHover { isHovering = $0 }
         .sheet(isPresented: $showingError) {
             if case .failed(let error) = item.status {
@@ -161,7 +162,7 @@ struct ResultsRowView: View {
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(.secondary)
             } else {
-                Text("—")
+                Text(String(localized: "—", comment: "Em dash when download size unknown."))
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(.tertiary)
             }
@@ -179,8 +180,8 @@ struct ResultsRowView: View {
     private var statusChip: some View {
         switch item.status {
         case .pending:
-            chip("Queued", color: .secondary.opacity(0.35), fg: .primary)
-                .help("Waiting to compress")
+            chip(String(localized: "Queued", comment: "Status chip: file waiting."), color: .secondary.opacity(0.35), fg: .primary)
+                .help(String(localized: "Waiting to compress", comment: "Tooltip for queued chip."))
 
         case .downloading(let progress, _, let totalBytes, let displayHost):
             HStack(spacing: 8) {
@@ -194,7 +195,7 @@ struct ResultsRowView: View {
                 } else {
                     ProgressView()
                         .scaleEffect(0.65)
-                    Text("Fetching")
+                    Text(String(localized: "Fetching", comment: "Download status indeterminate size."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -206,9 +207,9 @@ struct ResultsRowView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .help("Cancel download")
+                .help(String(localized: "Cancel download", comment: "Tooltip for cancel download button."))
             }
-            .help("Downloading from \(displayHost)")
+            .help(String(localized: "Downloading from \(displayHost)", comment: "Tooltip; argument is host name."))
 
         case .processing:
             Group {
@@ -221,13 +222,13 @@ struct ResultsRowView: View {
                             .font(.caption2.monospacedDigit())
                             .foregroundStyle(.secondary)
                     }
-                    .help("Encoding video — \(Int((p * 100).rounded(.towardZero))) percent")
+                    .help(String(localized: "Encoding video — \(Int((p * 100).rounded(.towardZero))) percent", comment: "Tooltip; argument is percent."))
                 } else {
                     HStack(spacing: 5) {
                         ProgressView().scaleEffect(0.65)
-                        Text("Working")
+                        Text(String(localized: "Working", comment: "Compression in progress label."))
                     }
-                    .help("Compression in progress")
+                    .help(String(localized: "Compression in progress", comment: "Tooltip for processing row."))
                 }
             }
             .font(.caption)
@@ -247,13 +248,13 @@ struct ResultsRowView: View {
                             .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color.primary.opacity(0.08)))
                     }
                     .buttonStyle(.plain)
-                    .help("Preview before and after")
+                    .help(String(localized: "Preview before and after", comment: "Tooltip for preview button."))
                 }
 
                 Button {
                     NSWorkspace.shared.activateFileViewerSelecting([outputURL])
                 } label: {
-                    Text("Show in Finder")
+                    Text(String(localized: "Show in Finder", comment: "Button to reveal output in Finder."))
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
@@ -263,14 +264,14 @@ struct ResultsRowView: View {
                         .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color.primary.opacity(0.08)))
                 }
                 .buttonStyle(.plain)
-                .help("Reveal compressed file in Finder")
+                .help(String(localized: "Reveal compressed file in Finder", comment: "Tooltip for Show in Finder."))
             }
 
         case .skipped(let savedPercent, let threshold):
             Group {
                 if isHovering {
                     Button { onForceCompress() } label: {
-                        Text("Compress anyway")
+                        Text(String(localized: "Compress anyway", comment: "Force compress skipped file."))
                             .font(.caption.weight(.medium))
                             .foregroundStyle(.primary)
                             .lineLimit(1)
@@ -280,11 +281,11 @@ struct ResultsRowView: View {
                             .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color.primary.opacity(0.08)))
                     }
                     .buttonStyle(.plain)
-                    .help("Force compress even if savings are minimal")
+                    .help(String(localized: "Force compress even if savings are minimal", comment: "Tooltip."))
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
                 } else {
                     Button { showingSkippedInfo = true } label: {
-                        chip("Skipped", color: .secondary.opacity(0.35), fg: .primary)
+                        chip(String(localized: "Skipped", comment: "Status chip."), color: .secondary.opacity(0.35), fg: .primary)
                     }
                     .buttonStyle(.plain)
                     .help(skippedTooltip(savedPercent: savedPercent, threshold: threshold))
@@ -295,7 +296,7 @@ struct ResultsRowView: View {
 
         case .zeroGain(let attemptedSize):
             Button { showingZeroGainInfo = true } label: {
-                chip("No gain", color: .secondary.opacity(0.35), fg: .primary)
+                chip(String(localized: "No gain", comment: "Status chip: no size reduction."), color: .secondary.opacity(0.35), fg: .primary)
             }
             .buttonStyle(.plain)
             .help(zeroGainTooltip(originalSize: item.originalSize, attemptedSize: attemptedSize))
@@ -305,7 +306,7 @@ struct ResultsRowView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "exclamationmark.circle.fill")
                         .imageScale(.small)
-                    Text("Error")
+                    Text(String(localized: "Error", comment: "Failed compression button label."))
                 }
                 .font(.caption.weight(.medium))
                 .foregroundStyle(.white)
@@ -315,7 +316,7 @@ struct ResultsRowView: View {
             }
             .buttonStyle(.plain)
             .contentShape(Rectangle())
-            .help("Click to see error details")
+            .help(String(localized: "Click to see error details", comment: "Tooltip for error chip."))
         }
     }
 
@@ -377,7 +378,7 @@ struct ResultsRowView: View {
 
     /// Tinted "HDR" badge — slightly stronger than the muted chips so HDR preservation stands out.
     private var hdrBadge: some View {
-        Text("HDR")
+        Text(String(localized: "HDR", comment: "High dynamic range badge."))
             .font(.system(size: 9, weight: .bold))
             .foregroundStyle(Color.accentColor)
             .padding(.horizontal, 5)
@@ -388,25 +389,25 @@ struct ResultsRowView: View {
     }
 
 private func bytes(_ n: Int64) -> String {
-        String(format: "%.2f MB", Double(n) / 1_048_576)
+        String(format: String(localized: "%.2f MB", comment: "File size with megabytes unit."), Double(n) / 1_048_576)
     }
 
     // MARK: - Tooltips for skipped / no-gain chips
 
     private func skippedTooltip(savedPercent: Double?, threshold: Int) -> String {
         if let p = savedPercent {
-            return String(format: "Would only save %.1f%% (your threshold is %d%%). Click for details.", p, threshold)
+            return String(format: String(localized: "Would only save %.1f%% (your threshold is %d%%). Click for details.", comment: "Skipped tooltip."), p, threshold)
         }
-        return "Already optimized — encoder couldn't make it smaller. Click for details."
+        return String(localized: "Already optimized — encoder couldn't make it smaller. Click for details.", comment: "Skipped tooltip.")
     }
 
     private func zeroGainTooltip(originalSize: Int64, attemptedSize: Int64) -> String {
         let diff = attemptedSize - originalSize
         if diff > 0 {
-            return String(format: "Compressed version was %.2f MB larger. Original kept. Click for details.",
+            return String(format: String(localized: "Compressed version was %.2f MB larger. Original kept. Click for details.", comment: "Zero-gain tooltip."),
                           Double(diff) / 1_048_576)
         }
-        return "Compressed version wasn't smaller. Original kept. Click for details."
+        return String(localized: "Compressed version wasn't smaller. Original kept. Click for details.", comment: "Zero-gain tooltip.")
     }
 }
 
@@ -465,7 +466,7 @@ private struct ErrorDetailView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Compression Failed")
+                    Text(String(localized: "Compression Failed", comment: "Error sheet title."))
                         .font(.headline)
                     Text(filename)
                         .font(.caption)
@@ -502,13 +503,31 @@ private struct ErrorDetailView: View {
             Divider()
 
             // Footer
-            HStack {
-                Text("Tip: check that cwebp / avifenc are present in the app bundle.")
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Button(String(localized: "Email Error…", comment: "Send error by email.")) {
+                        NSWorkspace.shared.open(
+                            DiagnosticsReporter.emailURL(
+                                subject: String(localized: "Error — \(filename)", comment: "Email subject; argument is filename."),
+                                extraBody: error.localizedDescription
+                            )
+                        )
+                    }
+                    Button(String(localized: "GitHub Issue…", comment: "Open GitHub issue for error.")) {
+                        NSWorkspace.shared.open(
+                            DiagnosticsReporter.githubIssueURL(
+                                title: String(localized: "Error: \(filename)", comment: "Issue title; argument is filename."),
+                                extraBody: error.localizedDescription
+                            )
+                        )
+                    }
+                    Spacer()
+                    Button(String(localized: "Dismiss", comment: "Close sheet.")) { dismiss() }
+                        .keyboardShortcut(.defaultAction)
+                }
+                Text(String(localized: "Tip: check that cwebp / avifenc are present in the app bundle.", comment: "Error sheet footer."))
                     .font(.caption)
                     .foregroundStyle(.tertiary)
-                Spacer()
-                Button("Dismiss") { dismiss() }
-                    .keyboardShortcut(.defaultAction)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 14)
@@ -529,18 +548,18 @@ private struct SkippedDetailView: View {
 
     private var headlineText: String {
         if let p = savedPercent {
-            return String(format: "Would only save %.1f%%", p)
+            return String(format: String(localized: "Would only save %.1f%%", comment: "Skipped detail headline."), p)
         }
-        return "Already at minimum size"
+        return String(localized: "Already at minimum size", comment: "Skipped detail headline.")
     }
 
     private var bodyText: String {
         if let p = savedPercent {
             return String(format:
-                "Dinky compressed this file but the result was only %.1f%% smaller — under your %d%% threshold, so the original was kept.\n\nLower the threshold in Settings → General → Skip if savings below to compress files like this automatically, or click Compress Anyway to force this one.",
+                String(localized: "Dinky compressed this file but the result was only %.1f%% smaller — under your %d%% threshold, so the original was kept.\n\nLower the threshold in Settings → General → Skip if savings below to compress files like this automatically, or click Compress Anyway to force this one.", comment: "Skipped detail body."),
                 p, threshold)
         }
-        return "The encoder couldn't make this file any smaller. It's likely already optimized for its format.\n\nForcing compression won't help here, but you can try a different format (e.g. WebP or AVIF) from the sidebar."
+        return String(localized: "The encoder couldn't make this file any smaller. It's likely already optimized for its format.\n\nForcing compression won't help here, but you can try a different format (e.g. WebP or AVIF) from the sidebar.", comment: "Skipped detail body.")
     }
 
     var body: some View {
@@ -593,10 +612,10 @@ private struct SkippedDetailView: View {
 
             HStack {
                 if savedPercent != nil {
-                    Button("Compress Anyway") { onForceCompress() }
+                    Button(String(localized: "Compress Anyway", comment: "Force compress from sheet.")) { onForceCompress() }
                 }
                 Spacer()
-                Button("Dismiss") { dismiss() }
+                Button(String(localized: "Dismiss", comment: "Close sheet.")) { dismiss() }
                     .keyboardShortcut(.defaultAction)
             }
             .padding(.horizontal, 20)
@@ -619,9 +638,9 @@ private struct ZeroGainDetailView: View {
         let diff = attemptedSize - originalSize
         let mb = Double(abs(diff)) / 1_048_576
         if diff > 0 {
-            return String(format: "%.2f MB larger", mb)
+            return String(format: String(localized: "%.2f MB larger", comment: "Comparison: output larger than original."), mb)
         }
-        return "the same size"
+        return String(localized: "the same size", comment: "Comparison: file sizes equal.")
     }
 
     var body: some View {
@@ -637,7 +656,7 @@ private struct ZeroGainDetailView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("No size gain").font(.headline)
+                    Text(String(localized: "No size gain", comment: "Zero-gain sheet title.")).font(.headline)
                     Text(filename)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -661,12 +680,12 @@ private struct ZeroGainDetailView: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
-                    sizePill("Original", value: bytes(originalSize))
+                    sizePill(String(localized: "Original", comment: "Size pill label."), value: bytes(originalSize))
                     Image(systemName: "arrow.right").foregroundStyle(.tertiary)
-                    sizePill("Compressed", value: bytes(attemptedSize), highlight: true)
+                    sizePill(String(localized: "Compressed", comment: "Size pill label."), value: bytes(attemptedSize), highlight: true)
                 }
 
-                Text("The compressed version was \(diffText) than the original, so Dinky kept the original.\n\nThis usually happens with files that are already heavily optimized, or when re-encoding to a format that doesn't suit the content (e.g. lossy → lossless). Try a different format from the sidebar, or leave this file as-is.")
+                Text(String(localized: "The compressed version was \(diffText) than the original, so Dinky kept the original.\n\nThis usually happens with files that are already heavily optimized, or when re-encoding to a format that doesn't suit the content (e.g. lossy → lossless). Try a different format from the sidebar, or leave this file as-is.", comment: "Zero-gain explanation; argument describes size relationship phrase."))
                     .font(.system(.body))
                     .foregroundStyle(.primary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -679,7 +698,7 @@ private struct ZeroGainDetailView: View {
 
             HStack {
                 Spacer()
-                Button("Dismiss") { dismiss() }
+                Button(String(localized: "Dismiss", comment: "Close sheet.")) { dismiss() }
                     .keyboardShortcut(.defaultAction)
             }
             .padding(.horizontal, 20)
@@ -690,7 +709,7 @@ private struct ZeroGainDetailView: View {
     }
 
     private func bytes(_ n: Int64) -> String {
-        String(format: "%.2f MB", Double(n) / 1_048_576)
+        String(format: String(localized: "%.2f MB", comment: "File size with megabytes unit."), Double(n) / 1_048_576)
     }
 
     private func sizePill(_ label: String, value: String, highlight: Bool = false) -> some View {

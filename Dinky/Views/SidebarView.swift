@@ -145,7 +145,7 @@ struct SidebarView: View {
         .animation(.easeInOut(duration: 0.2), value: prefs.videoMaxResolutionLines)
         .animation(.easeInOut(duration: 0.2), value: prefs.sidebarSimpleMode)
         .animation(.easeInOut(duration: 0.2), value: scopeRaw)
-        .accessibilityLabel("Compression settings")
+        .accessibilityLabel(String(localized: "Compression settings", comment: "VoiceOver: sidebar."))
         .accessibilityHint("Choose format, quality, and output options for images, videos, and PDFs.")
         .onChange(of: prefs.showImagesSection) { _, _ in syncScopeIfNeeded() }
         .onChange(of: prefs.showPDFsSection) { _, _ in syncScopeIfNeeded() }
@@ -242,7 +242,7 @@ struct SidebarView: View {
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
-                Button("Change folder or naming…") {
+                Button(String(localized: "Change folder or naming…", comment: "Sidebar link to output settings.")) {
                     openPreferences(.output)
                 }
                 .buttonStyle(.plain)
@@ -275,7 +275,7 @@ struct SidebarView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "gearshape.2")
                         .font(.system(size: 12, weight: .medium))
-                    Text("All options…")
+                    Text(String(localized: "All options…", comment: "Sidebar disclosure label."))
                         .font(.system(size: 11, weight: .medium))
                     Spacer(minLength: 0)
                 }
@@ -364,12 +364,12 @@ struct SidebarView: View {
 
     private var sidebarSectionsFooter: some View {
         Button {
-            openPreferences(.general)
+            openPreferences(.appearance)
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "sidebar.left")
                     .font(.system(size: 12, weight: .medium))
-                Text("Which sections appear here…")
+                Text(String(localized: "Which sections appear here…", comment: "Sidebar section picker hint."))
                     .font(.system(size: 11, weight: .medium))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -482,7 +482,7 @@ struct SidebarView: View {
                         get: { prefs.maxWidth }, set: { prefs.maxWidth = max(1, $0) }
                     ), format: .number)
                     .textFieldStyle(.roundedBorder).frame(width: 70)
-                    Text("px").font(.system(size: 10)).foregroundStyle(.secondary)
+                    Text(String(localized: "px", comment: "Unit: pixels.")).font(.system(size: 10)).foregroundStyle(.secondary)
                 }
                 helper("Try 1920 for web, 1280 for social, 640 for email.")
             }
@@ -506,7 +506,7 @@ struct SidebarView: View {
                         get: { prefs.maxFileSizeMB }, set: { prefs.maxFileSizeMB = $0 }
                     ), format: .number)
                     .textFieldStyle(.roundedBorder).frame(width: 70)
-                    Text("MB").font(.system(size: 10)).foregroundStyle(.secondary)
+                    Text(String(localized: "MB", comment: "Unit: megabytes.")).font(.system(size: 10)).foregroundStyle(.secondary)
                 }
                 helper("Encoder aims near this cap; exact size varies by image.")
             }
@@ -572,7 +572,7 @@ struct SidebarView: View {
                 )
             }
             .accessibilityElement(children: .contain)
-            .accessibilityLabel("PDF output mode")
+            .accessibilityLabel(String(localized: "PDF output mode", comment: "VoiceOver: PDF mode picker."))
 
             if prefs.pdfOutputMode == .preserveStructure {
                 VStack(alignment: .leading, spacing: 4) {

@@ -15,11 +15,11 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .openFiles: return "Open Files…"
-        case .pasteClipboard: return "Clipboard Compress"
-        case .compressNow: return "Compress Now"
-        case .clearAll: return "Clear All"
-        case .deleteSelected: return "Delete Selected"
+        case .openFiles: return String(localized: "Open Files…", comment: "Menu and shortcuts: open file picker.")
+        case .pasteClipboard: return String(localized: "Clipboard Compress", comment: "Menu: compress from clipboard.")
+        case .compressNow: return String(localized: "Compress Now", comment: "Menu: run compression on queued files.")
+        case .clearAll: return String(localized: "Clear All", comment: "Menu: clear the file list.")
+        case .deleteSelected: return String(localized: "Delete Selected", comment: "Menu: remove selected rows.")
         }
     }
 
@@ -47,9 +47,9 @@ enum DinkyFixedShortcut {
 
     var title: String {
         switch self {
-        case .toggleSidebar: return "Toggle Sidebar"
-        case .dinkyHelp: return "Dinky Help"
-        case .settings: return "Settings"
+        case .toggleSidebar: return String(localized: "Toggle Sidebar", comment: "Menu: show or hide format sidebar.")
+        case .dinkyHelp: return String(localized: "Dinky Help", comment: "Menu: open help window.")
+        case .settings: return String(localized: "Settings", comment: "Menu: open app settings.")
         }
     }
 
@@ -230,29 +230,29 @@ enum ShortcutValidator {
 
     /// Ordered list of well-known system / cross-app shortcuts (⌘Q, ⌘W, …). Not exhaustive.
     private static let reservedSystemShortcuts: [(combo: CustomShortcut, name: String)] = [
-        (CustomShortcut(key: "q", modifiers: .command), "Quit App"),
-        (CustomShortcut(key: "w", modifiers: .command), "Close Window"),
-        (CustomShortcut(key: "m", modifiers: .command), "Minimize"),
-        (CustomShortcut(key: "h", modifiers: .command), "Hide App"),
-        (CustomShortcut(key: "n", modifiers: .command), "New"),
-        (CustomShortcut(key: "t", modifiers: .command), "New Tab"),
-        (CustomShortcut(key: "z", modifiers: .command), "Undo"),
-        (CustomShortcut(key: "z", modifiers: [.command, .shift]), "Redo"),
-        (CustomShortcut(key: "c", modifiers: .command), "Copy"),
-        (CustomShortcut(key: "x", modifiers: .command), "Cut"),
-        (CustomShortcut(key: "v", modifiers: .command), "Paste"),
-        (CustomShortcut(key: "a", modifiers: .command), "Select All"),
-        (CustomShortcut(key: "f", modifiers: .command), "Find"),
-        (CustomShortcut(key: "g", modifiers: .command), "Find Next"),
-        (CustomShortcut(key: "g", modifiers: [.command, .shift]), "Find Previous"),
-        (CustomShortcut(key: "p", modifiers: .command), "Print"),
-        (CustomShortcut(key: "s", modifiers: .command), "Save"),
-        (CustomShortcut(key: "i", modifiers: .command), "Get Info"),
-        (CustomShortcut(key: "o", modifiers: [.command, .shift]), "Open in New Window"),
-        (CustomShortcut(key: "space", modifiers: .command), "Spotlight"),
-        (CustomShortcut(key: "space", modifiers: .control), "Input Sources / Emoji"),
-        (CustomShortcut(key: "tab", modifiers: .command), "App Switcher"),
-        (CustomShortcut(key: "`", modifiers: .command), "Cycle Windows"),
+        (CustomShortcut(key: "q", modifiers: .command), String(localized: "Quit App", comment: "System shortcut name for conflict warning.")),
+        (CustomShortcut(key: "w", modifiers: .command), String(localized: "Close Window", comment: "System shortcut name for conflict warning.")),
+        (CustomShortcut(key: "m", modifiers: .command), String(localized: "Minimize", comment: "System shortcut name for conflict warning.")),
+        (CustomShortcut(key: "h", modifiers: .command), String(localized: "Hide App", comment: "System shortcut name for conflict warning.")),
+        (CustomShortcut(key: "n", modifiers: .command), String(localized: "New", comment: "System shortcut name for conflict warning.")),
+        (CustomShortcut(key: "t", modifiers: .command), String(localized: "New Tab", comment: "System shortcut name for conflict warning.")),
+        (CustomShortcut(key: "z", modifiers: .command), String(localized: "Undo", comment: "System shortcut name for conflict warning.")),
+        (CustomShortcut(key: "z", modifiers: [.command, .shift]), String(localized: "Redo", comment: "System shortcut name for conflict warning.")),
+        (CustomShortcut(key: "c", modifiers: .command), String(localized: "Copy", comment: "System shortcut name for conflict warning.")),
+        (CustomShortcut(key: "x", modifiers: .command), String(localized: "Cut", comment: "System shortcut name for conflict warning.")),
+        (CustomShortcut(key: "v", modifiers: .command), String(localized: "Paste", comment: "System shortcut name for conflict warning.")),
+        (CustomShortcut(key: "a", modifiers: .command), String(localized: "Select All", comment: "System shortcut name for conflict warning.")),
+        (CustomShortcut(key: "f", modifiers: .command), String(localized: "Find", comment: "System shortcut name for conflict warning.")),
+        (CustomShortcut(key: "g", modifiers: .command), String(localized: "Find Next", comment: "System shortcut name for conflict warning.")),
+        (CustomShortcut(key: "g", modifiers: [.command, .shift]), String(localized: "Find Previous", comment: "System shortcut name for conflict warning.")),
+        (CustomShortcut(key: "p", modifiers: .command), String(localized: "Print", comment: "System shortcut name for conflict warning.")),
+        (CustomShortcut(key: "s", modifiers: .command), String(localized: "Save", comment: "System shortcut name for conflict warning.")),
+        (CustomShortcut(key: "i", modifiers: .command), String(localized: "Get Info", comment: "System shortcut name for conflict warning.")),
+        (CustomShortcut(key: "o", modifiers: [.command, .shift]), String(localized: "Open in New Window", comment: "System shortcut name for conflict warning.")),
+        (CustomShortcut(key: "space", modifiers: .command), String(localized: "Spotlight", comment: "System shortcut name for conflict warning.")),
+        (CustomShortcut(key: "space", modifiers: .control), String(localized: "Input Sources / Emoji", comment: "System shortcut name for conflict warning.")),
+        (CustomShortcut(key: "tab", modifiers: .command), String(localized: "App Switcher", comment: "System shortcut name for conflict warning.")),
+        (CustomShortcut(key: "`", modifiers: .command), String(localized: "Cycle Windows", comment: "System shortcut name for conflict warning.")),
     ]
 
     static func conflict(

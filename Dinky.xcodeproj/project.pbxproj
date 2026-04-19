@@ -48,7 +48,9 @@
 		VCC0001000000000000001 /* VideoContentClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = VCC1001000000000000001 /* VideoContentClassifier.swift */; };
 		WR000001000000000000001 /* WatchRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = WR100001000000000000001 /* WatchRegistry.swift */; };
 		HW000001000000000000001 /* HelpWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = HW100001000000000000001 /* HelpWindow.swift */; };
-		HM000001000000000000001 /* Help.md in Resources */ = {isa = PBXBuildFile; fileRef = HM100001000000000000001 /* Help.md */; };
+		HM000001000000000000001 /* Help.md in Resources */ = {isa = PBXBuildFile; fileRef = HMVGRP00000000000000001 /* Help.md */; };
+		LCAT00000100000000000001 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = LCATREF0000000000000001 /* Localizable.xcstrings */; };
+		ICAT00000100000000000001 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = ICATREF0000000000000001 /* InfoPlist.xcstrings */; };
 		KS000001000000000000001 /* CustomShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = KS100001000000000000001 /* CustomShortcut.swift */; };
 		SH000001000000000000001 /* ShortcutRecorderField.swift in Sources */ = {isa = PBXBuildFile; fileRef = SH100001000000000000001 /* ShortcutRecorderField.swift */; };
 		GH000001000000000000001 /* GlobalHotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = GH100001000000000000001 /* GlobalHotkeyManager.swift */; };
@@ -101,7 +103,41 @@
 		VCC1001000000000000001 /* VideoContentClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoContentClassifier.swift; sourceTree = "<group>"; };
 		WR100001000000000000001 /* WatchRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRegistry.swift; sourceTree = "<group>"; };
 		HW100001000000000000001 /* HelpWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpWindow.swift; sourceTree = "<group>"; };
-		HM100001000000000000001 /* Help.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = Help.md; sourceTree = "<group>"; };
+		HMVGRP00000000000000001 /* Help.md */ = {
+			isa = PBXVariantGroup;
+			children = (
+				HMEN0000000000000000001 /* Help.md */,
+				HMDE0000000000000000001 /* Help.md */,
+				HMES0000000000000000001 /* Help.md */,
+				HMFR0000000000000000001 /* Help.md */,
+				HMIT0000000000000000001 /* Help.md */,
+				HMJA0000000000000000001 /* Help.md */,
+				HMKO0000000000000000001 /* Help.md */,
+				HMNL0000000000000000001 /* Help.md */,
+				HMPT0000000000000000001 /* Help.md */,
+				HMRU0000000000000000001 /* Help.md */,
+				HMTR0000000000000000001 /* Help.md */,
+				HMZH0000000000000000001 /* Help.md */,
+				HMZHT000000000000000001 /* Help.md */,
+			);
+			name = Help.md;
+			sourceTree = "<group>";
+		};
+		HMEN0000000000000000001 /* Help.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = Help.md; path = en.lproj/Help.md; sourceTree = "<group>"; };
+		HMDE0000000000000000001 /* Help.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = Help.md; path = de.lproj/Help.md; sourceTree = "<group>"; };
+		HMES0000000000000000001 /* Help.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = Help.md; path = es.lproj/Help.md; sourceTree = "<group>"; };
+		HMFR0000000000000000001 /* Help.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = Help.md; path = fr.lproj/Help.md; sourceTree = "<group>"; };
+		HMIT0000000000000000001 /* Help.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = Help.md; path = it.lproj/Help.md; sourceTree = "<group>"; };
+		HMJA0000000000000000001 /* Help.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = Help.md; path = ja.lproj/Help.md; sourceTree = "<group>"; };
+		HMKO0000000000000000001 /* Help.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = Help.md; path = ko.lproj/Help.md; sourceTree = "<group>"; };
+		HMNL0000000000000000001 /* Help.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = Help.md; path = nl.lproj/Help.md; sourceTree = "<group>"; };
+		HMPT0000000000000000001 /* Help.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = Help.md; path = "pt-BR.lproj/Help.md"; sourceTree = "<group>"; };
+		HMRU0000000000000000001 /* Help.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = Help.md; path = ru.lproj/Help.md; sourceTree = "<group>"; };
+		HMTR0000000000000000001 /* Help.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = Help.md; path = tr.lproj/Help.md; sourceTree = "<group>"; };
+		HMZH0000000000000000001 /* Help.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = Help.md; path = "zh-Hans.lproj/Help.md"; sourceTree = "<group>"; };
+		HMZHT000000000000000001 /* Help.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = Help.md; path = "zh-Hant.lproj/Help.md"; sourceTree = "<group>"; };
+		LCATREF0000000000000001 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		ICATREF0000000000000001 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		KS100001000000000000001 /* CustomShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomShortcut.swift; sourceTree = "<group>"; };
 		SH100001000000000000001 /* ShortcutRecorderField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorderField.swift; sourceTree = "<group>"; };
 		GH100001000000000000001 /* GlobalHotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalHotkeyManager.swift; sourceTree = "<group>"; };
@@ -204,6 +240,8 @@
 				5BEB16B6B1534C999F261F79 /* CompressionService.swift */,
 				89ED8C350A5D404EA5F1CCF6 /* PreferencesView.swift */,
 				4FE17DC818E44D3F88D6F88A /* Strings.swift */,
+				LCATREF0000000000000001 /* Localizable.xcstrings */,
+				ICATREF0000000000000001 /* InfoPlist.xcstrings */,
 				0E8A023749E745F7BB24F03D /* Models */,
 				32ED8DD8E46E4623979A137D /* Views */,
 				SV100001000000000000001 /* Services */,
@@ -223,7 +261,7 @@
 			children = (
 				E168EFE304164DA3B71EFE4F /* bin */,
 				LB100001000000000000001 /* lib */,
-				HM100001000000000000001 /* Help.md */,
+				HMVGRP00000000000000001 /* Help.md */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -290,6 +328,18 @@
 			knownRegions = (
 				en,
 				Base,
+				de,
+				es,
+				fr,
+				it,
+				ja,
+				ko,
+				nl,
+				"pt-BR",
+				ru,
+				tr,
+				"zh-Hans",
+				"zh-Hant",
 			);
 			mainGroup = AABBCCDD00000000000000001;
 			productRefGroup = 3337D9E5CCB647BAA20571DE /* Products */;
@@ -313,6 +363,8 @@
 				5CBDB89E2F9041F600E7E9C0 /* cwebp in Resources */,
 				LB000001000000000000001 /* lib in Resources */,
 				HM000001000000000000001 /* Help.md in Resources */,
+				LCAT00000100000000000001 /* Localizable.xcstrings in Resources */,
+				ICAT00000100000000000001 /* InfoPlist.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

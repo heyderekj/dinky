@@ -2,16 +2,29 @@ import AppIntents
 import Foundation
 
 struct CompressImagesIntent: AppIntent {
-    static var title: LocalizedStringResource = "Compress Images"
+    static var title: LocalizedStringResource = LocalizedStringResource(
+        "Compress Images",
+        comment: "Shortcuts app: intent title."
+    )
     static var description = IntentDescription(
-        "Compresses image files using Dinky and returns the compressed versions. Uses your chosen format below, plus Smart quality (if enabled), strip metadata, resize, and file-size limits from the app’s Settings — not Auto format from the sidebar.",
-        categoryName: "Images"
+        LocalizedStringResource(
+            "Compresses image files using Dinky and returns the compressed versions. Uses your chosen format below, plus Smart quality (if enabled), strip metadata, resize, and file-size limits from the app’s Settings — not Auto format from the sidebar.",
+            comment: "Shortcuts app: intent description."
+        ),
+        categoryName: LocalizedStringResource("Images", comment: "Shortcuts app: intent category.")
     )
 
-    @Parameter(title: "Images", description: "The image files to compress.")
+    @Parameter(
+        title: LocalizedStringResource("Images", comment: "Shortcuts: images parameter title."),
+        description: LocalizedStringResource("The image files to compress.", comment: "Shortcuts: images parameter description.")
+    )
     var images: [IntentFile]
 
-    @Parameter(title: "Format", description: "Output format for compressed images.", default: .webp)
+    @Parameter(
+        title: LocalizedStringResource("Format", comment: "Shortcuts: output format parameter title."),
+        description: LocalizedStringResource("Output format for compressed images.", comment: "Shortcuts: format parameter description."),
+        default: .webp
+    )
     var format: CompressionFormatEntity
 
     static var parameterSummary: some ParameterSummary {
@@ -29,7 +42,8 @@ struct CompressImagesIntent: AppIntent {
             let srcURL = URL(fileURLWithPath: image.filename)
             let ext = srcURL.pathExtension.isEmpty ? "jpg" : srcURL.pathExtension
             let stem = srcURL.deletingPathExtension().lastPathComponent.isEmpty
-                ? "image" : srcURL.deletingPathExtension().lastPathComponent
+                ? String(localized: "image", comment: "Default filename stem for Shortcuts output when source has no name.")
+                : srcURL.deletingPathExtension().lastPathComponent
 
             let tmpIn = FileManager.default.temporaryDirectory
                 .appendingPathComponent("dinky_intent_\(UUID().uuidString)")
@@ -69,11 +83,13 @@ struct CompressImagesIntent: AppIntent {
 enum CompressionFormatEntity: String, AppEnum {
     case webp, avif, png
 
-    static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "Format")
+    static var typeDisplayRepresentation = TypeDisplayRepresentation(
+        name: LocalizedStringResource("Format", comment: "Shortcuts: format type name.")
+    )
     static var caseDisplayRepresentations: [Self: DisplayRepresentation] = [
-        .webp: "WebP",
-        .avif: "AVIF",
-        .png:  "PNG",
+        .webp: DisplayRepresentation(title: LocalizedStringResource("WebP", comment: "Image format name.")),
+        .avif: DisplayRepresentation(title: LocalizedStringResource("AVIF", comment: "Image format name.")),
+        .png: DisplayRepresentation(title: LocalizedStringResource("PNG", comment: "Image format name.")),
     ]
 
     var compressionFormat: CompressionFormat {

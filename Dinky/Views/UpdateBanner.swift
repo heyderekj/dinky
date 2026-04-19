@@ -30,17 +30,17 @@ struct UpdateBanner: View {
                 switch updater.installState {
                 case .idle:
                     HStack(spacing: 0) {
-                        Text("Dinky ").foregroundStyle(.secondary)
+                        Text(String(localized: "Dinky ", comment: "Update banner before version number.")).foregroundStyle(.secondary)
                         Text("v\(updater.availableVersion ?? "")").fontWeight(.semibold)
-                        Text(" is available").foregroundStyle(.secondary)
+                        Text(String(localized: " is available", comment: "Update banner after version number.")).foregroundStyle(.secondary)
                     }
                 case .downloading:
-                    Text("Downloading…")
+                    Text(String(localized: "Downloading…", comment: "Update banner status."))
                         .foregroundStyle(.secondary)
                 case .installing:
-                    Text("Installing…").foregroundStyle(.secondary)
+                    Text(String(localized: "Installing…", comment: "Update banner status.")).foregroundStyle(.secondary)
                 case .failed(let msg):
-                    Text("Update failed: \(msg)")
+                    Text(String(localized: "Update failed: \(msg)", comment: "Update banner error; argument is message."))
                         .foregroundStyle(.red)
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -52,8 +52,16 @@ struct UpdateBanner: View {
 
             // Action buttons — only shown when idle or failed
             if case .idle = updater.installState {
+                Button(String(localized: "Loving Dinky? Leave a review", comment: "Update banner: link to GitHub Discussions reviews.")) {
+                    NSWorkspace.shared.open(URL(string: "https://github.com/heyderekj/dinky/discussions/new?category=reviews")!)
+                }
+                .buttonStyle(.plain)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .underline()
+
                 if let release = updater.releaseURL {
-                    Button("What's new") { NSWorkspace.shared.open(release) }
+                    Button(String(localized: "What’s new", comment: "Update banner link to release notes.")) { NSWorkspace.shared.open(release) }
                         .buttonStyle(.plain)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -63,10 +71,10 @@ struct UpdateBanner: View {
                 Button {
                     if itemCount > 0 {
                         let alert = NSAlert()
-                        alert.messageText = "Install update now?"
-                        alert.informativeText = "Your current results will be cleared when Dinky relaunches."
-                        alert.addButton(withTitle: "Install")
-                        alert.addButton(withTitle: "Cancel")
+                        alert.messageText = String(localized: "Install update now?", comment: "Alert when installing with queued files.")
+                        alert.informativeText = String(localized: "Your current results will be cleared when Dinky relaunches.", comment: "Alert detail for install with queue.")
+                        alert.addButton(withTitle: String(localized: "Install", comment: "Alert confirm button."))
+                        alert.addButton(withTitle: String(localized: "Cancel", comment: "Alert cancel button."))
                         guard alert.runModal() == .alertFirstButtonReturn else { return }
                     }
                     Task { await updater.downloadAndInstall() }
@@ -74,7 +82,7 @@ struct UpdateBanner: View {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.down.circle.fill")
                             .imageScale(.small)
-                        Text("Install Update")
+                        Text(String(localized: "Install Update", comment: "Update banner primary button."))
                     }
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.white)
@@ -92,7 +100,7 @@ struct UpdateBanner: View {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.counterclockwise")
                             .imageScale(.small)
-                        Text("Retry")
+                        Text(String(localized: "Retry", comment: "Update banner after failure."))
                     }
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.white)
@@ -119,7 +127,7 @@ struct UpdateBanner: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .help("Dismiss")
+                .help(String(localized: "Dismiss", comment: "Tooltip for dismiss update banner."))
             }
         }
         .padding(.horizontal, 14)

@@ -42,15 +42,15 @@ struct DinkyApp: App {
                 DinkyShortcutCommands(prefs: root.prefs)
             }
             CommandGroup(replacing: .appInfo) {
-                Button("About Dinky") {
+                Button(String(localized: "About Dinky", comment: "Application menu: about panel.")) {
                     showAboutPanel()
                 }
             }
             CommandGroup(after: .appInfo) {
-                Button("Check for Updates…") {
+                Button(String(localized: "Check for Updates…", comment: "Application menu: check for updates.")) {
                     NotificationCenter.default.post(name: .dinkyCheckUpdates, object: nil)
                 }
-                Button("History…") {
+                Button(String(localized: "History…", comment: "Application menu: open compression history.")) {
                     NotificationCenter.default.post(name: .dinkyShowHistory, object: nil)
                 }
             }
@@ -85,34 +85,34 @@ private struct DinkyShortcutCommands: View {
     @ObservedObject var prefs: DinkyPreferences
 
     var body: some View {
-        Button("Open Files…") {
+        Button(String(localized: "Open Files…", comment: "File menu: open file picker.")) {
             NotificationCenter.default.post(name: .dinkyOpenPanel, object: nil)
         }
         .keyboardShortcut(prefs.shortcut(for: .openFiles).swiftUIKeyboardShortcut)
 
-        Button("Clipboard Compress") {
+        Button(String(localized: "Clipboard Compress", comment: "File menu: compress from clipboard.")) {
             NSApp.sendAction(Selector(("compressFromClipboard:")), to: nil, from: nil)
         }
         .keyboardShortcut(prefs.shortcut(for: .pasteClipboard).swiftUIKeyboardShortcut)
 
         Divider()
 
-        Button("Compress Now") {
+        Button(String(localized: "Compress Now", comment: "File menu: run compression.")) {
             NotificationCenter.default.post(name: .dinkyStartCompression, object: nil)
         }
         .keyboardShortcut(prefs.shortcut(for: .compressNow).swiftUIKeyboardShortcut)
 
-        Button("Clear All") {
+        Button(String(localized: "Clear All", comment: "File menu: clear file list.")) {
             NotificationCenter.default.post(name: .dinkyClearAll, object: nil)
         }
         .keyboardShortcut(prefs.shortcut(for: .clearAll).swiftUIKeyboardShortcut)
 
-        Button("Toggle Sidebar") {
+        Button(String(localized: "Toggle Sidebar", comment: "File menu: toggle format sidebar.")) {
             NotificationCenter.default.post(name: .dinkyToggleSidebar, object: nil)
         }
         .keyboardShortcut("\\", modifiers: [.command, .shift])
 
-        Button("Delete Selected") {
+        Button(String(localized: "Delete Selected", comment: "File menu: delete selected rows.")) {
             NotificationCenter.default.post(name: .dinkyDeleteSelectedRows, object: nil)
         }
         .keyboardShortcut(prefs.shortcut(for: .deleteSelected).swiftUIKeyboardShortcut)
@@ -130,8 +130,8 @@ private struct HelpMenuCommands: View {
     @ObservedObject var updater: UpdateChecker
 
     private static let repoURL = URL(string: "https://github.com/heyderekj/dinky")!
-    private static let issuesURL = URL(string: "https://github.com/heyderekj/dinky/issues/new")!
     private static let siteURL = URL(string: "https://dinkyfiles.com")!
+    private static let leaveReviewURL = URL(string: "https://github.com/heyderekj/dinky/discussions/new?category=reviews")!
 
     private var currentVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
@@ -146,15 +146,15 @@ private struct HelpMenuCommands: View {
 
     private var versionLabel: String {
         if let newer = updater.availableVersion {
-            return "Version \(currentVersion) — \(newer) available"
+            return String(localized: "Version \(currentVersion) — \(newer) available", comment: "Help menu: version row when an update is available. First argument is current version, second is available version.")
         }
-        return "Version \(currentVersion)"
+        return String(localized: "Version \(currentVersion)", comment: "Help menu: version row when no update. Argument is current version.")
     }
 
     var body: some View {
         // `?` requires shift; SwiftUI only fires when the modifier set matches the actual keystroke,
         // so we must declare both. (Bare `.command` shows ⌘? in the menu but never triggers.)
-        Button("Dinky Help") { openWindow(id: "help") }
+        Button(String(localized: "Dinky Help", comment: "Help menu: open help window.")) { openWindow(id: "help") }
             .keyboardShortcut("?", modifiers: [.command, .shift])
 
         Divider()
@@ -163,26 +163,42 @@ private struct HelpMenuCommands: View {
         Button(versionLabel) {}
             .disabled(true)
 
-        Button("What's New…") {
+        Button(String(localized: "What’s New…", comment: "Help menu: open release notes.")) {
             NSWorkspace.shared.open(releaseNotesURL)
         }
-        Button("Check for Updates…") {
+        Button(String(localized: "Check for Updates…", comment: "Help menu: check for updates.")) {
             NotificationCenter.default.post(name: .dinkyCheckUpdates, object: nil)
         }
 
         Divider()
 
-        Button("GitHub Repo") {
+        Button(String(localized: "GitHub Repo", comment: "Help menu: open source repository.")) {
             NSWorkspace.shared.open(Self.repoURL)
         }
-        Button("Report a Bug…") {
-            NSWorkspace.shared.open(Self.issuesURL)
+        Button(String(localized: "Leave a Review…", comment: "Help menu: open GitHub Discussions reviews category.")) {
+            NSWorkspace.shared.open(Self.leaveReviewURL)
         }
-        Button("Visit dinkyfiles.com") {
+        Button(String(localized: "Report a Bug…", comment: "Help menu: report a bug.")) {
+            NSWorkspace.shared.open(DiagnosticsReporter.githubIssueURL(title: String(localized: "Bug: ", comment: "Prefill for GitHub issue title.")))
+        }
+        Button(String(localized: "Give Feedback…", comment: "Help menu: send feedback email.")) {
+            NSWorkspace.shared.open(
+                DiagnosticsReporter.emailURL(
+                    subject: String(localized: "Feedback — Dinky v\(currentVersion)", comment: "Email subject for feedback. Argument is app version."),
+                    extraBody: "## Feedback\n\n"
+                )
+            )
+        }
+        Button(String(localized: "Visit dinkyfiles.com", comment: "Help menu: open marketing site.")) {
             NSWorkspace.shared.open(Self.siteURL)
         }
-        Button("Email Support…") {
-            NSWorkspace.shared.open(URL(string: "mailto:\(S.supportEmail)")!)
+        Button(String(localized: "Email Support…", comment: "Help menu: contact support.")) {
+            NSWorkspace.shared.open(
+                DiagnosticsReporter.emailURL(
+                    subject: String(localized: "Support — Dinky v\(currentVersion)", comment: "Email subject for support. Argument is app version."),
+                    extraBody: "## How can we help?\n\n"
+                )
+            )
         }
     }
 }
@@ -245,6 +261,76 @@ private func bundleSizeString() -> String {
     }
     let mb = Double(total) / 1_048_576.0
     return String(format: "%.1f MB", mb)
+}
+
+// MARK: - Post-crash / MetricKit prompt
+
+/// Shown when the crash sentinel fired and/or MetricKit delivered crash diagnostics.
+struct PostCrashReportSheet: View {
+    let report: CrashReport
+    @ObservedObject var diagnostics: DiagnosticsReporter
+
+    private var headline: String {
+        // Apple’s MetricKit English phrase; keep literal for reliable matching.
+        if report.subtitle.contains("Crash diagnostics from Apple") {
+            return String(localized: "Crash diagnostics", comment: "Post-crash sheet title when Apple diagnostics present.")
+        }
+        return String(localized: "Dinky crashed last time", comment: "Post-crash sheet title for generic crash.")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.orange)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(headline)
+                        .font(.headline)
+                    Text(report.subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.bottom, 16)
+
+            if let mk = report.metricKitSummary, !mk.isEmpty {
+                Text(String(localized: "Apple diagnostic summary", comment: "Label above MetricKit crash summary text."))
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.tertiary)
+                ScrollView {
+                    Text(mk)
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxHeight: 200)
+                .padding(.bottom, 16)
+            }
+
+            HStack {
+                Button(String(localized: "Email Report…", comment: "Post-crash sheet: send report by email.")) {
+                    NSWorkspace.shared.open(diagnostics.postCrashEmailURL())
+                    diagnostics.dismissPendingReport()
+                }
+                Button(String(localized: "GitHub Issue…", comment: "Post-crash sheet: open GitHub issue.")) {
+                    NSWorkspace.shared.open(diagnostics.postCrashGitHubURL())
+                    diagnostics.dismissPendingReport()
+                }
+                Spacer()
+                Button(String(localized: "Dismiss", comment: "Post-crash sheet: close without sending.")) {
+                    diagnostics.dismissPendingReport()
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(24)
+        .frame(minWidth: 440)
+        .background(.ultraThinMaterial)
+    }
 }
 
 // Reaches into the hosting NSWindow and clears its background so the

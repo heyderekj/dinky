@@ -31,18 +31,18 @@ struct HistorySheet: View {
 
     private var header: some View {
         HStack {
-            Text("History")
+            Text(String(localized: "History", comment: "History window title."))
                 .font(.headline)
             Spacer()
             if !prefs.sessionHistory.isEmpty {
-                Button("Clear") {
+                Button(String(localized: "Clear", comment: "Clear session history list.")) {
                     prefs.sessionHistory = []
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .buttonStyle(.plain)
             }
-            Button("Done") { dismiss() }
+            Button(String(localized: "Done", comment: "Dismiss sheet.")) { dismiss() }
                 .keyboardShortcut(.defaultAction)
         }
         .padding(.horizontal, 20)
@@ -51,11 +51,11 @@ struct HistorySheet: View {
 
     private var lifetimeTotalBanner: some View {
         HStack {
-            Text("Total saved")
+            Text(String(localized: "Total saved", comment: "History: lifetime bytes saved label."))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Spacer()
-            Text(lifetimeSavedFormatted + " saved")
+            Text(lifetimeSavedFormatted + String(localized: " saved", comment: "Suffix after size in history banner."))
                 .font(.caption.weight(.medium))
                 .foregroundStyle(.primary)
         }
@@ -74,7 +74,7 @@ struct HistorySheet: View {
             Image(systemName: "clock")
                 .font(.largeTitle)
                 .foregroundStyle(.tertiary)
-            Text("No sessions yet.")
+            Text(String(localized: "No sessions yet.", comment: "History empty state."))
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
@@ -95,10 +95,12 @@ struct HistorySheet: View {
                 Spacer()
 
                 VStack(alignment: .trailing, spacing: 3) {
-                    Text("\(record.fileCount) \(record.fileCount == 1 ? "file" : "files")")
+                    Text(record.fileCount == 1
+                         ? String(localized: "1 file", comment: "History row file count singular.")
+                         : String(localized: "\(record.fileCount) files", comment: "History row file count plural."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text(formattedSize(record.totalBytesSaved) + " saved")
+                    Text(formattedSize(record.totalBytesSaved) + String(localized: " saved", comment: "Suffix after size in history row."))
                         .font(.system(.caption2, design: .monospaced))
                         .foregroundStyle(.tertiary)
                 }

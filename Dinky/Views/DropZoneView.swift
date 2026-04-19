@@ -116,12 +116,12 @@ struct DropZoneView: View {
         switch phase {
         case .idle:
             VStack(spacing: 5) {
-                Text("Drop files here")
+                Text(String(localized: "Drop files here", comment: "Drop zone idle hint."))
                     .font(.title3).foregroundStyle(.primary)
-                Text("or click to browse")
+                Text(String(localized: "or click to browse", comment: "Drop zone idle hint."))
                     .font(.caption).foregroundStyle(.secondary)
                 Button(action: onPaste) {
-                    Text("or paste (\(prefs.shortcut(for: .pasteClipboard).displayString))")
+                    Text(String(localized: "or paste (\(prefs.shortcut(for: .pasteClipboard).displayString))", comment: "Drop zone; argument is paste shortcut."))
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
@@ -129,7 +129,7 @@ struct DropZoneView: View {
                 .contentShape(Rectangle())
             }
         case .hovering:
-            Text("Release to compress")
+            Text(String(localized: "Release to compress", comment: "Drop zone while dragging files."))
                 .font(.title3.weight(.semibold)).foregroundStyle(.white)
                 .padding(.horizontal, 18).padding(.vertical, 8)
                 .background(
@@ -139,9 +139,9 @@ struct DropZoneView: View {
                         startPoint: .leading, endPoint: .trailing))
                     .shadow(color: Color.accentColor.opacity(0.4), radius: 12, x: 0, y: 4))
         case .processing:
-            Text("Compressing…").font(.title3).foregroundStyle(.secondary)
+            Text(String(localized: "Compressing…", comment: "Drop zone during compression.")).font(.title3).foregroundStyle(.secondary)
         case .done:
-            Text("All done!").font(.title3.weight(.medium)).foregroundStyle(Color.green)
+            Text(String(localized: "All done!", comment: "Drop zone when batch completes.")).font(.title3.weight(.medium)).foregroundStyle(Color.green)
         }
     }
 

@@ -31,8 +31,8 @@ struct ImagePreviewSheet: View {
     private var header: some View {
         HStack(spacing: 12) {
             Picker("", selection: $mode) {
-                Text("Side by Side").tag(PreviewMode.sideBySide)
-                Text("Slider").tag(PreviewMode.slider)
+                Text(String(localized: "Side by Side", comment: "Image preview mode.")).tag(PreviewMode.sideBySide)
+                Text(String(localized: "Slider", comment: "Image preview mode.")).tag(PreviewMode.slider)
             }
             .pickerStyle(.segmented)
             .frame(width: 200)
@@ -49,7 +49,7 @@ struct ImagePreviewSheet: View {
 
             Spacer()
 
-            Button("Done") { dismiss() }
+            Button(String(localized: "Done", comment: "Dismiss preview sheet.")) { dismiss() }
                 .keyboardShortcut(.defaultAction)
         }
         .padding(.horizontal, 16)
@@ -58,9 +58,9 @@ struct ImagePreviewSheet: View {
 
     private func sideBySideView(outputURL: URL, origSize: Int64, outSize: Int64) -> some View {
         HStack(spacing: 1) {
-            imagePane(url: item.sourceURL, label: "Original", size: origSize)
+            imagePane(url: item.sourceURL, label: String(localized: "Original", comment: "Preview pane label."), size: origSize)
             Divider()
-            imagePane(url: outputURL, label: "Compressed", size: outSize)
+            imagePane(url: outputURL, label: String(localized: "Compressed", comment: "Preview pane label."), size: outSize)
         }
     }
 

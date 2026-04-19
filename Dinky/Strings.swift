@@ -26,7 +26,7 @@ extension Notification.Name {
 }
 
 enum S {
-    // Drop zone — idle taglines cycle with each animation loop
+    // Drop zone — idle taglines cycle with each animation loop (English brand voice)
     static let dropIdleTaglines: [String] = [
         "Big in. Dinky out.",
         "Making your files dinky.",
@@ -45,39 +45,44 @@ enum S {
     }
     static let dropHover     = "Let go."
 
-    // Processing
+    // Processing (English brand voice)
     static let processSingle = "On it."
     static let processBatch  = "Working through the pile."
     static let processBig    = "Big batch. Give me a moment."
 
-    // Completion
+    // Completion (English brand voice)
     static let doneGood      = "Done. Look how little they are now."
     static let doneMixed     = "Done. Some were already pretty lean."
 
-    // Per-file
+    // Per-file (English brand voice)
     static let skipped       = "Already tiny. Skipped."
     static let errored       = "Couldn't crunch this one. Skipped."
     static let zeroBytes     = "Couldn't make this one any smaller. Keeping the original."
 
     // Buttons
     static func compressButton(_ n: Int) -> String {
-        n == 1 ? "Compress 1 file" : "Compress \(n) files"
+        if n == 1 {
+            return String(localized: "Compress 1 file", comment: "Main window: primary action when one file is queued.")
+        }
+        return String(localized: "Compress \(n) files", comment: "Main window: primary action when multiple files are queued. Argument is the count.")
     }
-    static let clear         = "Clear"
+    static var clear: String { String(localized: "Clear", comment: "Toolbar or list: clear completed rows.") }
 
     // Preferences
-    static let prefsTitle    = "Preferences"
+    static var prefsTitle: String { String(localized: "Preferences", comment: "macOS Settings window title.") }
 
     /// Settings › General › Behavior — global clipboard shortcut explainer (combo comes from `CustomShortcut.displayString`).
     static func behaviorPasteClipboardGlobalFootnote(currentShortcutDisplay: String) -> String {
-        "Triggers Clipboard Compress from any app while Dinky is running (currently \(currentShortcutDisplay))."
+        String(localized: "Triggers Clipboard Compress from any app while Dinky is running (currently \(currentShortcutDisplay)).", comment: "Settings footnote; argument is the shortcut key combo.")
     }
 
     /// Settings › General › Compression — parallel job cap (three tiers: 1, 3, or 8).
-    /// Wording matches the marketing site (“Fast / Fastest”) with a middle **Faster** step.
-    static let concurrentCompressionPickerLabel = "Batch speed"
-    static let concurrentCompressionFootnote =
-        "How many files crunch at once — not image, video, or PDF quality. Fast is gentle; Fastest clears the queue sooner if your Mac is up for it."
+    static var concurrentCompressionPickerLabel: String {
+        String(localized: "Batch speed", comment: "Settings: label for parallel compression limit picker.")
+    }
+    static var concurrentCompressionFootnote: String {
+        String(localized: "How many files crunch at once — not image, video, or PDF quality. Fast is gentle; Fastest clears the queue sooner if your Mac is up for it.", comment: "Settings: explains batch parallelism tiers.")
+    }
 
     static func concurrentCompressionTierOption(limit: Int) -> String {
         switch limit {
@@ -88,17 +93,21 @@ enum S {
         }
     }
 
-    /// Plain label for assistive tech (menu text stays playful).
+    /// Plain label for assistive tech (localized).
     static func concurrentCompressionAccessibilityLabel(limit: Int) -> String {
         switch limit {
-        case 1: return "Up to one file compressing at a time"
-        case 3: return "Up to three files compressing at a time"
-        case 8: return "Up to eight files compressing at a time"
-        default: return "Up to \(limit) files compressing at a time"
+        case 1:
+            return String(localized: "Up to one file compressing at a time", comment: "VoiceOver label for batch speed option.")
+        case 3:
+            return String(localized: "Up to three files compressing at a time", comment: "VoiceOver label for batch speed option.")
+        case 8:
+            return String(localized: "Up to eight files compressing at a time", comment: "VoiceOver label for batch speed option.")
+        default:
+            return String(localized: "Up to \(limit) files compressing at a time", comment: "VoiceOver label for batch speed option; argument is numeric limit.")
         }
     }
 
-    // Format names
+    // Format names (technical; keep recognizable)
     static let webp = "WebP"
     static let avif = "AVIF"
     static let png  = "PNG"
@@ -107,32 +116,38 @@ enum S {
     static let supportEmail = "help@dinkyfiles.com"
 
     // Paste from clipboard
-    static let pasteEmptyTitle = "Nothing to paste"
-    static let pasteEmptyMessage = "Copy a supported file in Finder, or copy an image (PNG or TIFF), then try again."
-    static let pasteDuplicateTitle = "Already in the list"
-    static let pasteDuplicateMessage = "That file is already queued — drop something new or clear the list first."
-
-    // Settings → Shortcuts (keep in sync with `DinkyApp` menu commands + standard Help / Settings)
-    static let shortcutsTabServicesFooter =
-        "Assign shortcuts for Finder’s “Compress with Dinky” in System Settings → Keyboard → Keyboard Shortcuts → Services."
-    static var shortcutsTabHelpFooter: String {
-        let k = DinkyFixedShortcut.dinkyHelp.shortcut.displayString
-        return "For watch folders, presets, and full troubleshooting, open Dinky Help from the Help menu (\(k))."
+    static var pasteEmptyTitle: String { String(localized: "Nothing to paste", comment: "Alert title when clipboard has no compressible item.") }
+    static var pasteEmptyMessage: String {
+        String(localized: "Copy a supported file in Finder, or copy an image (PNG or TIFF), then try again.", comment: "Alert message for empty clipboard paste.")
     }
-    static let shortcutsAppDescription =
-        "Dinky exposes a Compress Images action to the Shortcuts app. Use it to pipe files from Finder or other actions through Dinky with a chosen format — same engine as in-app compression (Smart quality, resize, and metadata follow Settings)."
+    static var pasteDuplicateTitle: String { String(localized: "Already in the list", comment: "Alert title when pasted file is already queued.") }
+    static var pasteDuplicateMessage: String {
+        String(localized: "That file is already queued — drop something new or clear the list first.", comment: "Alert message for duplicate paste.")
+    }
 
-    static let shortcutsCustomizableHeader = "Customize"
-    static let shortcutsFixedHeader = "System & help"
-    static let shortcutsResetAll = "Reset All Shortcuts"
-    static let shortcutsResetRow = "Reset"
-    static let shortcutsEdit = "Edit"
-    static let shortcutsCancelEdit = "Cancel"
-    static let shortcutsRecorderPrompt = "Press a key…"
-    /// Inline hint shown beneath the recorder while it’s listening.
-    static let shortcutsRecorderHint = "Press a combo to save · Esc to cancel · Delete to reset"
-    static let shortcutsConflictPrefix = "Already used by"
-    static let shortcutsSystemWarningPrefix = "Overrides macOS:"
+    // Settings → Shortcuts
+    static var shortcutsTabServicesFooter: String {
+        String(localized: "Assign shortcuts for Finder’s “Compress with Dinky” in System Settings → Keyboard → Keyboard Shortcuts → Services.", comment: "Settings Shortcuts tab footer.")
+    }
+    static func shortcutsTabHelpFooter(helpMenuShortcut: String) -> String {
+        String(localized: "For watch folders, presets, and full troubleshooting, open Dinky Help from the Help menu (\(helpMenuShortcut)).", comment: "Settings Shortcuts tab footer; argument is help shortcut.")
+    }
+    static var shortcutsAppDescription: String {
+        String(localized: "Dinky exposes a Compress Images action to the Shortcuts app. Use it to pipe files from Finder or other actions through Dinky with a chosen format — same engine as in-app compression (Smart quality, resize, and metadata follow Settings).", comment: "Settings: Shortcuts app integration description.")
+    }
+
+    static var shortcutsCustomizableHeader: String { String(localized: "Customize", comment: "Settings Shortcuts section header.") }
+    static var shortcutsFixedHeader: String { String(localized: "System & help", comment: "Settings Shortcuts section header for fixed shortcuts.") }
+    static var shortcutsResetAll: String { String(localized: "Reset All Shortcuts", comment: "Button to reset all custom shortcuts.") }
+    static var shortcutsResetRow: String { String(localized: "Reset", comment: "Button to reset one shortcut row.") }
+    static var shortcutsEdit: String { String(localized: "Edit", comment: "Button to start recording a new shortcut.") }
+    static var shortcutsCancelEdit: String { String(localized: "Cancel", comment: "Button to cancel shortcut recording.") }
+    static var shortcutsRecorderPrompt: String { String(localized: "Press a key…", comment: "Placeholder while waiting for shortcut keys.") }
+    static var shortcutsRecorderHint: String {
+        String(localized: "Press a combo to save · Esc to cancel · Delete to reset", comment: "Hint under shortcut recorder field.")
+    }
+    static var shortcutsConflictPrefix: String { String(localized: "Already used by", comment: "Prefix when shortcut conflicts; followed by action name.") }
+    static var shortcutsSystemWarningPrefix: String { String(localized: "Overrides macOS:", comment: "Prefix when shortcut may override a system shortcut.") }
 
     /// Non-customizable menu items (matches `DinkyFixedShortcut` + system Settings).
     static var fixedMenuShortcutReference: [KeyboardShortcutReference] {

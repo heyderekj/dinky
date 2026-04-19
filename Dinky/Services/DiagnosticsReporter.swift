@@ -2,7 +2,6 @@ import AppKit
 import Combine
 import Foundation
 import MetricKit
-import SwiftUI
 
 // MARK: - Crash report model
 
@@ -23,9 +22,11 @@ final class DiagnosticsReporter: NSObject, ObservableObject {
     @Published var pendingCrashReport: CrashReport?
 
     private var monitoringStarted = false
+    private var metricKitSubscribed = false
 
     private static let sentinelName = ".crash_sentinel"
     private static let diagnosticsFileName = "diagnostics.json"
+    private static let crashReportingEnabledKey = "crashReportingEnabled"
 
     private var appSupportDinkyURL: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -48,14 +49,13 @@ final class DiagnosticsReporter: NSObject, ObservableObject {
 
         let hadSentinel = FileManager.default.fileExists(atPath: sentinelURL.path)
         if hadSentinel {
-            let subtitle =
-                "The previous session ended unexpectedly. Nothing is uploaded automatically — choose an option below if you'd like to share details."
+            let subtitle = String(localized: "The previous session ended unexpectedly. Nothing is uploaded automatically — choose an option below if you’d like to share details.", comment: "Post-crash prompt subtitle after unclean quit.")
             pendingCrashReport = CrashReport(subtitle: subtitle, metricKitSummary: nil)
         }
 
         FileManager.default.createFile(atPath: sentinelURL.path, contents: Data(), attributes: nil)
 
-        MXMetricManager.shared.add(self)
+        applyCrashReportingPreference()
     }
 
     func clearSentinel() {
@@ -66,23 +66,41 @@ final class DiagnosticsReporter: NSObject, ObservableObject {
         pendingCrashReport = nil
     }
 
+    /// Whether the in-app opt-in for MetricKit crash diagnostics is on. Reads `UserDefaults`
+    /// directly so this reporter doesn't depend on the `DinkyPreferences` instance lifecycle.
+    var isCrashReportingEnabled: Bool {
+        UserDefaults.standard.bool(forKey: Self.crashReportingEnabledKey)
+    }
+
+    /// Subscribe / unsubscribe from MetricKit to match the user's in-app opt-in.
+    /// Safe to call repeatedly — the actual `add`/`remove` only fires when state changes.
+    func applyCrashReportingPreference() {
+        let shouldSubscribe = isCrashReportingEnabled
+        if shouldSubscribe, !metricKitSubscribed {
+            MXMetricManager.shared.add(self)
+            metricKitSubscribed = true
+        } else if !shouldSubscribe, metricKitSubscribed {
+            MXMetricManager.shared.remove(self)
+            metricKitSubscribed = false
+        }
+    }
+
     // MARK: - Post-crash URLs (uses pending report context)
 
     func postCrashEmailURL() -> URL {
         var extra = ""
         if let s = pendingCrashReport?.metricKitSummary, !s.isEmpty {
-            extra = "## Apple diagnostic summary\n\n\(s)\n\n"
+            extra = String(localized: "## Apple diagnostic summary\n\n\(s)\n\n", comment: "Email body: Markdown heading and MetricKit crash text. Argument is diagnostic dump.")
         }
-        return Self.emailURL(subject: "Crash report — Dinky", extraBody: extra)
+        return Self.emailURL(subject: String(localized: "Crash report — Dinky", comment: "Email subject for crash report."), extraBody: extra)
     }
 
     func postCrashGitHubURL() -> URL {
-        var extra = "## What happened\n\n"
+        var extra = ""
         if let s = pendingCrashReport?.metricKitSummary, !s.isEmpty {
-            extra += "## Apple diagnostic summary\n\n\(s)\n\n"
+            extra = String(localized: "## Apple diagnostic summary\n\n\(s)\n\n", comment: "GitHub issue body: Markdown heading and MetricKit crash text. Argument is diagnostic dump.")
         }
-        extra += "## Steps to reproduce\n\n1. \n\n"
-        return Self.githubIssueURL(title: "Crash — Dinky", extraBody: extra)
+        return Self.githubIssueURL(title: String(localized: "Crash — Dinky", comment: "GitHub issue title for crash report."), extraBody: extra)
     }
 
     // MARK: - Shared diagnostic text + URL builders
@@ -106,9 +124,9 @@ final class DiagnosticsReporter: NSObject, ObservableObject {
     /// Pre-filled email to support. `extraBody` is appended after the diagnostic block.
     static func emailURL(subject: String, extraBody: String = "") -> URL {
         let body = diagnosticContextBlock() + extraBody
-        var components = URLComponents()
-        components.scheme = "mailto"
-        components.path = S.supportEmail
+        guard var components = URLComponents(string: "mailto:\(S.supportEmail)") else {
+            return URL(string: "mailto:\(S.supportEmail)")!
+        }
         components.queryItems = [
             URLQueryItem(name: "subject", value: subject),
             URLQueryItem(name: "body", value: body),
@@ -152,19 +170,17 @@ final class DiagnosticsReporter: NSObject, ObservableObject {
             pendingCrashReport = report
         } else {
             pendingCrashReport = CrashReport(
-                subtitle:
-                    "Crash diagnostics from Apple are available for this device. Nothing was sent automatically — use the buttons below if you want to share them.",
+                subtitle: String(localized: "Crash diagnostics from Apple are available for this device. Nothing was sent automatically — use the buttons below if you want to share them.", comment: "Post-crash prompt when MetricKit data arrives."),
                 metricKitSummary: combined
             )
         }
     }
 
     private func summarizeCrashDiagnostic(_ diagnostic: MXCrashDiagnostic) -> String {
-        if let tree = diagnostic.callStackTree {
-            if let s = String(data: tree, encoding: .utf8) {
-                let truncated = String(s.prefix(8000))
-                return "Call stack tree (JSON, truncated):\n\(truncated)"
-            }
+        let data = diagnostic.callStackTree.jsonRepresentation()
+        if let s = String(data: data, encoding: .utf8) {
+            let truncated = String(s.prefix(8000))
+            return String(localized: "Call stack tree (JSON, truncated):\n\(truncated)", comment: "MetricKit crash export header plus JSON; keep newline.")
         }
         return String(describing: diagnostic)
     }

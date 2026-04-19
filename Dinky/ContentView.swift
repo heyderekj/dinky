@@ -808,7 +808,7 @@ final class ContentViewModel: ObservableObject {
 
 struct PNGInputError: LocalizedError {
     var errorDescription: String? {
-        "PNG lossless only works on PNG files. Try WebP or AVIF for this one."
+        String(localized: "PNG lossless only works on PNG files. Try WebP or AVIF for this one.", comment: "Error when PNG output selected for non-PNG input.")
     }
 }
 
@@ -817,6 +817,7 @@ struct PNGInputError: LocalizedError {
 struct ContentView: View {
     @EnvironmentObject var prefs: DinkyPreferences
     @EnvironmentObject var updater: UpdateChecker
+    @ObservedObject private var diagnostics = DiagnosticsReporter.shared
     @Environment(\.openSettings) private var openSettings
     @ObservedObject var vm: ContentViewModel
     @StateObject private var folderWatcher = FolderWatcher()
@@ -861,7 +862,7 @@ struct ContentView: View {
         alert.alertStyle = .informational
         alert.messageText = title
         alert.informativeText = message
-        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: String(localized: "OK", comment: "Alert dismiss button."))
         alert.runModal()
     }
 
@@ -870,17 +871,17 @@ struct ContentView: View {
             Image(systemName: "hand.tap")
                 .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
-            Text("Manual mode: files stay queued until you right-click a row or choose Compress Now (\(prefs.shortcut(for: .compressNow).displayString)) from the File menu.")
+            Text(String(localized: "Manual mode: files stay queued until you right-click a row or choose Compress Now (\(prefs.shortcut(for: .compressNow).displayString)) from the File menu.", comment: "Manual mode banner; argument is shortcut."))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
-            Button("Got it") {
+            Button(String(localized: "Got it", comment: "Dismiss manual mode hint.")) {
                 manualModeHintDismissed = true
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
-            Button("Settings…") {
+            Button(String(localized: "Settings…", comment: "Open Settings from banner.")) {
                 revealPreferences(.general)
             }
             .buttonStyle(.bordered)
@@ -890,7 +891,7 @@ struct ContentView: View {
         .padding(.vertical, 10)
         .adaptiveGlass(in: RoundedRectangle(cornerRadius: 0, style: .continuous))
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Manual mode is on. Files stay queued until you compress them from the row menu or File menu Compress Now, \(prefs.shortcut(for: .compressNow).displayString).")
+        .accessibilityLabel(String(localized: "Manual mode is on. Files stay queued until you compress them from the row menu or File menu Compress Now, \(prefs.shortcut(for: .compressNow).displayString).", comment: "VoiceOver: manual mode banner."))
     }
 
     var body: some View {
@@ -947,11 +948,11 @@ struct ContentView: View {
                 Button {
                     withAnimation(.spring(duration: 0.35)) { sidebarVisible.toggle() }
                 } label: {
-                    Label("Toggle Sidebar", systemImage: "sidebar.left")
+                    Label(String(localized: "Toggle Sidebar", comment: "Toolbar: show or hide sidebar."), systemImage: "sidebar.left")
                         .symbolVariant(sidebarVisible ? .fill : .none)
                 }
-                .help(sidebarVisible ? "Hide the format sidebar" : "Show the format sidebar")
-                .accessibilityLabel(sidebarVisible ? "Hide format sidebar" : "Show format sidebar")
+                .help(sidebarVisible ? String(localized: "Hide the format sidebar", comment: "Toolbar tooltip.") : String(localized: "Show the format sidebar", comment: "Toolbar tooltip."))
+                .accessibilityLabel(sidebarVisible ? String(localized: "Hide format sidebar", comment: "VoiceOver.") : String(localized: "Show format sidebar", comment: "VoiceOver."))
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .dinkyOpenPanel)) { _ in openPanel() }
@@ -1002,6 +1003,9 @@ struct ContentView: View {
         .onChange(of: prefs.watchedFolderPath) { _, _ in updateFolderWatcher() }
         .onChange(of: prefs.watchedFolderBookmark) { _, _ in updateFolderWatcher() }
         .onChange(of: prefs.savedPresetsData) { _, _ in updateFolderWatcher() }
+        .sheet(item: $diagnostics.pendingCrashReport) { report in
+            PostCrashReportSheet(report: report, diagnostics: diagnostics)
+        }
     }
 
     // MARK: - Results list
@@ -1034,7 +1038,7 @@ struct ContentView: View {
                         Button {
                             vm.remove(item)
                         } label: {
-                            Label("Cancel Download", systemImage: "xmark.circle")
+                            Label(String(localized: "Cancel Download", comment: "Context menu."), systemImage: "xmark.circle")
                         }
                     } else if case .pending = item.status {
                         let targets = selectedIDs.contains(item.id)
@@ -1042,25 +1046,25 @@ struct ContentView: View {
                             : [item]
                         if item.mediaType == .image {
                             Button { vm.compressItems(targets, format: .webp) } label: {
-                                Label("Compress as WebP", systemImage: "photo")
+                                Label(String(localized: "Compress as WebP", comment: "Context menu."), systemImage: "photo")
                             }
                             Button { vm.compressItems(targets, format: .avif) } label: {
-                                Label("Compress as AVIF", systemImage: "photo")
+                                Label(String(localized: "Compress as AVIF", comment: "Context menu."), systemImage: "photo")
                             }
                             Button { vm.compressItems(targets, format: .png) } label: {
-                                Label("Compress as PNG", systemImage: "photo")
+                                Label(String(localized: "Compress as PNG", comment: "Context menu."), systemImage: "photo")
                             }
                             Divider()
                         }
                         if item.mediaType == .pdf, vm.effectivePDFOutputMode(for: item) == .flattenPages {
                             Button { vm.queuePDFCompressAtQuality(targets, quality: .low) } label: {
-                                Label("Compress at Low", systemImage: "doc")
+                                Label(String(localized: "Compress at Low", comment: "Context menu PDF quality."), systemImage: "doc")
                             }
                             Button { vm.queuePDFCompressAtQuality(targets, quality: .medium) } label: {
-                                Label("Compress at Medium", systemImage: "doc")
+                                Label(String(localized: "Compress at Medium", comment: "Context menu PDF quality."), systemImage: "doc")
                             }
                             Button { vm.queuePDFCompressAtQuality(targets, quality: .high) } label: {
-                                Label("Compress at High", systemImage: "doc")
+                                Label(String(localized: "Compress at High", comment: "Context menu PDF quality."), systemImage: "doc")
                             }
                             Divider()
                         }
@@ -1069,44 +1073,44 @@ struct ContentView: View {
                                 Button(VideoQuality.medium.displayName) { vm.queueVideoCompress(targets, quality: .medium, codec: .h264) }
                                 Button(VideoQuality.high.displayName)   { vm.queueVideoCompress(targets, quality: .high,   codec: .h264) }
                             } label: {
-                                Label("H.264", systemImage: "film")
+                                Label(String(localized: "H.264", comment: "Video codec menu."), systemImage: "film")
                             }
                             Menu {
                                 Button(VideoQuality.medium.displayName) { vm.queueVideoCompress(targets, quality: .medium, codec: .hevc) }
                                 Button(VideoQuality.high.displayName)   { vm.queueVideoCompress(targets, quality: .high,   codec: .hevc) }
                             } label: {
-                                Label("H.265 (HEVC)", systemImage: "film")
+                                Label(String(localized: "H.265 (HEVC)", comment: "Video codec menu."), systemImage: "film")
                             }
                             Divider()
                         }
                     } else {
                         if case .skipped = item.status {
                             Button { vm.forceCompress(item) } label: {
-                                Label("Compress Anyway", systemImage: "arrow.clockwise")
+                                Label(String(localized: "Compress Anyway", comment: "Context menu."), systemImage: "arrow.clockwise")
                             }
                             Divider()
                         }
                         if item.mediaType == .image {
                             Button { vm.recompress(item, as: .webp) } label: {
-                                Label("Re-compress as WebP", systemImage: "photo")
+                                Label(String(localized: "Re-compress as WebP", comment: "Context menu."), systemImage: "photo")
                             }
                             Button { vm.recompress(item, as: .avif) } label: {
-                                Label("Re-compress as AVIF", systemImage: "photo")
+                                Label(String(localized: "Re-compress as AVIF", comment: "Context menu."), systemImage: "photo")
                             }
                             Button { vm.recompress(item, as: .png) } label: {
-                                Label("Re-compress as PNG", systemImage: "photo")
+                                Label(String(localized: "Re-compress as PNG", comment: "Context menu."), systemImage: "photo")
                             }
                             Divider()
                         }
                         if item.mediaType == .pdf, vm.effectivePDFOutputMode(for: item) == .flattenPages {
                             Button { vm.recompressPDF(item, quality: .low) } label: {
-                                Label("Re-compress at Low", systemImage: "doc")
+                                Label(String(localized: "Re-compress at Low", comment: "Context menu."), systemImage: "doc")
                             }
                             Button { vm.recompressPDF(item, quality: .medium) } label: {
-                                Label("Re-compress at Medium", systemImage: "doc")
+                                Label(String(localized: "Re-compress at Medium", comment: "Context menu."), systemImage: "doc")
                             }
                             Button { vm.recompressPDF(item, quality: .high) } label: {
-                                Label("Re-compress at High", systemImage: "doc")
+                                Label(String(localized: "Re-compress at High", comment: "Context menu."), systemImage: "doc")
                             }
                             Divider()
                         }
@@ -1115,13 +1119,13 @@ struct ContentView: View {
                                 Button(VideoQuality.medium.displayName) { vm.recompressVideo(item, quality: .medium, codec: .h264) }
                                 Button(VideoQuality.high.displayName)   { vm.recompressVideo(item, quality: .high,   codec: .h264) }
                             } label: {
-                                Label("H.264", systemImage: "film")
+                                Label(String(localized: "H.264", comment: "Video codec menu."), systemImage: "film")
                             }
                             Menu {
                                 Button(VideoQuality.medium.displayName) { vm.recompressVideo(item, quality: .medium, codec: .hevc) }
                                 Button(VideoQuality.high.displayName)   { vm.recompressVideo(item, quality: .high,   codec: .hevc) }
                             } label: {
-                                Label("H.265 (HEVC)", systemImage: "film")
+                                Label(String(localized: "H.265 (HEVC)", comment: "Video codec menu."), systemImage: "film")
                             }
                             Divider()
                         }
@@ -1129,13 +1133,13 @@ struct ContentView: View {
                     Button {
                         vm.remove(item)
                     } label: {
-                        Label("Remove", systemImage: "trash")
+                        Label(String(localized: "Remove", comment: "Context menu: remove row."), systemImage: "trash")
                     }
                     Divider()
                     Button(role: .destructive) {
                         vm.clear()
                     } label: {
-                        Label("Clear All", systemImage: "trash.fill")
+                        Label(String(localized: "Clear All", comment: "Context menu: clear list."), systemImage: "trash.fill")
                     }
                 }
         }
@@ -1164,7 +1168,7 @@ struct ContentView: View {
             HStack {
                 Spacer()
                 if !vm.isEmpty {
-                    Button("Clear All") { vm.clear() }
+                    Button(String(localized: "Clear All", comment: "Bottom bar: clear list.")) { vm.clear() }
                         .buttonStyle(.plain)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -1299,10 +1303,10 @@ private func presentManualUpdateResult(_ result: UpdateChecker.CheckResult,
     switch result {
     case .updateAvailable(let version):
         alert.messageText = "A newer dinky has dropped."
-        alert.informativeText = "Version \(version) is out. You're on \(currentAppVersion()). Want it?"
-        alert.addButton(withTitle: "Install Update")
-        alert.addButton(withTitle: "What's new")
-        alert.addButton(withTitle: "Maybe later")
+        alert.informativeText = String(localized: "Version \(version) is out. You’re on \(currentAppVersion()). Want it?", comment: "Manual update alert; arguments are new and current version.")
+        alert.addButton(withTitle: String(localized: "Install Update", comment: "Manual update alert."))
+        alert.addButton(withTitle: String(localized: "What’s new", comment: "Manual update alert."))
+        alert.addButton(withTitle: String(localized: "Maybe later", comment: "Manual update alert."))
 
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
@@ -1312,16 +1316,16 @@ private func presentManualUpdateResult(_ result: UpdateChecker.CheckResult,
         }
 
     case .upToDate:
-        alert.messageText = "All caught up."
-        alert.informativeText = "You're on Dinky \(currentAppVersion()) — the latest and dinkyest."
-        alert.addButton(withTitle: "Nice")
+        alert.messageText = String(localized: "All caught up.", comment: "Manual update: no update available.")
+        alert.informativeText = String(localized: "You’re on Dinky \(currentAppVersion()) — the latest and dinkyest.", comment: "Manual update: up to date; argument is version.")
+        alert.addButton(withTitle: String(localized: "Nice", comment: "Dismiss up-to-date alert."))
         alert.runModal()
 
     case .failed:
         alert.alertStyle = .warning
-        alert.messageText = "Couldn't phone home."
-        alert.informativeText = "Dinky couldn't reach GitHub. Probably the internet. Try again in a sec?"
-        alert.addButton(withTitle: "OK")
+        alert.messageText = String(localized: "Couldn’t phone home.", comment: "Manual update: network error title.")
+        alert.informativeText = String(localized: "Dinky couldn’t reach GitHub. Probably the internet. Try again in a sec?", comment: "Manual update: network error detail.")
+        alert.addButton(withTitle: String(localized: "OK", comment: "Alert dismiss."))
         alert.runModal()
     }
 }

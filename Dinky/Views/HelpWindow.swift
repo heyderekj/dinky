@@ -183,8 +183,8 @@ enum HelpDocument {
               var raw = try? String(contentsOf: url, encoding: .utf8) else {
             return [HelpSection(
                 id: "missing",
-                title: "Help",
-                blocks: [.paragraph("Help content couldn't be loaded.")]
+                title: String(localized: "Help", comment: "Help window fallback title when document is missing."),
+                blocks: [.paragraph(String(localized: "Help content couldn’t be loaded.", comment: "Error message when Help.md is missing from bundle."))]
             )]
         }
         raw = substituteShortcuts(in: raw, prefs: prefs)
@@ -218,11 +218,11 @@ enum HelpDocument {
         // Skip the leading H1 (used as the document title) and treat each
         // H2 as a navigable section. Everything before the first H2 becomes
         // the introductory "Welcome" section using the H1's title.
-        var introTitle = "Welcome"
+        var introTitle = String(localized: "Welcome", comment: "Default help section title before first heading is parsed.")
         var introCaptured = false
 
         func flush() {
-            let title = currentTitle ?? (introCaptured ? "Section" : introTitle)
+            let title = currentTitle ?? (introCaptured ? String(localized: "Section", comment: "Fallback title for unnamed help section.") : introTitle)
             let blocks = parseBlocks(currentLines)
             // Drop empty sections (e.g., a trailing `---`)
             if !blocks.isEmpty {

@@ -148,8 +148,7 @@ Dinky registers a **Compress Images** action for the Shortcuts app. Use it to pi
 ## Privacy & safety
 
 - Everything runs **locally**. No uploads, no telemetry, no account.
-- **Crash reports** are off by default and never sent automatically. If something goes wrong, the post-crash prompt, the "Report a Bug…" menu, and the error detail sheet pre-fill an email or GitHub issue with version + macOS info — *you* still have to hit Send.
-- **Apple crash diagnostics** (MetricKit) are opt-in. Turn on **Settings → General → Privacy → Share crash diagnostics with Dinky** to let Apple deliver anonymous crash and hang reports to Dinky **on your Mac**. The data only leaves your device if you choose to attach it to an email or GitHub issue. Requires *Share with App Developers* under System Settings → Privacy & Security → Analytics & Improvements.
+- **Crash reports** are only sent if *you* choose to — via the post-crash prompt, the "Report a Bug…" menu, or the error detail sheet. If you've opted into macOS diagnostic sharing in System Settings, Apple also delivers anonymised crash data to Dinky on your behalf via MetricKit, with no additional data leaving your Mac.
 - The encoders (`cwebp`, `avifenc`, `oxipng`, plus Apple's built-in PDF and AVFoundation video pipelines) ship inside the app and read your files directly.
 - Originals are kept by default. *Move originals to trash after compressing* is opt-in, in **Settings → General**.
 - *Skip if savings below* (off by default) protects already-lean files from being re-encoded for nothing.

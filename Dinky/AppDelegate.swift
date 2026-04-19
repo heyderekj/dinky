@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var globalPasteHotkeyObserver: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        DiagnosticsReporter.shared.startMonitoring()
         UNUserNotificationCenter.current().delegate = self
         GlobalHotkeyManager.shared.syncFromDefaults()
         globalPasteHotkeyObserver = NotificationCenter.default.addObserver(
@@ -15,6 +16,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ) { _ in
             GlobalHotkeyManager.shared.syncFromDefaults()
         }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        DiagnosticsReporter.shared.clearSentinel()
     }
 
     // MARK: - Open with Dinky / drag onto Dock icon
