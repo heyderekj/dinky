@@ -776,7 +776,8 @@
     .faq-inline-link:hover {
       color: var(--text);
     }
-    .gatekeeper-lead {
+    .gatekeeper-lead,
+    .install-modal-lead {
       font-size: 14px;
       line-height: 1.5;
       color: var(--text);
@@ -1219,6 +1220,7 @@
     <div class="modal">
       <button class="modal-close" onclick="document.getElementById('install-modal').classList.remove('open')" aria-label="Close">✕</button>
       <h2>How to install Dinky</h2>
+      <p class="install-modal-lead">macOS will say Dinky can't be opened — that's Gatekeeper, not a virus. Both steps take less than a minute.</p>
       <ol class="install-steps">
         <li>
           <span>
@@ -1228,7 +1230,7 @@
         </li>
         <li>
           <div class="install-step-stack">
-            <p>Open <strong>Terminal</strong> and paste this command to skip the Gatekeeper warning:</p>
+            <p>Open <strong>Terminal</strong> and paste this command:</p>
             <div class="code-block">
               <code id="xattr-cmd">xattr -dr com.apple.quarantine /Applications/Dinky.app</code>
               <button class="copy-btn" onclick="copyCmd(this)">Copy</button>
