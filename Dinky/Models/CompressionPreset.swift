@@ -41,6 +41,9 @@ struct CompressionPreset: Codable, Identifiable {
     var videoCodecFamilyRaw: String
     var pdfGrayscale: Bool
     var videoRemoveAudio: Bool
+    /// Mirrors images' Max width: opt-in cap on output video height.
+    var videoMaxResolutionEnabled: Bool
+    var videoMaxResolutionLines: Int
 
     let createdAt: Date
 
@@ -75,6 +78,8 @@ struct CompressionPreset: Codable, Identifiable {
         self.videoCodecFamilyRaw = prefs.videoCodecFamilyRaw
         self.pdfGrayscale = prefs.pdfGrayscale
         self.videoRemoveAudio = prefs.videoRemoveAudio
+        self.videoMaxResolutionEnabled = prefs.videoMaxResolutionEnabled
+        self.videoMaxResolutionLines = prefs.videoMaxResolutionLines
         self.createdAt = .now
     }
 
@@ -109,10 +114,14 @@ struct CompressionPreset: Codable, Identifiable {
         presetMediaScopeRaw = try c.decodeIfPresent(String.self, forKey: .presetMediaScopeRaw) ?? PresetMediaScope.all.rawValue
         pdfOutputModeRaw = try c.decodeIfPresent(String.self, forKey: .pdfOutputModeRaw) ?? PDFOutputMode.preserveStructure.rawValue
         pdfQualityRaw = try c.decodeIfPresent(String.self, forKey: .pdfQualityRaw) ?? PDFQuality.medium.rawValue
-        videoQualityRaw = try c.decodeIfPresent(String.self, forKey: .videoQualityRaw) ?? VideoQuality.medium.rawValue
+        let storedVideoQuality = try c.decodeIfPresent(String.self, forKey: .videoQualityRaw) ?? VideoQuality.high.rawValue
+        // Migrates a persisted `"low"` (removed tier) to the closest remaining tier (`.medium`).
+        videoQualityRaw = VideoQuality.resolve(storedVideoQuality).rawValue
         videoCodecFamilyRaw = try c.decodeIfPresent(String.self, forKey: .videoCodecFamilyRaw) ?? VideoCodecFamily.h264.rawValue
         pdfGrayscale = try c.decodeIfPresent(Bool.self, forKey: .pdfGrayscale) ?? false
         videoRemoveAudio = try c.decodeIfPresent(Bool.self, forKey: .videoRemoveAudio) ?? false
+        videoMaxResolutionEnabled = try c.decodeIfPresent(Bool.self, forKey: .videoMaxResolutionEnabled) ?? false
+        videoMaxResolutionLines = try c.decodeIfPresent(Int.self, forKey: .videoMaxResolutionLines) ?? 1080
     }
 
     func apply(to prefs: DinkyPreferences, selectedFormat: inout CompressionFormat) {
@@ -145,6 +154,8 @@ struct CompressionPreset: Codable, Identifiable {
         prefs.videoCodecFamilyRaw = videoCodecFamilyRaw
         prefs.pdfGrayscale = pdfGrayscale
         prefs.videoRemoveAudio = videoRemoveAudio
+        prefs.videoMaxResolutionEnabled = videoMaxResolutionEnabled
+        prefs.videoMaxResolutionLines = videoMaxResolutionLines
     }
 }
 

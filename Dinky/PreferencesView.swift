@@ -196,18 +196,6 @@ private struct GeneralTab: View {
                 .foregroundStyle(Color.accentColor)
             }
 
-            Section {
-                Button("Reset total saved statistics…") {
-                    confirmResetLifetime = true
-                }
-                .disabled(prefs.lifetimeSavedBytes == 0)
-                Text("Clears the running total shown in History. Session history is unchanged — clear that from the History window.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            } header: {
-                Text("Statistics")
-            }
-
             // 4. Sidebar
             Section {
                 Toggle("Use simple sidebar", isOn: Binding(
@@ -252,6 +240,19 @@ private struct GeneralTab: View {
                     .foregroundStyle(.secondary)
             } header: {
                 Text("Accessibility")
+            }
+
+            // 6. Session history (lifetime total; per-session list is in History window)
+            Section {
+                Button("Reset total saved statistics…") {
+                    confirmResetLifetime = true
+                }
+                .disabled(prefs.lifetimeSavedBytes == 0)
+                Text("Clears the running total shown in History. Session history is unchanged — clear that from the History window.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("Session history")
             }
 
             Section {
@@ -682,15 +683,11 @@ private struct PresetsTab: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// Fixed video strength when Smart quality is off. Codec and audio live under Media.
+    /// Manual video controls when Smart quality is off. Codec, resolution cap, and audio live under Media.
     @ViewBuilder
     private func presetManualCompressionVideoControls(_ snapshot: CompressionPreset) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            QualityChipPicker(
-                options: VideoQuality.allCases.map { ($0.displayName, $0.rawValue, $0.description) },
-                selected: binding(\.videoQualityRaw, snapshot: snapshot)
-            )
-            Text("Codec and audio options are under Media.")
+            Text("Output resolution and codec live under Media.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -786,16 +783,23 @@ private struct PresetsTab: View {
                 options: VideoCodecFamily.allCases.map { ($0.chipLabel, $0.rawValue, $0.description) },
                 selected: binding(\.videoCodecFamilyRaw, snapshot: snapshot)
             )
-            QualityChipPicker(
-                options: VideoQuality.allCases.map { ($0.displayName, $0.rawValue, $0.description) },
-                selected: binding(\.videoQualityRaw, snapshot: snapshot)
-            )
-            .disabled(liveVideo.smartQuality)
-            if liveVideo.smartQuality {
-                Text("Manual video quality is a fallback when metadata can’t be read. Codec above always applies.")
+            Divider()
+            Toggle("Cap output resolution", isOn: binding(\.videoMaxResolutionEnabled, snapshot: snapshot))
+            if liveVideo.videoMaxResolutionEnabled {
+                presetChips(
+                    presets: [("480p", 480), ("720p", 720), ("1080p", 1080), ("2160p", 2160)],
+                    current: liveVideo.videoMaxResolutionLines,
+                    onSelect: { set(\.videoMaxResolutionLines, to: $0, for: snapshot) }
+                )
+                Text("Source resolution is kept when below the cap. Smart quality below ignores this.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Off keeps source resolution and just re-encodes for size.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            Divider()
             Toggle("Strip audio track", isOn: binding(\.videoRemoveAudio, snapshot: snapshot))
             if liveVideo.videoRemoveAudio {
                 Text("Best for screen recordings or silent clips.")

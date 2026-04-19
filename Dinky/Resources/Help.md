@@ -71,11 +71,11 @@ Toggle **Settings → General → Use simple sidebar** off (or flip individual s
 
 When **Smart quality** is on (default for new presets), Dinky inspects each file and picks settings for it:
 
-- Images get an encoder tuned to their content (clean lines vs. busy photo vs. UI screenshot).
-- Videos get an encoder strength based on resolution and source bitrate.
+- Images get an encoder tuned to their content (busy photo vs. graphic — UI, illustration, logo, screenshot).
+- Videos get a tier based on resolution and source bitrate, then nudged for content type — screen recordings and animation / motion graphics move up a tier so text and edges stay readable. Camera footage is identified from EXIF make/model so it isn't over-protected. HDR sources (Dolby Vision, HDR10, HLG) are exported with HEVC to preserve color and highlight detail; H.264 would silently flatten them to SDR.
 - PDFs get a tier based on document complexity and whether they're text-first or image-heavy.
 
-Turn it off in any preset under **Compression** when you want fixed Low / Medium / High behavior — useful for batches that need predictable results.
+Turn it off in any preset under **Compression** when you want a fixed quality tier (Balanced / High for video, Low / Medium / High for PDFs) — useful for batches that need predictable results.
 
 ---
 
@@ -87,7 +87,7 @@ Examples that work well:
 
 - **Web hero images** — WebP, max width 1920, append `-web`.
 - **Client deliverables** — JPEG, max width 2560, replace original, save to `~/Deliverables/`.
-- **Screen recordings** — H.264 medium, strip audio.
+- **Screen recordings** — H.264 Balanced, strip audio.
 - **Scanned PDFs** — flatten, medium quality, grayscale.
 
 Create them in **Settings → Presets**. Each can:
@@ -108,7 +108,7 @@ Drop files into a folder and let Dinky handle them in the background.
 - **Global watch** — *Settings → Watch → Global*. Uses whatever the sidebar is currently set to. Good for an "incoming" or screenshot folder.
 - **Per-preset watch** — each preset can also watch its own folder with its own rules. Independent of the sidebar — change the sidebar all you want, the preset still does its thing.
 
-> **Pro tip:** Combine "screen recordings folder" + a preset that strips audio and re-encodes to H.264 medium. Hit `⌘⇧5`, screen-record, hit stop — Dinky has a small file ready before you reach the Finder.
+> **Pro tip:** Combine "screen recordings folder" + a preset that strips audio and re-encodes to H.264 Balanced. Hit `⌘⇧5`, screen-record, hit stop — Dinky has a small file ready before you reach the Finder.
 
 ---
 

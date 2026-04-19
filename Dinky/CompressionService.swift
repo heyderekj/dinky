@@ -14,6 +14,13 @@ struct CompressionResult {
     let outputSize: Int64
     let detectedContentType: ContentType?   // nil when Smart Quality is off
     var videoDuration: Double? = nil
+    /// Detected video content (screen recording / camera / generic). `nil` for non-video.
+    var videoContentType: VideoContentType? = nil
+    /// True when the source carried HDR (HLG / PQ / Dolby Vision) — preserved on export.
+    var videoIsHDR: Bool = false
+    /// Codec the export actually used. For HDR sources this may differ from the user's choice
+    /// because we force HEVC to keep HDR metadata intact.
+    var videoEffectiveCodec: VideoCodecFamily? = nil
 }
 
 enum CompressionError: LocalizedError {
@@ -45,20 +52,20 @@ private let defaultQuality: [CompressionFormat: Int] = [
 ]
 
 // Smart Quality: per-content-type quality for each format.
-// UI/screenshots get higher quality to keep text crisp. Photos stay at our
-// tuned defaults. Mixed lands in between.
+// Graphics (UI, screenshots, illustrations, logos) get higher quality to keep
+// edges crisp. Photos stay at our tuned defaults. Mixed lands in between.
 private let qualityByContent: [ContentType: [CompressionFormat: Int]] = [
-    .photo: [.webp: 82, .avif: 75],
-    .ui:    [.webp: 92, .avif: 88],
-    .mixed: [.webp: 87, .avif: 82],
+    .photo:   [.webp: 82, .avif: 75],
+    .graphic: [.webp: 92, .avif: 88],
+    .mixed:   [.webp: 87, .avif: 82],
 ]
 
-// Floor for the binary-search target-size mode. UI screenshots shouldn't
+// Floor for the binary-search target-size mode. Graphics shouldn't
 // ever drop below this quality floor even when chasing a file size target.
 private let targetSizeFloor: [ContentType: Int] = [
-    .photo: 10,
-    .ui:    50,
-    .mixed: 25,
+    .photo:   10,
+    .graphic: 50,
+    .mixed:   25,
 ]
 
 actor CompressionService {
@@ -107,10 +114,10 @@ actor CompressionService {
             detected = await Task.detached { ContentClassifier.classify(source) }.value
         } else {
             switch contentTypeHint {
-            case "photo": detected = .photo
-            case "ui":    detected = .ui
-            case "mixed": detected = .mixed
-            default:      detected = nil
+            case "photo":             detected = .photo
+            case "graphic", "ui":     detected = .graphic   // "ui" kept for legacy stored prefs
+            case "mixed":             detected = .mixed
+            default:                  detected = nil
             }
         }
 
@@ -128,9 +135,10 @@ actor CompressionService {
             )
         } else {
             let q = quality(for: format, content: detected)
-            // For UI/screenshot WebP, near-lossless preserves text edges that
-            // even q=92 lossy softens. AVIF UI handles crispness via 4:4:4 + slower speed.
-            let nl: Int? = (format == .webp && detected == .ui) ? 60 : nil
+            // For graphics in WebP, near-lossless preserves edges that even
+            // q=92 lossy softens. AVIF graphics handle crispness via 4:4:4 +
+            // slower speed.
+            let nl: Int? = (format == .webp && detected == .graphic) ? 60 : nil
             try await compressAtQuality(source: workURL, quality: q,
                                         format: format, strip: stripMetadata, output: outputURL,
                                         content: detected, nearLossless: nl)
@@ -192,9 +200,9 @@ actor CompressionService {
     ) async throws {
         let fm = FileManager.default
 
-        // UI + WebP: binary-search `-near_lossless` (40…100) before lossy `-q`.
+        // Graphic + WebP: binary-search `-near_lossless` (40…100) before lossy `-q`.
         // Higher values = closer to lossless = larger files; we maximize nl that still fits the cap.
-        if format == .webp, content == .ui {
+        if format == .webp, content == .graphic {
             var nlLo = 40, nlHi = 100
             var bestURL: URL?
             while nlLo <= nlHi {
@@ -273,16 +281,17 @@ actor CompressionService {
         var args: [String]
         if let nl = nearLossless {
             // Near-lossless: preprocesses pixel values for better compression
-            // while keeping edges pixel-perfect. Best for UI / text screenshots.
+            // while keeping edges pixel-perfect. Best for graphics — UI,
+            // illustrations, logos, anything with hard edges.
             // -q here controls compression effort, not visual quality.
             args = ["-near_lossless", String(nl), "-m", "6", "-alpha_q", "100", "-exact", "-q", "100"]
         } else {
             // -preset must come first — it resets other flags.
             switch content {
-            case .photo:  args = ["-preset", "photo",   "-m", "6", "-sharp_yuv", "-pass", "6", "-af", "-q", q]
-            case .ui:     args = ["-preset", "text",    "-m", "6", "-sharp_yuv", "-alpha_q", "100", "-exact", "-q", q]
-            case .mixed:  args = ["-preset", "picture", "-m", "6", "-sharp_yuv", "-q", q]
-            case .none:   args = ["-preset", "picture", "-m", "6", "-q", q]
+            case .photo:    args = ["-preset", "photo",   "-m", "6", "-sharp_yuv", "-pass", "6", "-af", "-q", q]
+            case .graphic:  args = ["-preset", "text",    "-m", "6", "-sharp_yuv", "-alpha_q", "100", "-exact", "-q", q]
+            case .mixed:    args = ["-preset", "picture", "-m", "6", "-sharp_yuv", "-q", q]
+            case .none:     args = ["-preset", "picture", "-m", "6", "-q", q]
             }
         }
         if strip { args += ["-metadata", "none"] }
@@ -296,12 +305,12 @@ actor CompressionService {
         let qAlpha = String(min(quality + 10, 100))
         var args: [String]
         switch content {
-        case .photo:  args = ["--speed", "4", "--yuv", "420", "--depth", "10", "--jobs", "all", "--qcolor", qColor, "--qalpha", qAlpha]
-        // UI: 4:4:4 keeps color edges sharp (no chroma subsampling).
-        // Speed 4 (slower than the default 6) noticeably improves text crispness.
-        case .ui:     args = ["--speed", "4", "--yuv", "444", "--jobs", "all", "--qcolor", qColor, "--qalpha", qAlpha]
-        case .mixed:  args = ["--speed", "5", "--yuv", "422", "--depth", "10", "--jobs", "all", "--qcolor", qColor, "--qalpha", qAlpha]
-        case .none:   args = ["--speed", "5", "--yuv", "420", "--jobs", "all", "--qcolor", qColor, "--qalpha", qAlpha]
+        case .photo:    args = ["--speed", "4", "--yuv", "420", "--depth", "10", "--jobs", "all", "--qcolor", qColor, "--qalpha", qAlpha]
+        // Graphic: 4:4:4 keeps color edges sharp (no chroma subsampling).
+        // Speed 4 (slower than the default 6) noticeably improves edge crispness.
+        case .graphic:  args = ["--speed", "4", "--yuv", "444", "--jobs", "all", "--qcolor", qColor, "--qalpha", qAlpha]
+        case .mixed:    args = ["--speed", "5", "--yuv", "422", "--depth", "10", "--jobs", "all", "--qcolor", qColor, "--qalpha", qAlpha]
+        case .none:     args = ["--speed", "5", "--yuv", "420", "--jobs", "all", "--qcolor", qColor, "--qalpha", qAlpha]
         }
         if strip { args += ["--ignore-exif", "--ignore-xmp"] }
         args += [source.path, output.path]
@@ -394,7 +403,9 @@ actor CompressionService {
         quality: VideoQuality,
         codec: VideoCodecFamily,
         removeAudio: Bool,
+        maxResolutionLines: Int? = nil,
         outputURL: URL,
+        videoContentType: VideoContentType? = nil,
         progressHandler: (@Sendable (Float) -> Void)? = nil
     ) async throws -> CompressionResult {
         try await compressVideo(
@@ -403,19 +414,25 @@ actor CompressionService {
             quality: quality,
             codec: codec,
             removeAudio: removeAudio,
+            maxResolutionLines: maxResolutionLines,
             outputURL: outputURL,
+            videoContentType: videoContentType,
             progressHandler: progressHandler
         )
     }
 
     /// Reuses a pre-built ``AVURLAsset`` (e.g. shared with ``VideoSmartQuality``) to avoid reopening the file.
+    /// - Parameter maxResolutionLines: Optional output-height cap (mirrors images' Max width). `nil` keeps source resolution.
+    /// - Parameter videoContentType: When already known (Smart Quality classified it), surfaced in the result for the UI chip.
     func compressVideo(
         asset: AVURLAsset,
         source: URL,
         quality: VideoQuality,
         codec: VideoCodecFamily,
         removeAudio: Bool,
+        maxResolutionLines: Int? = nil,
         outputURL: URL,
+        videoContentType: VideoContentType? = nil,
         progressHandler: (@Sendable (Float) -> Void)? = nil
     ) async throws -> CompressionResult {
         let originalSize = fileSize(source)
@@ -425,12 +442,13 @@ actor CompressionService {
             withIntermediateDirectories: true
         )
 
-        let duration = try await VideoCompressor.compress(
+        let resolved = try await VideoCompressor.compress(
             asset: asset,
             sourceForMetadata: source,
             quality: quality,
             codec: codec,
             removeAudio: removeAudio,
+            maxResolutionLines: maxResolutionLines,
             outputURL: outputURL,
             progressHandler: progressHandler
         )
@@ -439,11 +457,16 @@ actor CompressionService {
             throw CompressionError.outputMissing
         }
 
-        return CompressionResult(outputURL: outputURL,
-                                 originalSize: originalSize,
-                                 outputSize: fileSize(outputURL),
-                                 detectedContentType: nil,
-                                 videoDuration: duration)
+        return CompressionResult(
+            outputURL: outputURL,
+            originalSize: originalSize,
+            outputSize: fileSize(outputURL),
+            detectedContentType: nil,
+            videoDuration: resolved.durationSeconds,
+            videoContentType: videoContentType,
+            videoIsHDR: resolved.isHDR,
+            videoEffectiveCodec: resolved.codec
+        )
     }
 
     // MARK: - Helpers

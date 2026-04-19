@@ -11,7 +11,7 @@
 - **Batch speed** — Fast (one at a time), Faster (up to three parallel), or Fastest (up to eight)
 - Max width resizing (common web presets or custom value)
 - Max file size targeting via binary search on quality (images)
-- Smart quality: detects photos vs screenshots via Vision framework + EXIF, adjusts quality per content type
+- Smart quality: detects photos vs graphics (UI, illustrations, logos, screenshots) via Vision framework + EXIF, adjusts quality per content type
 - Finder Quick Actions — compress without opening the app
 - Manual mode: drop files, then right-click each one to pick format individually
 - Skip threshold: skip files below a minimum savings target — Off, 2%, 5%, or 10%

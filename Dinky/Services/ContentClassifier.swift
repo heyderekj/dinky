@@ -1,12 +1,12 @@
-// ContentClassifier.swift — multi-signal photo vs. UI/screenshot detection.
-// Drives Smart Quality: photos compress harder, UI screenshots keep more
-// quality so text stays crisp.
+// ContentClassifier.swift — multi-signal photo vs. graphic detection.
+// Drives Smart Quality: photos compress harder, graphics (UI, screenshots,
+// illustrations, logos, diagrams) keep more quality so edges stay crisp.
 //
 // Signals, in order of confidence:
 //   1. EXIF/TIFF metadata (camera make/model, FNumber, ExposureTime) → photo
-//   2. Screenshot metadata hints (macOS / iOS screenshots add specific keys) → UI
+//   2. Screenshot metadata hints (macOS / iOS screenshots add specific keys) → graphic
 //   3. Pixel sample on thumbnail — strong photo (many colors, low flatness) → photo (skip Vision)
-//   4. Vision text-rect detection — >18% text coverage → UI
+//   4. Vision text-rect detection — >18% text coverage → graphic
 //   5. Pixel heuristics (unique-color count + flat-region ratio) → fallback
 //
 // All signals use Apple frameworks only (ImageIO, Vision, CoreGraphics).
@@ -19,23 +19,25 @@ import Vision
 
 enum ContentType: String {
     case photo
-    case ui
+    /// UI screenshots, illustrations, logos, diagrams, line art — anything
+    /// edge-heavy / flat-region. All want the same compression treatment.
+    case graphic
     case mixed
 
     /// Short label for the results chip.
     var label: String {
         switch self {
-        case .photo: return "photo"
-        case .ui:    return "UI"
-        case .mixed: return "mixed"
+        case .photo:   return "photo"
+        case .graphic: return "graphic"
+        case .mixed:   return "mixed"
         }
     }
 
     var tooltipLabel: String {
         switch self {
-        case .photo: return "Detected as a photo — compressed more aggressively"
-        case .ui:    return "Detected as a screenshot or UI — quality preserved to keep text crisp"
-        case .mixed: return "Mixed content — balanced compression applied"
+        case .photo:   return "Detected as a photo — compressed more aggressively"
+        case .graphic: return "Detected as a graphic (screenshot, UI, illustration, or logo) — quality preserved to keep edges crisp"
+        case .mixed:   return "Mixed content — balanced compression applied"
         }
     }
 }
@@ -65,19 +67,20 @@ enum ContentClassifier {
         // Vision text detection. UI/screenshots almost always carry a significant text region.
         let textCoverage = detectTextCoverage(cgImage: cg)
         if textCoverage > 0.18 {
-            return .ui
+            return .graphic
         }
 
         if let stats {
             let (uniqueColors, flatRatio) = stats
 
-            // Strong UI signal: few colors + large flat regions.
+            // Strong graphic signal: few colors + large flat regions
+            // (illustrations, logos, vector exports, UI all live here).
             if uniqueColors < 1_200, flatRatio > 0.30 {
-                return .ui
+                return .graphic
             }
-            // Weak UI: some text-ish regions even without Vision hit.
+            // Weak graphic: some text-ish regions even without Vision hit.
             if textCoverage > 0.08, flatRatio > 0.20 {
-                return .ui
+                return .graphic
             }
         }
 
@@ -100,7 +103,7 @@ enum ContentClassifier {
         // strings — they're a loud, clean signal.
         let software = (tiff["Software"] as? String ?? "").lowercased()
         if software.contains("screenshot") || software == "screencapture" {
-            return .ui
+            return .graphic
         }
 
         // Strong photo signal: genuine camera EXIF. The FNumber/ExposureTime
@@ -168,6 +171,13 @@ enum ContentClassifier {
     /// Draw the thumbnail into an RGBA buffer and compute:
     /// - unique color count across the whole buffer (quantized to 5 bits/ch)
     /// - flat-region ratio: fraction of 16x16 tiles where ≤3 unique colors appear
+    ///
+    /// Exposed at module scope (via ``samplePixelStats(_:)``) so video frame classification
+    /// can reuse the exact same heuristic on extracted video frames.
+    static func samplePixelStats(_ cgImage: CGImage) -> (uniqueColors: Int, flatRatio: Double)? {
+        sample(cgImage: cgImage)
+    }
+
     private static func sample(cgImage: CGImage) -> (uniqueColors: Int, flatRatio: Double)? {
         let width  = cgImage.width
         let height = cgImage.height

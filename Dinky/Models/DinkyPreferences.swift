@@ -182,9 +182,12 @@ final class DinkyPreferences: ObservableObject {
         get { PDFQuality(rawValue: pdfQualityRaw) ?? .medium }
         set { pdfQualityRaw = newValue.rawValue }
     }
-    @AppStorage("videoQuality")    var videoQualityRaw: String = VideoQuality.medium.rawValue
+    /// Manual fallback when Smart Quality is off, also used as the Smart Quality fallback if analysis fails.
+    /// `.low` was removed because its artifacts didn't fit a quality-first compressor — `VideoQuality.resolve`
+    /// migrates any persisted `"low"` to `.medium`.
+    @AppStorage("videoQuality")    var videoQualityRaw: String = VideoQuality.high.rawValue
     var videoQuality: VideoQuality {
-        get { VideoQuality(rawValue: videoQualityRaw) ?? .medium }
+        get { VideoQuality.resolve(videoQualityRaw) }
         set { videoQualityRaw = newValue.rawValue }
     }
     @AppStorage("videoCodecFamily") var videoCodecFamilyRaw: String = VideoCodecFamily.h264.rawValue
@@ -194,6 +197,11 @@ final class DinkyPreferences: ObservableObject {
     }
     @AppStorage("pdfGrayscale")    var pdfGrayscale:    Bool = false
     @AppStorage("videoRemoveAudio") var videoRemoveAudio: Bool = false
+
+    /// Optional video downscale (mirrors images' Max width). Off → keeps source resolution.
+    @AppStorage("videoMaxResolutionEnabled") var videoMaxResolutionEnabled: Bool = false
+    /// Output height in pixels (matches one of the available `AVAssetExportPreset…` heights: 480 / 720 / 1080 / 2160).
+    @AppStorage("videoMaxResolutionLines")   var videoMaxResolutionLines: Int = 1080
 
     // MARK: Lifetime stats
     @AppStorage("lifetimeSavedBytesRaw") var lifetimeSavedBytesRaw: Double = 0

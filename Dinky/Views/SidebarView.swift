@@ -39,12 +39,12 @@ private enum SidebarScope: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Short label for the scope tab strip (narrow sidebar).
+    /// Compact label for the four-column scope strip (narrow sidebar).
     var tabShortTitle: String {
         switch self {
         case .images: return "Images"
-        case .pdfs: return "PDFs"
         case .videos: return "Video"
+        case .pdfs: return "PDFs"
         case .output: return "Output"
         }
     }
@@ -68,6 +68,10 @@ struct SidebarView: View {
     private let sizePresets: [(String, Int)] = [
         ("0.5 MB", 512), ("1 MB", 1024), ("2 MB", 2048),
         ("5 MB", 5120), ("10 MB", 10240)
+    ]
+    /// Output-height options for video downscale (matches Apple's available `AVAssetExportPreset…` heights).
+    private let videoResolutionPresets: [(String, Int)] = [
+        ("480p", 480), ("720p", 720), ("1080p", 1080), ("2160p", 2160)
     ]
 
     private var presetActive: Bool { !prefs.activePresetID.isEmpty }
@@ -100,6 +104,7 @@ struct SidebarView: View {
                 }
             }
             .padding(10)
+            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
             // ScrollView proposes unbounded vertical space; without this the stack stretches and the
             // height preference / glass panel match the window instead of the real content.
             .fixedSize(horizontal: false, vertical: true)
@@ -114,8 +119,10 @@ struct SidebarView: View {
             guard h > 0.5 else { return }
             contentHeight = h
         }
+        // Propose the final width before clipping so segmented controls and text wrap inside the panel
+        // instead of overflowing horizontally (which looked like left-edge clipping).
+        .frame(width: 260, alignment: .topLeading)
         .clipped()
-        .frame(width: 228)
         .modifier(SidebarMeasuredHeight(height: contentHeight))
         .adaptiveGlass(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .animation(.easeInOut(duration: 0.2), value: prefs.maxWidthEnabled)
@@ -134,6 +141,8 @@ struct SidebarView: View {
         .animation(.easeInOut(duration: 0.2), value: prefs.pdfOutputModeRaw)
         .animation(.easeInOut(duration: 0.2), value: prefs.videoRemoveAudio)
         .animation(.easeInOut(duration: 0.2), value: prefs.videoCodecFamilyRaw)
+        .animation(.easeInOut(duration: 0.2), value: prefs.videoMaxResolutionEnabled)
+        .animation(.easeInOut(duration: 0.2), value: prefs.videoMaxResolutionLines)
         .animation(.easeInOut(duration: 0.2), value: prefs.sidebarSimpleMode)
         .animation(.easeInOut(duration: 0.2), value: scopeRaw)
         .accessibilityLabel("Compression settings")
@@ -192,6 +201,16 @@ struct SidebarView: View {
                         selectedFormat: $selectedFormat,
                         showActiveDescription: false
                     )
+
+                    // The chips above only affect images. Videos and PDFs each have their own
+                    // format story — call it out so the picker isn't read as a global setting.
+                    // Only shown when chips are visible; with auto on, picking a format isn't a
+                    // question the user is asking, so the clarifier would just be noise.
+                    VStack(alignment: .leading, spacing: 3) {
+                        formatNoteRow(icon: "film", text: "Videos always export as MP4 — pick H.264 or HEVC in All options.")
+                        formatNoteRow(icon: "doc.text", text: "PDFs stay as PDFs — preserve text or flatten under All options.")
+                    }
+                    .padding(.top, 2)
                 }
 
                 Toggle("Tune compression from content", isOn: Binding(
@@ -290,6 +309,7 @@ struct SidebarView: View {
                 scopeTabBar
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, 10)
 
             Group {
                 switch effectiveScope {
@@ -304,27 +324,28 @@ struct SidebarView: View {
         }
     }
 
+    /// Four equal columns: icon + short title. Uses `minWidth: 0` so labels scale instead of overflowing.
     private var scopeTabBar: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 3) {
             ForEach(availableScopes) { scope in
                 let selected = effectiveScope == scope
                 Button {
                     scopeRaw = scope.rawValue
                 } label: {
-                    VStack(spacing: 3) {
+                    VStack(spacing: 2) {
                         Image(systemName: scope.icon)
-                            .font(.system(size: 12, weight: .medium))
-                            .frame(width: 22, height: 15)
+                            .font(.system(size: 11, weight: .medium))
+                            .frame(height: 14)
                         Text(scope.tabShortTitle)
-                            .font(.system(size: 9, weight: selected ? .semibold : .medium))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.65)
+                            .font(.system(size: 8.5, weight: selected ? .semibold : .medium))
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.5)
                             .multilineTextAlignment(.center)
-                            .frame(maxWidth: .infinity, minHeight: 14, maxHeight: 14, alignment: .center)
+                            .frame(maxWidth: .infinity)
                     }
-                    .frame(maxWidth: .infinity, minHeight: 46, alignment: .center)
-                    .padding(.vertical, 4)
-                    .padding(.horizontal, 2)
+                    .frame(maxWidth: .infinity, minHeight: 40, alignment: .center)
+                    .padding(.vertical, 3)
+                    .padding(.horizontal, 1)
                     .foregroundStyle(selected ? Color.accentColor : Color.secondary)
                     .background(
                         RoundedRectangle(cornerRadius: 7, style: .continuous)
@@ -332,11 +353,13 @@ struct SidebarView: View {
                     )
                 }
                 .buttonStyle(.plain)
-                .frame(maxWidth: .infinity)
+                .frame(minWidth: 0, maxWidth: .infinity)
                 .contentShape(Rectangle())
+                .accessibilityLabel(scope.title)
                 .help(scope.title)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var sidebarSectionsFooter: some View {
@@ -430,7 +453,7 @@ struct SidebarView: View {
             get: { prefs.smartQuality }, set: { prefs.smartQuality = $0 }
         )).font(.system(size: 11))
         if prefs.smartQuality {
-            helper("For images: encoding strength from content. Videos and PDFs: tier from each file (see those tabs).")
+            helper("Picks encoder strength per image from content (photo vs. graphic). Videos and PDFs are tuned per file too — see those tabs.")
                 .transition(.asymmetric(
                     insertion: .move(edge: .top).combined(with: .opacity.animation(.easeInOut(duration: 0.15).delay(0.1))),
                     removal:   .move(edge: .top).combined(with: .opacity.animation(.easeIn(duration: 0.08)))
@@ -453,7 +476,7 @@ struct SidebarView: View {
         )).toggleStyle(.switch).font(.system(size: 11))
         if prefs.maxWidthEnabled {
             VStack(alignment: .leading, spacing: 8) {
-                chipGrid(presets: widthPresets, current: prefs.maxWidth) { prefs.maxWidth = $0 }
+                chipGrid(presets: widthPresets, current: prefs.maxWidth, fixedColumnCount: 3) { prefs.maxWidth = $0 }
                 HStack(spacing: 6) {
                     TextField("1920", value: Binding(
                         get: { prefs.maxWidth }, set: { prefs.maxWidth = max(1, $0) }
@@ -494,64 +517,108 @@ struct SidebarView: View {
         }
     }
 
+    /// Full-width stacked choices (radio-style) — avoids cramped segmented controls in a narrow sidebar.
+    private func pdfOutputModeChoice(_ mode: PDFOutputMode, title: String, subtitle: String) -> some View {
+        let isSelected = prefs.pdfOutputMode == mode
+        return Button {
+            prefs.pdfOutputModeRaw = mode.rawValue
+        } label: {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: isSelected ? "circle.inset.filled" : "circle")
+                    .font(.system(size: 13, weight: .regular))
+                    .foregroundStyle(isSelected ? Color.accentColor : Color.primary.opacity(0.28))
+                    .frame(width: 16, alignment: .center)
+                    .padding(.top, 1)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.primary)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(subtitle)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 7)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(isSelected ? Color.accentColor.opacity(0.1) : Color.primary.opacity(0.04))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
     @ViewBuilder
     private var pdfsContent: some View {
-        subHeader(icon: "doc.text.viewfinder", "Output")
-        Picker("PDF output", selection: Binding(
-            get: { prefs.pdfOutputModeRaw },
-            set: { prefs.pdfOutputModeRaw = $0 }
-        )) {
-            Text("Preserve text & links").tag(PDFOutputMode.preserveStructure.rawValue)
-            Text("Flatten (smallest)").tag(PDFOutputMode.flattenPages.rawValue)
-        }
-        .labelsHidden()
-        .pickerStyle(.segmented)
-        .accessibilityLabel("PDF output mode")
+        VStack(alignment: .leading, spacing: 8) {
+            subHeader(icon: "doc.text.viewfinder", "Output")
+            VStack(alignment: .leading, spacing: 4) {
+                pdfOutputModeChoice(
+                    .preserveStructure,
+                    title: "Preserve text & links",
+                    subtitle: "Keeps selectable text, links, and forms. Good for documents you still need to copy from."
+                )
+                pdfOutputModeChoice(
+                    .flattenPages,
+                    title: "Flatten (smallest)",
+                    subtitle: "Turns each page into an image. Smallest files; use quality and grayscale below."
+                )
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("PDF output mode")
 
-        if prefs.pdfOutputMode == .preserveStructure {
-            helper("Rewrites the PDF and strips metadata. Text, links, and forms stay usable. File size may change a little.")
+            if prefs.pdfOutputMode == .preserveStructure {
+                VStack(alignment: .leading, spacing: 4) {
+                    helper("Rewrites the PDF and strips metadata. Text, links, and forms stay usable. File size may change a little.")
+                    helper("Quality tiers and grayscale apply when you choose Flatten (smallest).")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .transition(.asymmetric(
                     insertion: .move(edge: .top).combined(with: .opacity.animation(.easeInOut(duration: 0.15).delay(0.1))),
                     removal:   .move(edge: .top).combined(with: .opacity.animation(.easeIn(duration: 0.08)))
                 ))
-        }
-
-        if prefs.pdfOutputMode == .flattenPages {
-            sectionDivider
-
-            subHeader(icon: "doc.richtext", "Quality")
-            QualityChipPicker(
-                options: PDFQuality.allCases.map { ($0.displayName, $0.rawValue, $0.description) },
-                selected: Binding(get: { prefs.pdfQualityRaw }, set: { prefs.pdfQualityRaw = $0 })
-            )
-            .disabled(prefs.smartQuality)
-            if prefs.smartQuality {
-                helper("Dinky picks a tier from each document. Turn off Smart quality under Images for a fixed Low / Medium / High. Manual tier is still used as a fallback if analysis fails.")
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .top).combined(with: .opacity.animation(.easeInOut(duration: 0.15).delay(0.1))),
-                        removal:   .move(edge: .top).combined(with: .opacity.animation(.easeIn(duration: 0.08)))
-                    ))
             }
 
-            sectionDivider
+            if prefs.pdfOutputMode == .flattenPages {
+                sectionDivider
 
-            subHeader(icon: "circle.lefthalf.filled", "Color")
-            Toggle("Grayscale PDF", isOn: Binding(
-                get: { prefs.pdfGrayscale }, set: { prefs.pdfGrayscale = $0 }
-            )).font(.system(size: 11))
-            if prefs.pdfGrayscale {
-                helper("Smaller files when color isn’t needed.")
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .top).combined(with: .opacity.animation(.easeInOut(duration: 0.15).delay(0.1))),
-                        removal:   .move(edge: .top).combined(with: .opacity.animation(.easeIn(duration: 0.08)))
-                    ))
+                subHeader(icon: "doc.richtext", "Quality")
+                QualityChipPicker(
+                    options: PDFQuality.allCases.map { ($0.displayName, $0.rawValue, $0.description) },
+                    selected: Binding(get: { prefs.pdfQualityRaw }, set: { prefs.pdfQualityRaw = $0 })
+                )
+                .disabled(prefs.smartQuality)
+                if prefs.smartQuality {
+                    helper("Dinky picks a tier from each document. Turn off Smart quality under Images for a fixed Low / Medium / High. Manual tier is still used as a fallback if analysis fails.")
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .top).combined(with: .opacity.animation(.easeInOut(duration: 0.15).delay(0.1))),
+                            removal:   .move(edge: .top).combined(with: .opacity.animation(.easeIn(duration: 0.08)))
+                        ))
+                }
+
+                sectionDivider
+
+                subHeader(icon: "circle.lefthalf.filled", "Color")
+                Toggle("Grayscale PDF", isOn: Binding(
+                    get: { prefs.pdfGrayscale }, set: { prefs.pdfGrayscale = $0 }
+                )).font(.system(size: 11))
+                if prefs.pdfGrayscale {
+                    helper("Smaller files when color isn’t needed.")
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .top).combined(with: .opacity.animation(.easeInOut(duration: 0.15).delay(0.1))),
+                            removal:   .move(edge: .top).combined(with: .opacity.animation(.easeIn(duration: 0.08)))
+                        ))
+                }
             }
-        } else {
-            helper("Quality tiers and grayscale apply when you choose Flatten (smallest).")
-                .font(.system(size: 10))
-                .foregroundStyle(.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
@@ -564,18 +631,48 @@ struct SidebarView: View {
 
         sectionDivider
 
-        subHeader(icon: "video.badge.waveform", "Quality")
-        QualityChipPicker(
-            options: VideoQuality.allCases.map { ($0.displayName, $0.rawValue, $0.description) },
-            selected: Binding(get: { prefs.videoQualityRaw }, set: { prefs.videoQualityRaw = $0 })
-        )
-        .disabled(prefs.smartQuality)
+        subHeader(icon: "wand.and.stars", "Quality")
+        Toggle("Smart quality", isOn: Binding(
+            get: { prefs.smartQuality }, set: { prefs.smartQuality = $0 }
+        )).font(.system(size: 11))
         if prefs.smartQuality {
-            helper("Dinky picks export strength from each video’s resolution and bitrate. Turn off Smart quality under Images to choose manually. Codec below still applies.")
+            helper("Picks Balanced or High per clip from resolution, source bitrate, and content (screen recordings and animation / motion graphics get nudged up so text and edges stay crisp). HDR sources are exported with HEVC to preserve color.")
                 .transition(.asymmetric(
                     insertion: .move(edge: .top).combined(with: .opacity.animation(.easeInOut(duration: 0.15).delay(0.1))),
                     removal:   .move(edge: .top).combined(with: .opacity.animation(.easeIn(duration: 0.08)))
                 ))
+        } else {
+            QualityChipPicker(
+                options: VideoQuality.allCases.map { ($0.displayName, $0.rawValue, $0.description) },
+                selected: Binding(get: { prefs.videoQualityRaw }, set: { prefs.videoQualityRaw = $0 })
+            )
+            .transition(.asymmetric(
+                insertion: .move(edge: .top).combined(with: .opacity.animation(.easeInOut(duration: 0.15).delay(0.1))),
+                removal:   .move(edge: .top).combined(with: .opacity.animation(.easeIn(duration: 0.08)))
+            ))
+        }
+
+        sectionDivider
+
+        subHeader(icon: "arrow.down.right.and.arrow.up.left", "Max resolution")
+        Toggle("Cap output resolution", isOn: Binding(
+            get: { prefs.videoMaxResolutionEnabled }, set: { prefs.videoMaxResolutionEnabled = $0 }
+        )).toggleStyle(.switch).font(.system(size: 11))
+        if prefs.videoMaxResolutionEnabled {
+            VStack(alignment: .leading, spacing: 8) {
+                chipGrid(
+                    presets: videoResolutionPresets,
+                    current: prefs.videoMaxResolutionLines,
+                    fixedColumnCount: 4
+                ) { prefs.videoMaxResolutionLines = $0 }
+                helper("Smaller output by limiting height. Source resolution is kept when below the cap. Smart quality below ignores this.")
+            }
+            .transition(.asymmetric(
+                insertion: .move(edge: .top).combined(with: .opacity.animation(.easeInOut(duration: 0.15).delay(0.1))),
+                removal:   .move(edge: .top).combined(with: .opacity.animation(.easeIn(duration: 0.08)))
+            ))
+        } else {
+            helper("Off keeps source resolution and just re-encodes for size. Turn this on to downscale large clips.")
         }
 
         sectionDivider
@@ -700,9 +797,11 @@ struct SidebarView: View {
                     summaryRow("gauge.medium", "No size limit")
                 }
                 let vidCodec = VideoCodecFamily(rawValue: preset.videoCodecFamilyRaw) ?? .h264
-                let vidQ = VideoQuality(rawValue: preset.videoQualityRaw) ?? .medium
+                let resCap = preset.videoMaxResolutionEnabled
+                    ? "\(preset.videoMaxResolutionLines)p"
+                    : "source"
                 summaryRow("video",
-                           "\(vidCodec.chipLabel) · \(vidQ.displayName)\(preset.videoRemoveAudio ? " · no audio" : "")")
+                           "\(vidCodec.chipLabel) · \(resCap)\(preset.videoRemoveAudio ? " · no audio" : "")")
                 let pdfMode = PDFOutputMode(rawValue: preset.pdfOutputModeRaw) ?? .preserveStructure
                 if pdfMode == .flattenPages {
                     let pdfQ = PDFQuality(rawValue: preset.pdfQualityRaw) ?? .medium
@@ -735,8 +834,19 @@ struct SidebarView: View {
 
     // MARK: - Chip grid
 
-    private func chipGrid(presets: [(String, Int)], current: Int, onSelect: @escaping (Int) -> Void) -> some View {
-        let columns = [GridItem(.adaptive(minimum: 50), spacing: 4)]
+    /// - Parameter fixedColumnCount: When set (e.g. `3` for six width presets), uses a balanced fixed grid; otherwise `.adaptive` packing.
+    private func chipGrid(
+        presets: [(String, Int)],
+        current: Int,
+        fixedColumnCount: Int? = nil,
+        onSelect: @escaping (Int) -> Void
+    ) -> some View {
+        let columns: [GridItem]
+        if let count = fixedColumnCount, count > 0 {
+            columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: count)
+        } else {
+            columns = [GridItem(.adaptive(minimum: 50), spacing: 4)]
+        }
         return LazyVGrid(columns: columns, alignment: .leading, spacing: 4) {
             ForEach(presets, id: \.1) { label, value in
                 let active = current == value
@@ -761,7 +871,26 @@ struct SidebarView: View {
         Text(text)
             .font(.system(size: 10))
             .foregroundStyle(.tertiary)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// Compact icon + caption row used under the simple-sidebar format picker to clarify
+    /// that the picker is image-only — videos and PDFs have their own format behavior.
+    private func formatNoteRow(icon: String, text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundStyle(.tertiary)
+                .frame(width: 12, alignment: .center)
+            Text(text)
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
@@ -878,17 +1007,23 @@ struct ContentTypeChipPicker: View {
     @Binding var contentTypeHintRaw: String
 
     private let options: [(label: String, raw: String, description: String)] = [
-        ("Photo", "photo", "Stronger compression for real-world photos."),
-        ("UI",    "ui",    "Keeps edges sharp for screenshots and UI."),
-        ("Mixed", "mixed", "Balanced when the image mixes both."),
+        ("Photo",   "photo",   "Stronger compression for real-world photos."),
+        ("Graphic", "graphic", "Keeps edges crisp for screenshots, UI, illustrations, and logos."),
+        ("Mixed",   "mixed",   "Balanced when the image mixes both."),
     ]
 
+    /// Coerce the legacy "ui" stored value to the new "graphic" raw, so old prefs still highlight the right chip.
+    private var normalizedRaw: String {
+        contentTypeHintRaw == "ui" ? "graphic" : contentTypeHintRaw
+    }
+
     var body: some View {
-        let activeDesc = options.first(where: { contentTypeHintRaw == $0.raw })?.description ?? ""
+        let activeRaw = normalizedRaw
+        let activeDesc = options.first(where: { activeRaw == $0.raw })?.description ?? ""
 
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 3), spacing: 4) {
             ForEach(options, id: \.raw) { opt in
-                let active = contentTypeHintRaw == opt.raw
+                let active = activeRaw == opt.raw
                 chipCell(opt.label, active: active)
                     .onTapGesture { contentTypeHintRaw = opt.raw }
             }

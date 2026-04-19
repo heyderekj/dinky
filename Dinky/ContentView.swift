@@ -470,23 +470,38 @@ final class ContentViewModel: ObservableObject {
             if let pr = preset { return pr.outputURL(for: item.sourceURL, mediaType: .video, globalPrefs: prefs) }
             return prefs.outputURL(for: item.sourceURL, mediaType: .video)
         }()
-        let videoFallback = preset.map { VideoQuality(rawValue: $0.videoQualityRaw) ?? .medium } ?? prefs.videoQuality
+        let videoFallback = preset.map { VideoQuality.resolve($0.videoQualityRaw) } ?? prefs.videoQuality
         let sourceURL = item.sourceURL
         let asset = VideoCompressor.makeURLAsset(url: sourceURL)
         let smartQ = preset?.smartQuality ?? prefs.smartQuality
         let removeAudio = preset?.videoRemoveAudio ?? prefs.videoRemoveAudio
         let codec: VideoCodecFamily
         let videoQuality: VideoQuality
+        // When Smart Quality is on we also classify the clip (screen recording / camera / generic)
+        // so the tier picker can adjust per content type and the results row can show what we saw.
+        var smartContentType: VideoContentType? = nil
         if let o = videoOverride {
             videoQuality = o.quality
             codec = o.codec
         } else {
             codec = preset.map { VideoCodecFamily(rawValue: $0.videoCodecFamilyRaw) ?? .h264 } ?? prefs.videoCodecFamily
             if smartQ {
-                videoQuality = await VideoSmartQuality.inferQuality(asset: asset, fallback: videoFallback)
+                let decision = await VideoSmartQuality.decide(asset: asset, fallback: videoFallback)
+                videoQuality = decision.quality
+                smartContentType = decision.contentType
             } else {
                 videoQuality = videoFallback
             }
+        }
+
+        // User chose Smart wins: when Smart is on, ignore the resolution cap and let Smart pick the preset.
+        let resolutionCap: Int?
+        if smartQ {
+            resolutionCap = nil
+        } else {
+            let capEnabled = preset?.videoMaxResolutionEnabled ?? prefs.videoMaxResolutionEnabled
+            let capLines = preset?.videoMaxResolutionLines ?? prefs.videoMaxResolutionLines
+            resolutionCap = capEnabled ? capLines : nil
         }
 
         let workURL: URL
@@ -516,7 +531,9 @@ final class ContentViewModel: ObservableObject {
                 quality: videoQuality,
                 codec: codec,
                 removeAudio: removeAudio,
+                maxResolutionLines: resolutionCap,
                 outputURL: workURL,
+                videoContentType: smartContentType,
                 progressHandler: progressHandler
             )
             let producedURL: URL
@@ -546,6 +563,8 @@ final class ContentViewModel: ObservableObject {
                 ? Double(result.originalSize - outSize) / Double(result.originalSize) : 0
             await MainActor.run {
                 item.videoDuration = result.videoDuration
+                item.detectedVideoContentType = result.videoContentType
+                item.videoIsHDR = result.videoIsHDR
                 if outSize >= result.originalSize {
                     item.status = .zeroGain(attemptedSize: outSize)
                     try? FileManager.default.removeItem(at: producedURL)
@@ -890,16 +909,14 @@ struct ContentView: View {
                         }
                         if item.mediaType == .video {
                             Menu {
-                                Button("Low") { vm.queueVideoCompress(targets, quality: .low, codec: .h264) }
-                                Button("Medium") { vm.queueVideoCompress(targets, quality: .medium, codec: .h264) }
-                                Button("High") { vm.queueVideoCompress(targets, quality: .high, codec: .h264) }
+                                Button(VideoQuality.medium.displayName) { vm.queueVideoCompress(targets, quality: .medium, codec: .h264) }
+                                Button(VideoQuality.high.displayName)   { vm.queueVideoCompress(targets, quality: .high,   codec: .h264) }
                             } label: {
                                 Label("H.264", systemImage: "film")
                             }
                             Menu {
-                                Button("Low") { vm.queueVideoCompress(targets, quality: .low, codec: .hevc) }
-                                Button("Medium") { vm.queueVideoCompress(targets, quality: .medium, codec: .hevc) }
-                                Button("High") { vm.queueVideoCompress(targets, quality: .high, codec: .hevc) }
+                                Button(VideoQuality.medium.displayName) { vm.queueVideoCompress(targets, quality: .medium, codec: .hevc) }
+                                Button(VideoQuality.high.displayName)   { vm.queueVideoCompress(targets, quality: .high,   codec: .hevc) }
                             } label: {
                                 Label("H.265 (HEVC)", systemImage: "film")
                             }
@@ -938,16 +955,14 @@ struct ContentView: View {
                         }
                         if item.mediaType == .video {
                             Menu {
-                                Button("Low") { vm.recompressVideo(item, quality: .low, codec: .h264) }
-                                Button("Medium") { vm.recompressVideo(item, quality: .medium, codec: .h264) }
-                                Button("High") { vm.recompressVideo(item, quality: .high, codec: .h264) }
+                                Button(VideoQuality.medium.displayName) { vm.recompressVideo(item, quality: .medium, codec: .h264) }
+                                Button(VideoQuality.high.displayName)   { vm.recompressVideo(item, quality: .high,   codec: .h264) }
                             } label: {
                                 Label("H.264", systemImage: "film")
                             }
                             Menu {
-                                Button("Low") { vm.recompressVideo(item, quality: .low, codec: .hevc) }
-                                Button("Medium") { vm.recompressVideo(item, quality: .medium, codec: .hevc) }
-                                Button("High") { vm.recompressVideo(item, quality: .high, codec: .hevc) }
+                                Button(VideoQuality.medium.displayName) { vm.recompressVideo(item, quality: .medium, codec: .hevc) }
+                                Button(VideoQuality.high.displayName)   { vm.recompressVideo(item, quality: .high,   codec: .hevc) }
                             } label: {
                                 Label("H.265 (HEVC)", systemImage: "film")
                             }

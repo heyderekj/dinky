@@ -37,7 +37,7 @@ Hey! I'm [Derek Castelli](https://www.heyderekj.com), a full-time freelance web 
 - **PNG lossless** — run oxipng on PNGs when you need to keep transparency or format fidelity
 - **Destination** — save next to the original, to Downloads, or pick a custom folder; presets can have their own unique output folder
 - **Notifications** — sound and system notification when a batch finishes; sound scales with savings: a soft tink for tiny saves, a full chime for big ones
-- **Smart quality** — auto-detects photo vs. screenshot per image and picks quality accordingly; or force Photo, UI, or Mixed per preset
+- **Smart quality** — auto-detects photo vs. graphic (UI, illustration, logo, screenshot) per image and picks quality accordingly; or force Photo, Graphic, or Mixed per preset
 - **Session history** — review past compression sessions with file counts and total bytes saved
 - **Apple Shortcuts** — compress images from automations via a native Shortcuts action
 - **Easy updating** — one click checks for a new release, installs, and relaunches; no browser, no re-drag

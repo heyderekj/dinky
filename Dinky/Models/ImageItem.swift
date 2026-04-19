@@ -32,6 +32,10 @@ final class CompressionItem: ObservableObject, Identifiable {
 
     @Published var status: CompressionStatus = .pending
     @Published var detectedContentType: ContentType? = nil
+    /// Smart Quality result for videos. `nil` for non-videos or when Smart Quality is off.
+    @Published var detectedVideoContentType: VideoContentType? = nil
+    /// True when the source carried HDR (HLG / PQ / Dolby Vision) and the export preserved it.
+    @Published var videoIsHDR: Bool = false
 
     var forceCompress: Bool = false
     var pageCount: Int? = nil

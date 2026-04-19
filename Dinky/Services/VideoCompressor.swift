@@ -24,16 +24,27 @@ enum VideoCodecFamily: String, CaseIterable, Identifiable {
 }
 
 enum VideoQuality: String, CaseIterable, Identifiable {
-    case low    = "low"
     case medium = "medium"
     case high   = "high"
 
     var id: String { rawValue }
 
+    /// Decode a persisted raw value safely. Migrates the legacy `"low"` tier
+    /// (removed because it produced unacceptable artifacts for a quality-first
+    /// compressor) to `.medium` — the closest remaining tier, which preserves
+    /// the user's "smaller" intent without silently promoting them to `.high`.
+    /// Anything else falls back to `.medium` too.
+    static func resolve(_ rawValue: String) -> VideoQuality {
+        if let v = VideoQuality(rawValue: rawValue) { return v }
+        return .medium
+    }
+
     var displayName: String {
         switch self {
-        case .low:    return "Low"
-        case .medium: return "Medium"
+        // Display labels are decoupled from raw values so persisted prefs/presets keep loading.
+        // "Balanced" replaces the old "Medium" — with `.low` removed it's the more honest framing
+        // (smaller file, no obvious quality loss), not a "lower" tier.
+        case .medium: return "Balanced"
         case .high:   return "High"
         }
     }
@@ -42,18 +53,33 @@ enum VideoQuality: String, CaseIterable, Identifiable {
         switch codec {
         case .h264:
             switch self {
-            case .low:    return AVAssetExportPresetLowQuality
             case .medium: return AVAssetExportPreset1280x720
-            case .high:   return AVAssetExportPreset1920x1080
+            case .high:   return AVAssetExportPresetHighestQuality
             }
         case .hevc:
             switch self {
-            case .low:
-                // Apple provides no sub-1080p **HEVC** export preset; non-`HEVC*` presets use H.264.
-                // Differentiate low from medium via `targetSizeFactor` (tighter `fileLengthLimit`).
-                return AVAssetExportPresetHEVC1920x1080
             case .medium: return AVAssetExportPresetHEVC1920x1080
             case .high:   return AVAssetExportPresetHEVCHighestQuality
+            }
+        }
+    }
+
+    /// Export preset that downscales to a chosen output height. Picks the closest *available* Apple preset and rounds
+    /// up to the next supported height when no exact match exists. Returns `nil` for invalid input.
+    static func exportPreset(forMaxHeight lines: Int, codec: VideoCodecFamily) -> String? {
+        guard lines > 0 else { return nil }
+        switch codec {
+        case .h264:
+            switch lines {
+            case ...480:        return AVAssetExportPreset640x480
+            case 481...720:     return AVAssetExportPreset1280x720
+            case 721...1080:    return AVAssetExportPreset1920x1080
+            default:            return AVAssetExportPreset3840x2160
+            }
+        case .hevc:
+            switch lines {
+            case ...1080:       return AVAssetExportPresetHEVC1920x1080
+            default:            return AVAssetExportPresetHEVC3840x2160
             }
         }
     }
@@ -66,23 +92,16 @@ enum VideoQuality: String, CaseIterable, Identifiable {
     func targetSizeFactor(for codec: VideoCodecFamily) -> Double {
         let base: Double
         switch self {
-        case .low:    base = 0.30
         case .medium: base = 0.55
         case .high:   base = 0.75
         }
         // HEVC is ~40% more efficient than H.264, so we can squeeze a bit more.
-        var factor = codec == .hevc ? base * 0.85 : base
-        // No HEVC 720p preset without falling back to H.264 — tighten the size cap for low.
-        if codec == .hevc, self == .low {
-            factor *= 0.72
-        }
-        return factor
+        return codec == .hevc ? base * 0.85 : base
     }
 
     /// Bitrate (bits/sec) below which we treat the source as already lean for this tier.
     fileprivate var skipIfEstimatedBitrateBelow: Double {
         switch self {
-        case .low:    return 2_500_000
         case .medium: return 5_000_000
         case .high:   return 8_000_000
         }
@@ -90,9 +109,8 @@ enum VideoQuality: String, CaseIterable, Identifiable {
 
     var description: String {
         switch self {
-        case .low:    return "Smaller file, softer detail."
-        case .medium: return "Balanced size and clarity."
-        case .high:   return "Highest detail, larger file."
+        case .medium: return "Smaller file. No obvious quality loss."
+        case .high:   return "Closest to source. Minimal trim."
         }
     }
 }
@@ -109,34 +127,47 @@ enum VideoCompressor {
         return AVURLAsset(url: url, options: options)
     }
 
+    /// What `compress` actually used (after HDR-driven codec overrides). Lets callers report it in the UI.
+    struct ResolvedExport: Sendable {
+        let durationSeconds: Double?
+        /// Codec we actually exported with — may differ from the requested codec when the source is HDR
+        /// (HDR is force-promoted to HEVC because H.264 cannot carry HDR metadata in our pipeline).
+        let codec: VideoCodecFamily
+        let isHDR: Bool
+    }
+
     static func compress(
         source: URL,
         quality: VideoQuality,
         codec: VideoCodecFamily,
         removeAudio: Bool,
+        maxResolutionLines: Int? = nil,
         outputURL: URL,
         progressHandler: (@Sendable (Float) -> Void)? = nil
-    ) async throws -> Double? {
+    ) async throws -> ResolvedExport {
         try await compress(
             asset: makeURLAsset(url: source),
             sourceForMetadata: source,
             quality: quality,
             codec: codec,
             removeAudio: removeAudio,
+            maxResolutionLines: maxResolutionLines,
             outputURL: outputURL,
             progressHandler: progressHandler
         )
     }
 
+    /// - Parameter maxResolutionLines: Optional output-height cap (mirrors images' Max width). `nil` keeps source resolution.
     static func compress(
         asset: AVURLAsset,
         sourceForMetadata: URL,
         quality: VideoQuality,
         codec: VideoCodecFamily,
         removeAudio: Bool,
+        maxResolutionLines: Int? = nil,
         outputURL: URL,
         progressHandler: (@Sendable (Float) -> Void)? = nil
-    ) async throws -> Double? {
+    ) async throws -> ResolvedExport {
         let videoTracks = try await asset.loadTracks(withMediaType: .video)
         guard let videoTrack = videoTracks.first else {
             throw VideoCompressionError.exportSessionUnavailable
@@ -149,12 +180,18 @@ enum VideoCompressor {
         let originalBytes = (try? sourceForMetadata.resourceValues(forKeys: [.fileSizeKey]).fileSize)
             .flatMap { Int64($0) } ?? 0
 
-        let sourceMatchesTarget = codecMatchesTarget(primarySub, target: codec)
+        // HDR safety guard: H.264 in our export pipeline does not carry HDR transfer / color
+        // metadata, so an HDR (HLG / PQ / Dolby Vision) source compressed as H.264 produces a
+        // washed / clipped SDR output. Force HEVC for HDR sources regardless of the user's choice.
+        let isHDR = await sourceIsHDR(track: videoTrack, formatDescriptions: formatDescriptions)
+        let effectiveCodec: VideoCodecFamily = isHDR ? .hevc : codec
+
+        let sourceMatchesTarget = codecMatchesTarget(primarySub, target: effectiveCodec)
 
         if shouldSkipReencode(
             removeAudio: removeAudio,
             quality: quality,
-            codec: codec,
+            codec: effectiveCodec,
             sourceMatchesTarget: sourceMatchesTarget,
             isHEVC: primarySub == kCMVideoCodecType_HEVC,
             originalBytes: originalBytes,
@@ -181,7 +218,13 @@ enum VideoCompressor {
         }
 
         let usePassthrough = removeAudio && sourceMatchesTarget
-        let presetName = usePassthrough ? AVAssetExportPresetPassthrough : quality.exportPreset(for: codec)
+        let resolvedPreset: String
+        if let lines = maxResolutionLines, let p = VideoQuality.exportPreset(forMaxHeight: lines, codec: effectiveCodec) {
+            resolvedPreset = p
+        } else {
+            resolvedPreset = quality.exportPreset(for: effectiveCodec)
+        }
+        let presetName = usePassthrough ? AVAssetExportPresetPassthrough : resolvedPreset
 
         guard let session = AVAssetExportSession(asset: exportAsset, presetName: presetName) else {
             throw VideoCompressionError.exportSessionUnavailable
@@ -189,29 +232,44 @@ enum VideoCompressor {
 
         session.shouldOptimizeForNetworkUse = true
 
-        if !usePassthrough, quality == .low || quality == .medium {
+        // Two-pass encoding for `.medium` — gives the rate-controller a chance to allocate bits where
+        // they matter. `.high` already targets minimal compression so the extra pass doesn't help much.
+        if !usePassthrough, quality == .medium {
             session.canPerformMultiplePassesOverSourceMediaData = true
         }
 
         if !usePassthrough, originalBytes > 0 {
-            let factor = quality.targetSizeFactor(for: codec)
+            let factor = quality.targetSizeFactor(for: effectiveCodec)
             let target = Int64(Double(originalBytes) * factor)
             var bounded = max(Int64(512 * 1024), min(originalBytes - 1024, target))
-            if let minBytes = try await minimumFileLengthLimitBytes(
-                quality: quality,
-                codec: codec,
-                videoTrack: videoTrack,
-                duration: duration
-            ) {
-                bounded = max(bounded, minBytes)
-            }
             bounded = min(bounded, originalBytes - 1024)
             bounded = max(Int64(512 * 1024), bounded)
             session.fileLengthLimit = bounded
         }
 
         try await exportWithProgress(session: session, outputURL: outputURL, progressHandler: progressHandler)
-        return CMTimeGetSeconds(duration)
+        return ResolvedExport(
+            durationSeconds: CMTimeGetSeconds(duration),
+            codec: effectiveCodec,
+            isHDR: isHDR
+        )
+    }
+
+    /// Cheap HDR check: prefer the modern `.containsHDRVideo` characteristic, fall back to inspecting
+    /// the format description's transfer function (HLG / PQ) for older / unusual files.
+    private static func sourceIsHDR(track: AVAssetTrack, formatDescriptions: [CMFormatDescription]) async -> Bool {
+        if let characteristics = try? await track.load(.mediaCharacteristics),
+           characteristics.contains(.containsHDRVideo) {
+            return true
+        }
+        for desc in formatDescriptions {
+            if let ext = CMFormatDescriptionGetExtension(desc, extensionKey: kCMFormatDescriptionExtension_TransferFunction) as? String {
+                let hlg = kCMFormatDescriptionTransferFunction_ITU_R_2100_HLG as String
+                let pq  = kCMFormatDescriptionTransferFunction_SMPTE_ST_2084_PQ as String
+                if ext == hlg || ext == pq { return true }
+            }
+        }
+        return false
     }
 
     /// Runs `export` concurrently with `states(updateInterval:)` for progress updates.
@@ -242,37 +300,6 @@ enum VideoCompressor {
         }
     }
 
-    /// Prevents ultra-low bitrates on busy 1080p+ footage when `fileLengthLimit` is very tight (especially HEVC low).
-    private static func minimumFileLengthLimitBytes(
-        quality: VideoQuality,
-        codec: VideoCodecFamily,
-        videoTrack: AVAssetTrack,
-        duration: CMTime
-    ) async throws -> Int64? {
-        guard quality == .low else { return nil }
-        let seconds = CMTimeGetSeconds(duration)
-        guard seconds > 0, seconds.isFinite else { return nil }
-
-        let size = try await videoTrack.load(.naturalSize)
-        let transform = try await videoTrack.load(.preferredTransform)
-        let transformed = size.applying(transform)
-        let w = abs(transformed.width)
-        let h = abs(transformed.height)
-        guard w >= 1, h >= 1 else { return nil }
-
-        var fps = Double(try await videoTrack.load(.nominalFrameRate))
-        if fps <= 0 || !fps.isFinite { fps = 30 }
-
-        let pixelsPerSecond = Double(w * h) * fps
-        let bppFloor: Double
-        switch codec {
-        case .hevc: bppFloor = 0.04
-        case .h264: bppFloor = 0.08
-        }
-        let minBitrate = pixelsPerSecond * bppFloor
-        return Int64(ceil((minBitrate * seconds) / 8.0))
-    }
-
     private static func codecMatchesTarget(_ sub: CMVideoCodecType?, target: VideoCodecFamily) -> Bool {
         guard let sub else { return false }
         switch target {
@@ -295,7 +322,7 @@ enum VideoCompressor {
     ) -> Bool {
         if removeAudio { return false }
 
-        if codec == .hevc, quality != .low, isHEVC {
+        if codec == .hevc, isHEVC {
             if estimatedRate > 0, Double(estimatedRate) >= quality.skipIfEstimatedBitrateBelow * 1.5 {
                 return false
             }

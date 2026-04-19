@@ -23,9 +23,23 @@ struct ResultsRowView: View {
                 } else if item.mediaType == .pdf, let pages = item.pageCount {
                     mediaChip("\(pages)p")
                         .help("\(pages) pages")
-                } else if item.mediaType == .video, let secs = item.videoDuration {
-                    mediaChip(formattedDuration(secs))
-                        .help("Duration")
+                } else if item.mediaType == .video {
+                    if let type = item.detectedVideoContentType {
+                        videoContentTypeChip(type)
+                            .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                            .fixedSize()
+                            .help(type.tooltipLabel)
+                    }
+                    if item.videoIsHDR {
+                        hdrBadge
+                            .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                            .fixedSize()
+                            .help("HDR source — preserved with HEVC so highlights and color stay intact.")
+                    }
+                    if let secs = item.videoDuration {
+                        mediaChip(formattedDuration(secs))
+                            .help("Duration")
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: 1) {
@@ -43,6 +57,8 @@ struct ResultsRowView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .animation(.easeInOut(duration: 0.2), value: item.detectedContentType)
+            .animation(.easeInOut(duration: 0.2), value: item.detectedVideoContentType)
+            .animation(.easeInOut(duration: 0.2), value: item.videoIsHDR)
 
             sizeInfo
             statusChip
@@ -289,6 +305,31 @@ struct ResultsRowView: View {
             .padding(.vertical, 1.5)
             .background(
                 RoundedRectangle(cornerRadius: 4, style: .continuous).fill(Color.primary.opacity(0.08))
+            )
+    }
+
+    /// Same look as `contentTypeChip` but for video classification (screen / camera / video).
+    @ViewBuilder
+    private func videoContentTypeChip(_ type: VideoContentType) -> some View {
+        Text(type.label)
+            .font(.system(size: 9, weight: .semibold).lowercaseSmallCaps())
+            .foregroundStyle(Color.secondary)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 1.5)
+            .background(
+                RoundedRectangle(cornerRadius: 4, style: .continuous).fill(Color.primary.opacity(0.08))
+            )
+    }
+
+    /// Tinted "HDR" badge — slightly stronger than the muted chips so HDR preservation stands out.
+    private var hdrBadge: some View {
+        Text("HDR")
+            .font(.system(size: 9, weight: .bold))
+            .foregroundStyle(Color.accentColor)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 1.5)
+            .background(
+                RoundedRectangle(cornerRadius: 4, style: .continuous).fill(Color.accentColor.opacity(0.14))
             )
     }
 
