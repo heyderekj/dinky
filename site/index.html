@@ -224,8 +224,17 @@
       transform: translate(-50%, -50%) scale(0.4);
       z-index: 200;
       line-height: 1;
-      animation: gh-star-fly var(--dur, 1100ms) cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+      animation: gh-star-fly var(--dur, 1600ms) cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
       will-change: transform, opacity;
+    }
+    /* Muted amber in light mode — bright yellow washes out on white */
+    @media (prefers-color-scheme: light) {
+      .gh-star {
+        color: #B58800;
+        text-shadow:
+          0 0 6px rgba(181, 136, 0, 0.45),
+          0 0 14px rgba(155, 110, 0, 0.25);
+      }
     }
     @keyframes gh-star-fly {
       0%   { transform: translate(-50%, -50%) scale(0.3) rotate(0deg); opacity: 0; }
@@ -250,6 +259,13 @@
     .btn-secondary.is-bursting #gh-stars-count {
       color: #FFD60A;
       text-shadow: 0 0 6px rgba(255, 214, 10, 0.45);
+    }
+    @media (prefers-color-scheme: light) {
+      .btn-secondary.is-bursting .gh-star-anchor,
+      .btn-secondary.is-bursting #gh-stars-count {
+        color: #B58800;
+        text-shadow: 0 0 6px rgba(181, 136, 0, 0.35);
+      }
     }
 
     h1 {
@@ -1661,13 +1677,18 @@
   <section class="faq" id="faq">
     <div class="faq-grid">
       <div class="faq-item">
-        <h3 class="faq-q">What input formats does Dinky support?</h3>
-        <p class="faq-a">Images: JPG, PNG, WebP, AVIF, TIFF, BMP → WebP, AVIF, or lossless PNG. Video: MP4/MOV → MP4 (H.264 or HEVC). PDFs: supported.</p>
+        <h3 class="faq-q">macOS says Dinky can't be opened — what do I do?</h3>
+        <p class="faq-a">That's Gatekeeper — macOS blocks first launch for apps outside the App Store. <button type="button" class="faq-inline-link" onclick="document.getElementById('gatekeeper-modal').classList.add('open')">How to fix it →</button></p>
       </div>
 
       <div class="faq-item">
-        <h3 class="faq-q">What changed in 2.0?</h3>
-        <p class="faq-a">The 1.x line (from 1.0) was <strong>images only</strong>. <strong>2.0</strong> added <strong>videos and PDFs</strong> alongside images. Older 1.x DMGs and ZIPs stay on <a href="https://github.com/heyderekj/dinky/releases" target="_blank">GitHub Releases</a> for archival use.</p>
+        <h3 class="faq-q">Only Mac?</h3>
+        <p class="faq-a">Yes. It’s SwiftUI + macOS frameworks; a Windows or Linux port would be a different app.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3 class="faq-q">What macOS version does it require?</h3>
+        <p class="faq-a">macOS 15 Sequoia or later. On macOS 26 Tahoe you get the full liquid glass UI; on Sequoia it falls back to the frosted material look.</p>
       </div>
 
       <div class="faq-item">
@@ -1681,23 +1702,13 @@
       </div>
 
       <div class="faq-item">
+        <h3 class="faq-q">What input formats does Dinky support?</h3>
+        <p class="faq-a">Images: JPG, PNG, WebP, AVIF, TIFF, BMP → WebP, AVIF, or lossless PNG. Video: MP4/MOV → MP4 (H.264 or HEVC). PDFs: supported.</p>
+      </div>
+
+      <div class="faq-item">
         <h3 class="faq-q">What happens to my originals?</h3>
-        <p class="faq-a">In Settings → Originals, choose <strong>Keep</strong>, <strong>Move to Trash</strong>, or a backup folder. Default is Keep.</p>
-      </div>
-
-      <div class="faq-item">
-        <h3 class="faq-q">What macOS version does it require?</h3>
-        <p class="faq-a">macOS 15 Sequoia or later. On macOS 26 Tahoe you get the full liquid glass UI; on Sequoia it falls back to the frosted material look.</p>
-      </div>
-
-      <div class="faq-item">
-        <h3 class="faq-q">macOS says Dinky can't be opened — what do I do?</h3>
-        <p class="faq-a">That's Gatekeeper — macOS blocks first launch for apps outside the App Store. <button type="button" class="faq-inline-link" onclick="document.getElementById('gatekeeper-modal').classList.add('open')">How to fix it →</button></p>
-      </div>
-
-      <div class="faq-item">
-        <h3 class="faq-q">Only Mac?</h3>
-        <p class="faq-a">Yes. It’s SwiftUI + macOS frameworks; a Windows or Linux port would be a different app.</p>
+        <p class="faq-a">In Settings → Originals, choose Keep, Move to Trash, or a backup folder. Default is Keep.</p>
       </div>
 
       <div class="faq-item">
@@ -1721,11 +1732,6 @@
       </div>
 
       <div class="faq-item">
-        <h3 class="faq-q">How does Dinky compare to Clop?</h3>
-        <p class="faq-a"><a href="https://lowtechguys.com/clop/" target="_blank" rel="noopener">Clop</a> is menu-bar clipboard–first with a Pro tier; Dinky is a free, MIT, window-first drop zone with watch folders included.</p>
-      </div>
-
-      <div class="faq-item">
         <h3 class="faq-q">Can I compress an image and keep it as JPEG (or the original format)?</h3>
         <p class="faq-a">Dinky outputs WebP, AVIF, or lossless PNG — not JPEG. For smallest files, try AVIF or WebP.</p>
       </div>
@@ -1733,6 +1739,16 @@
       <div class="faq-item">
         <h3 class="faq-q">What if Dinky can’t hit my target file size?</h3>
         <p class="faq-a">Dinky lowers quality as far as it can to hit your cap. If it’s still too large, you get the smallest result it could produce — try lowering Max Width too.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3 class="faq-q">How does Dinky compare to Clop?</h3>
+        <p class="faq-a"><a href="https://lowtechguys.com/clop/" target="_blank" rel="noopener">Clop</a> is menu-bar clipboard–first with a Pro tier; Dinky is a free, MIT, window-first drop zone with watch folders included.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3 class="faq-q">What changed in 2.0?</h3>
+        <p class="faq-a">The 1.x line (from 1.0) was images only. 2.0 added videos and PDFs alongside images. Older 1.x DMGs and ZIPs stay on <a href="https://github.com/heyderekj/dinky/releases" target="_blank">GitHub Releases</a> for archival use.</p>
       </div>
 
       <div class="faq-item">
@@ -1893,19 +1909,19 @@
       if (reduceMotion) return;
 
       // Decoupled from the real stargazer count: a sqrt curve so the burst grows
-      // slowly with popularity (e.g. 10★ → ~6, 100★ → ~13, 1k★ → ~18) and never
+      // slowly with popularity (e.g. 10★ → ~11, 100★ → ~21, 1k★ → ~26) and never
       // gets dense enough to feel like confetti spam.
       function emitCount() {
         const n = Math.max(0, __ghStarCount | 0);
-        return Math.max(3, Math.min(Math.round(3 + Math.sqrt(n)), 18));
+        return Math.max(6, Math.min(Math.round(6 + Math.sqrt(n) * 1.5), 26));
       }
 
       let bursting = false;
 
-      // Map total particle count (3–18) to a 0..1 "energy" value used to speed
+      // Map total particle count (6–26) to a 0..1 "energy" value used to speed
       // things up as the burst grows: more stars = quicker fly-out + tighter stagger.
       function energyFor(total) {
-        return Math.max(0, Math.min(1, (total - 3) / 15));
+        return Math.max(0, Math.min(1, (total - 6) / 20));
       }
 
       function spawnStar(cx, cy, energy) {
@@ -1919,10 +1935,10 @@
         const dy = Math.sin(angle) * dist - 30; // slight upward bias = more "celebratory"
         const rot = (Math.random() - 0.5) * 720;
         const size = 10 + Math.random() * 16;
-        // Lerp duration from leisurely (≈900–1400ms) at low counts to snappy
-        // (≈450–700ms) at the cap, so a big burst feels more energetic.
-        const durMin = 900 - 450 * energy;
-        const durJitter = 500 - 250 * energy;
+        // Lerp duration from leisurely (≈1300–2000ms) at low counts to easy
+        // (≈900–1400ms) at the cap — overall slower so stars drift gracefully.
+        const durMin = 1300 - 400 * energy;
+        const durJitter = 700 - 300 * energy;
         const dur = durMin + Math.random() * durJitter;
 
         star.style.left = cx + 'px';
@@ -1949,17 +1965,17 @@
 
         const total = emitCount();
         const energy = energyFor(total);
-        // Tighten the stream as the burst grows — 22ms at low counts, 8ms at the cap.
-        const stagger = Math.round(22 - 14 * energy);
+        // Tighten the stream as the burst grows — 30ms at low counts, 12ms at the cap.
+        const stagger = Math.round(30 - 18 * energy);
         for (let i = 0; i < total; i++) {
           setTimeout(() => spawnStar(cx, cy, energy), i * stagger);
         }
         // Clear the button color when the burst is mostly through, not after the
         // last lingering particle. The 180ms CSS transition softens the trail-off.
-        const colorFor = total * stagger + 250;
+        const colorFor = total * stagger + 350;
         setTimeout(() => { ghBtn.classList.remove('is-bursting'); }, colorFor);
         // Keep the re-trigger debounce a touch longer so a quick re-hover doesn't pile bursts.
-        setTimeout(() => { bursting = false; }, total * stagger + 600);
+        setTimeout(() => { bursting = false; }, total * stagger + 900);
       }
 
       ghBtn.addEventListener('mouseenter', burst);
