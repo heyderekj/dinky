@@ -1100,6 +1100,70 @@
       }
     }
   </style>
+  <script>
+    function initDinkyWebMcp() {
+      var mc = typeof navigator !== 'undefined' ? navigator.modelContext : null;
+      if (!mc || typeof mc.registerTool !== 'function') return;
+
+      var ac = new AbortController();
+      var signal = ac.signal;
+      var toolOpts = { signal: signal };
+
+      mc.registerTool({
+        name: 'dinky_scroll_to_faq',
+        description: 'Scroll to the FAQ section on this page.',
+        category: 'navigation',
+        inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+        execute: function () {
+          var el = document.getElementById('faq');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          return Promise.resolve({ ok: true });
+        }
+      }, toolOpts);
+
+      mc.registerTool({
+        name: 'dinky_open_install_modal',
+        description: 'Open the “How to install” modal with Gatekeeper / quarantine steps.',
+        category: 'install',
+        inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+        execute: function () {
+          var modal = document.getElementById('install-modal');
+          if (modal) modal.classList.add('open');
+          return Promise.resolve({ ok: true });
+        }
+      }, toolOpts);
+
+      mc.registerTool({
+        name: 'dinky_copy_quarantine_command',
+        description: 'Copy the Terminal command to remove the Gatekeeper quarantine flag from Dinky.app.',
+        category: 'clipboard',
+        inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+        execute: function () {
+          var cmd = document.getElementById('xattr-cmd');
+          var text = cmd ? cmd.textContent : 'xattr -dr com.apple.quarantine /Applications/Dinky.app';
+          return navigator.clipboard.writeText(text).then(function () { return { ok: true, copied: text }; });
+        }
+      }, toolOpts);
+
+      mc.registerTool({
+        name: 'dinky_open_latest_release',
+        description: 'Open the latest Dinky release page on GitHub.',
+        category: 'releases',
+        inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+        execute: function () {
+          window.open('https://github.com/heyderekj/dinky/releases/latest', '_blank', 'noopener,noreferrer');
+          return Promise.resolve({ ok: true });
+        }
+      }, toolOpts);
+
+      window.addEventListener('pagehide', function () { ac.abort(); }, { once: true });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initDinkyWebMcp);
+    } else {
+      initDinkyWebMcp();
+    }
+  </script>
 </head>
 <body>
   <section class="hero">
@@ -1845,51 +1909,6 @@
 
       ghBtn.addEventListener('mouseenter', burst);
       ghBtn.addEventListener('focus', burst);
-    })();
-  </script>
-
-  <script>
-    (function () {
-      var mc = typeof navigator !== 'undefined' ? navigator.modelContext : null;
-      if (!mc || typeof mc.registerTool !== 'function') return;
-
-      var ac = new AbortController();
-      var signal = ac.signal;
-      var toolOpts = { signal: signal };
-
-      mc.registerTool({
-        name: 'dinky_scroll_to_faq',
-        description: 'Scroll to the FAQ section on this page.',
-        inputSchema: { type: 'object', properties: {}, additionalProperties: false },
-        execute: function () {
-          var el = document.getElementById('faq');
-          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          return Promise.resolve({ ok: true });
-        }
-      }, toolOpts);
-
-      mc.registerTool({
-        name: 'dinky_copy_quarantine_command',
-        description: 'Copy the Terminal command to remove the Gatekeeper quarantine flag from Dinky.app.',
-        inputSchema: { type: 'object', properties: {}, additionalProperties: false },
-        execute: function () {
-          var cmd = document.getElementById('xattr-cmd');
-          var text = cmd ? cmd.textContent : 'xattr -dr com.apple.quarantine /Applications/Dinky.app';
-          return navigator.clipboard.writeText(text).then(function () { return { ok: true, copied: text }; });
-        }
-      }, toolOpts);
-
-      mc.registerTool({
-        name: 'dinky_open_latest_release',
-        description: 'Open the latest Dinky release page on GitHub.',
-        inputSchema: { type: 'object', properties: {}, additionalProperties: false },
-        execute: function () {
-          window.open('https://github.com/heyderekj/dinky/releases/latest', '_blank', 'noopener,noreferrer');
-          return Promise.resolve({ ok: true });
-        }
-      }, toolOpts);
-
-      window.addEventListener('pagehide', function () { ac.abort(); }, { once: true });
     })();
   </script>
 </body>

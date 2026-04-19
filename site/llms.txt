@@ -57,3 +57,11 @@
 Derek Castelli — freelance web designer (Webflow, Figma, Cursor)
 - Website: https://heyderekj.com
 - GitHub: https://github.com/heyderekj
+
+## Agent integration
+
+This website is a static marketing page for the Dinky macOS app. There is **no public HTTP API**, **no OAuth/OIDC**, **no protected API resource**, and **no remote MCP server** on dinkyfiles.com.
+
+- Machine-readable discovery: `https://dinkyfiles.com/openapi.yaml` (empty paths; documents no API), `https://dinkyfiles.com/.well-known/api-catalog`, `https://dinkyfiles.com/.well-known/agent-skills/index.json`, and this file (`https://dinkyfiles.com/llms.txt`).
+- **WebMCP** (Chromium): when supported, the homepage registers in-browser tools via `navigator.modelContext.registerTool()` — e.g. scroll to FAQ, open install help, copy the quarantine Terminal command, open GitHub Releases.
+- Automation outside the browser: use **GitHub** (source, issues, releases) and direct **DMG download URLs** from the Releases page — not site APIs.
