@@ -851,6 +851,9 @@ struct ContentView: View {
             prefs.reconcileSidebarSectionsForSimpleModeIfNeeded()
             updateFolderWatcher()
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            updateFolderWatcher()
+        }
         .task {
             await updater.check()
         }
@@ -1078,6 +1081,7 @@ struct ContentView: View {
     // MARK: - Folder watcher
 
     private func updateFolderWatcher() {
+        prefs.reconcileFolderBookmarksIfNeeded()
         let reg = WatchPipelineRegistry(prefs: prefs)
         let paths = reg.watchedRootPaths
         guard !paths.isEmpty else {

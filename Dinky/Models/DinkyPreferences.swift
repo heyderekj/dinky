@@ -251,6 +251,67 @@ final class DinkyPreferences: ObservableObject {
 
     // MARK: URL helpers
 
+    /// When the user renames a security-scoped folder in Finder, the bookmark still resolves but stored path strings can lag. Refreshes paths and bookmark data (when stale). Safe to call often (e.g. app activation, folder watcher refresh).
+    func reconcileFolderBookmarksIfNeeded() {
+        if folderWatchEnabled, let r = Self.reanchorDirectory(bookmark: watchedFolderBookmark) {
+            if r.path != watchedFolderPath { watchedFolderPath = r.path }
+            if r.bookmark != watchedFolderBookmark { watchedFolderBookmark = r.bookmark }
+        }
+        if saveLocation == .custom, let r = Self.reanchorDirectory(bookmark: customFolderBookmark) {
+            if r.path != customFolderDisplayPath { customFolderDisplayPath = r.path }
+            if r.bookmark != customFolderBookmark { customFolderBookmark = r.bookmark }
+        }
+        var presets = savedPresets
+        var touched = false
+        for i in presets.indices {
+            if presets[i].watchFolderEnabled && presets[i].watchFolderModeRaw == "unique",
+               let r = Self.reanchorDirectory(bookmark: presets[i].watchFolderBookmark) {
+                if r.path != presets[i].watchFolderPath {
+                    presets[i].watchFolderPath = r.path
+                    touched = true
+                }
+                if r.bookmark != presets[i].watchFolderBookmark {
+                    presets[i].watchFolderBookmark = r.bookmark
+                    touched = true
+                }
+            }
+            if presets[i].saveLocationRaw == "presetCustom",
+               let r = Self.reanchorDirectory(bookmark: presets[i].presetCustomFolderBookmark) {
+                if r.path != presets[i].presetCustomFolderPath {
+                    presets[i].presetCustomFolderPath = r.path
+                    touched = true
+                }
+                if r.bookmark != presets[i].presetCustomFolderBookmark {
+                    presets[i].presetCustomFolderBookmark = r.bookmark
+                    touched = true
+                }
+            }
+        }
+        if touched { savedPresets = presets }
+    }
+
+    private struct ReanchoredFolder {
+        let path: String
+        let bookmark: Data
+    }
+
+    /// Resolved, existing directory path and bookmark data (refreshed when the system marks the bookmark stale).
+    private static func reanchorDirectory(bookmark: Data) -> ReanchoredFolder? {
+        guard !bookmark.isEmpty else { return nil }
+        var stale = false
+        guard let url = try? URL(
+            resolvingBookmarkData: bookmark,
+            options: .withSecurityScope,
+            relativeTo: nil,
+            bookmarkDataIsStale: &stale
+        ) else { return nil }
+        var isDir: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue else { return nil }
+        let std = (url.path as NSString).standardizingPath
+        let bm = (stale ? (try? url.bookmarkData(options: .withSecurityScope)) : nil) ?? bookmark
+        return ReanchoredFolder(path: std, bookmark: bm)
+    }
+
     func resolvedCustomFolder() -> URL? {
         guard !customFolderBookmark.isEmpty else { return nil }
         var stale = false

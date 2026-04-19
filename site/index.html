@@ -710,8 +710,18 @@
       color: var(--text-secondary);
       line-height: 1.5;
     }
-    .faq-a a { color: var(--brand); text-decoration: none; }
-    .faq-a a:hover { text-decoration: underline; }
+    /* Same link treatment as footer — secondary + underline; hover to primary text */
+    footer a,
+    .faq-a a {
+      color: var(--text-secondary);
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 2px;
+    }
+    footer a:hover,
+    .faq-a a:hover {
+      color: var(--text);
+    }
 
     @media (max-width: 700px) {
       .faq-grid { grid-template-columns: 1fr; }
@@ -988,17 +998,6 @@
       font-size: 13px;
       color: var(--text-secondary);
       text-align: center;
-    }
-
-    footer a {
-      color: var(--text-secondary);
-      text-decoration: underline;
-      text-decoration-thickness: 1px;
-      text-underline-offset: 2px;
-    }
-
-    footer a:hover {
-      color: var(--text);
     }
 
     @media (max-width: 700px) {
