@@ -44,7 +44,12 @@
   <!-- / Fathom -->
 
   <style>
+    /*
+      Color system: OKLCH with identical sRGB fallbacks (second declaration wins when
+      `oklch()` is supported). Easier to tune L/C/H consistently; neutrals share ~286° hue.
+    */
     :root {
+      /* sRGB fallbacks for browsers without `oklch()` */
       --bg: #fff;
       --text: #1c1c1e;
       --text-secondary: #6b6b70;
@@ -63,16 +68,44 @@
       --row-hover: rgba(62, 123, 232, 0.05);
       --cmp-cross: #d1d1d6;
       --cmp-dim: #aeaeb2;
+      --text-on-brand: #fff;
+      --code-text: #e5e5ea;
+      --success: #30d158;
+      /* Muted label on code blocks (same hex in light & dark for contrast on --code-bg) */
+      --code-muted: #aeaeb2;
+      /* OKLCH */
+      --bg: oklch(1 0 0);
+      --text: oklch(0.2273 0.0038 286.09);
+      --text-secondary: oklch(0.5295 0.0077 286.13);
+      --brand: oklch(0.6001 0.177 260.96);
+      --brand-hover: oklch(0.5467 0.1775 261.23);
+      --divider: oklch(0.937 0 0);
+      --button-secondary-hover: oklch(0.9587 0.0027 286.35);
+      --modal-bg: oklch(1 0 0);
+      --surface: oklch(0.9587 0.0027 286.35);
+      --surface-hover: oklch(0.9194 0.0027 286.35);
+      --shadow-xs: oklch(0 0 0 / 0.08);
+      --shadow-md: oklch(0 0 0 / 0.18);
+      --shadow-overlay: oklch(0 0 0 / 0.4);
+      --code-bg: oklch(0.2273 0.0038 286.09);
+      --faq-row-even: oklch(0 0 0 / 0.03);
+      --row-hover: oklch(0.6001 0.177 260.96 / 0.05);
+      --cmp-cross: oklch(0.8622 0.0068 286.26);
+      --cmp-dim: oklch(0.752 0.0057 286.26);
+      --text-on-brand: oklch(1 0 0);
+      --code-text: oklch(0.9233 0.0067 286.27);
+      --success: oklch(0.7556 0.2082 146.98);
+      --code-muted: oklch(0.752 0.0057 286.26);
     }
 
     @media (prefers-color-scheme: dark) {
       :root {
+        /* Dark blue brand: slightly deeper than the old neon pass */
         --bg: #1c1c1e;
         --text: #f5f5f7;
         --text-secondary: #98989d;
-        /* Slightly deeper blue than before — less glare on dark backgrounds */
-        --brand: #4580d8;
-        --brand-hover: #5a91e6;
+        --brand: #4d89e5;
+        --brand-hover: #5f99f2;
         --divider: #38383a;
         --button-secondary-hover: #2c2c2e;
         --modal-bg: #2c2c2e;
@@ -83,9 +116,31 @@
         --shadow-overlay: rgba(0, 0, 0, 0.6);
         --code-bg: #2c2c2e;
         --faq-row-even: rgba(255, 255, 255, 0.04);
-        --row-hover: rgba(69, 128, 216, 0.09);
+        --row-hover: rgba(77, 137, 229, 0.09);
         --cmp-cross: #48484a;
         --cmp-dim: #636366;
+        /* OKLCH */
+        --bg: oklch(0.2273 0.0038 286.09);
+        --text: oklch(0.9707 0.0027 286.35);
+        --text-secondary: oklch(0.6812 0.0073 286.21);
+        --brand: oklch(0.6338 0.1524 258.72);
+        --brand-hover: oklch(0.6834 0.1456 258.7);
+        --divider: oklch(0.3414 0.0034 286.22);
+        --button-secondary-hover: oklch(0.2939 0.0036 286.18);
+        --modal-bg: oklch(0.2939 0.0036 286.18);
+        --surface: oklch(0.3492 0.0034 286.22);
+        --surface-hover: oklch(0.4024 0.0033 286.25);
+        --shadow-xs: oklch(0 0 0 / 0.4);
+        --shadow-md: oklch(0 0 0 / 0.5);
+        --shadow-overlay: oklch(0 0 0 / 0.6);
+        --code-bg: oklch(0.2939 0.0036 286.18);
+        --faq-row-even: oklch(1 0 0 / 0.04);
+        --row-hover: oklch(0.6338 0.1524 258.72 / 0.09);
+        --cmp-cross: oklch(0.4024 0.0033 286.25);
+        --cmp-dim: oklch(0.5007 0.0047 286.23);
+        /* Segmented control “pill” on dark gray track — distinct from page bg */
+        --segmented-tab-active: #5a5a5c;
+        --segmented-tab-active: oklch(0.4683 0.0032 286.28);
       }
     }
 
@@ -205,7 +260,7 @@
 
     .btn-primary {
       background: var(--brand);
-      color: #fff;
+      color: var(--text-on-brand);
     }
 
     .btn-primary:hover {
@@ -531,7 +586,7 @@
       min-width: 22px;
       height: 22px;
       background: var(--brand);
-      color: #fff;
+      color: var(--text-on-brand);
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -579,14 +634,15 @@
     .code-block code {
       font-family: "SF Mono", "Fira Mono", "Menlo", monospace;
       font-size: 12.5px;
-      color: #e5e5ea;
+      color: var(--code-text);
       word-break: break-all;
     }
     .copy-btn {
-      background: rgba(255,255,255,0.12);
+      background: rgba(255, 255, 255, 0.12);
+      background: oklch(1 0 0 / 0.12);
       border: none;
       border-radius: 6px;
-      color: #aeaeb2;
+      color: var(--code-muted);
       cursor: pointer;
       padding: 5px 10px;
       font-size: 12px;
@@ -595,8 +651,12 @@
       flex-shrink: 0;
       transition: background 0.15s;
     }
-    .copy-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
-    .copy-btn.copied { color: #30d158; }
+    .copy-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      background: oklch(1 0 0 / 0.2);
+      color: var(--text-on-brand);
+    }
+    .copy-btn.copied { color: var(--success); }
 
     /* FAQ */
     .faq {
@@ -721,15 +781,20 @@
     }
     .cmp-tab:hover { color: var(--text); }
     .cmp-tab.is-active {
-      background: var(--bg);
+      background: var(--segmented-tab-active, var(--bg));
       color: var(--text);
       font-weight: 600;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
+      box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.08),
+        0 0 0 0.5px rgba(0, 0, 0, 0.04);
+      box-shadow:
+        0 1px 2px oklch(0 0 0 / 0.08),
+        0 0 0 0.5px oklch(0 0 0 / 0.04);
     }
     @media (prefers-color-scheme: dark) {
       .cmp-tab.is-active {
-        background: #5a5a5c;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 1px 2px oklch(0 0 0 / 0.3);
       }
     }
     .comparison-scroll {
