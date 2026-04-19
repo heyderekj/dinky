@@ -876,8 +876,6 @@
       font-size: 13px;
     }
 
-    .comparison-scroll { overflow-x: visible; }
-
     @media (max-width: 900px) {
       .cmp-row { grid-template-columns: 1fr; }
       .cmp-text-card { padding: 24px; }
@@ -885,19 +883,20 @@
 
     @media (max-width: 700px) {
       .comparison-card { border-radius: 12px; padding-top: 8px; }
-      .comparison-table thead .th-dinky { width: 80px; }
-      .comparison-table thead .th-cycle { width: 140px; }
+      .comparison-table thead .th-dinky { width: 56px; }
+      .comparison-table thead .th-cycle { width: 130px; }
       .comparison-table thead th:first-child,
-      .cmp-label-cell { padding-left: 14px !important; }
+      .cmp-label-cell { padding-left: 12px !important; }
       .comparison-table thead th:last-child,
-      .comparison-table tbody td:last-child { padding-right: 14px; }
+      .comparison-table tbody td:last-child { padding-right: 12px; }
       .comparison-table th,
-      .comparison-table td { padding: 10px 8px; font-size: 12px; white-space: normal; }
-      .comparison-table .cmp-label { font-size: 12px; }
+      .comparison-table td { padding: 10px 4px; font-size: 12px; white-space: normal; }
+      .comparison-table .cmp-label { font-size: 12px; gap: 7px; }
       .comparison-table .cmp-icon { width: 14px; height: 14px; }
-      .th-cycle-btn { width: 16px; height: 16px; }
+      .th-cycle-row { gap: 4px; flex-wrap: nowrap; }
+      .th-cycle-btn { width: 16px; height: 16px; flex-shrink: 0; }
       .th-cycle-btn svg { width: 9px; height: 9px; }
-      .th-tool { font-size: 12px; min-width: 0; white-space: normal; }
+      .th-tool { font-size: 12px; min-width: 0; white-space: nowrap; }
       .th-cat { font-size: 10px; }
     }
 
