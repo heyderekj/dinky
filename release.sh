@@ -11,6 +11,10 @@
 #   4. Creates the DMG
 #   5. Commits, tags, pushes, and publishes the GitHub release
 #
+# Release notes are built from `git log v$PREV_VERSION..HEAD` (subjects only, chronological),
+# excluding the “Bump to v$VERSION” commit, so what ships on GitHub matches the repo. Edit the
+# release on GitHub afterward if you want prose or grouping; the list is the source of truth.
+#
 # Prerequisites: create-dmg (brew install create-dmg), gh (brew install gh)
 
 set -e  # exit on any error
@@ -95,26 +99,39 @@ echo "→ Tagging and publishing release…"
 git tag "v$VERSION"
 git push origin "v$VERSION"
 
-# Open editor for release notes, then publish
+echo "→ Composing release notes from git (v$PREV_VERSION..HEAD, excluding version bump)…"
+NOTES_FILE=$(mktemp)
+{
+  echo "## Dinky $VERSION"
+  echo ""
+  echo "Changes since **v$PREV_VERSION** (commit subjects from this repo):"
+  echo ""
+  if git rev-parse "v$PREV_VERSION" >/dev/null 2>&1; then
+    LIST=$(git log --no-merges "v$PREV_VERSION"..HEAD --pretty=format:'%s' --reverse | grep -vFx "Bump to v$VERSION" || true)
+    if [ -n "$LIST" ]; then
+      echo "$LIST" | while IFS= read -r subject; do
+        [ -n "$subject" ] && echo "- $subject"
+      done
+    else
+      echo "- *(No commits listed besides the version bump — describe this release manually on GitHub if needed.)*"
+    fi
+  else
+    echo "- **Warning:** git tag \`v$PREV_VERSION\` not found locally. Run \`git fetch --tags\` or ensure the previous release was tagged, then edit release notes on GitHub."
+  fi
+  echo ""
+  echo "## Install"
+  echo ""
+  echo "Download **Dinky-$VERSION.dmg** from the assets below and drag **Dinky** into Applications. Already using Dinky? Choose **Install Update** from the in-app banner when it appears."
+} > "$NOTES_FILE"
+
 gh release create "v$VERSION" \
-  --title "Dinky $VERSION" \
-  --notes-file - \
   "Dinky-$VERSION.dmg" \
-  "Dinky-$VERSION.zip" << NOTES
-## Dinky $VERSION — files, not just images
+  "Dinky-$VERSION.zip" \
+  --title "Dinky $VERSION" \
+  --notes-file "$NOTES_FILE" \
+  --verify-tag
 
-Dinky is now a **multi-format compressor** on macOS: **images**, **videos**, and **PDFs** in one small app. Drag in files (or use watch folders and presets) and get smaller outputs back.
-
-### Highlights
-- **Images** — WebP, AVIF, or lossless PNG with smart quality and resize options.
-- **Video** — export to MP4 with H.264 or HEVC and the same preset workflow as images.
-- **PDFs** — shrink while keeping text and links selectable, or flatten pages for maximum savings.
-- **One UI** — sidebar presets, batch results, smart quality, and history work across supported types.
-
-## Install
-
-Download \`Dinky-$VERSION.dmg\`, drag Dinky to Applications. Already installed? Click **Install Update** in the banner — Dinky handles the rest.
-NOTES
+rm -f "$NOTES_FILE"
 
 echo ""
 echo "✓ Dinky v$VERSION released."
