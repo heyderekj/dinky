@@ -2,8 +2,10 @@
 
 A small macOS utility that compresses **images**, **videos**, and **PDFs**. Drop files in, get smaller ones back.
 
-**For images:** supports JPG, PNG, WebP, AVIF, HEIC/HEIF, TIFF, and BMP. Outputs WebP, AVIF, lossless PNG, or HEIC depending on your preference. 
+**For images:** supports JPG, PNG, WebP, AVIF, HEIC/HEIF, TIFF, and BMP. Outputs WebP, AVIF, lossless PNG, or HEIC depending on your preference.
+
 **For video:** export to MP4 with H.264 or HEVC and quality presets. 
+
 **For PDFs:** flatten pages (default) for reliable smaller files on most scans and image-heavy documents, or preserve text and links for a best-effort stream rewrite when size is secondary. Scan-like PDFs can optionally run Vision OCR first (on-device) to lay down a text layer, then your chosen flatten or preserve pass — born-digital PDFs skip OCR. Strips metadata (where applicable), respects max dimensions and file size targets for images, and saves next to the original by default.
 
 <p align="center">
