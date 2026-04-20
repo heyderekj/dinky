@@ -362,7 +362,8 @@
       height: 100%;
       min-height: 0;
       align-self: stretch;
-      object-fit: contain;
+      /* cover: fill the grid cell (no white letterboxing); contain left gaps when row is tall */
+      object-fit: cover;
       object-position: center;
     }
 
@@ -1411,7 +1412,7 @@
           </div>
         </div>
       </div>
-      <img src="screenshots/screenshot-sidebar-presets.webp?v=20260420-tight" alt="Dinky sidebar with presets, type tabs, and format picker" />
+      <img src="screenshots/screenshot-sidebar-presets.webp?v=20260420-eqmcover" alt="Dinky sidebar with presets, type tabs, and format picker" />
     </div>
 
     <!-- Watch folder hero (image left) -->
