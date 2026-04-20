@@ -4,21 +4,21 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dinky makes files smaller.</title>
-  <meta name="description" content="Dinky compresses images, videos &amp; PDFs on macOS—WebP, AVIF, MP4, presets, watch folders, URL drop, clipboard paste. Free, open source, runs on your Mac." />
+  <meta name="description" content="Dinky compresses images, videos &amp; PDFs on macOS — modern image formats, AVFoundation video, and honest PDF modes (flatten for size, qpdf + preserve for text). WebP, AVIF, MP4, presets, watch folders. Free, open source, local." />
 
   <link rel="canonical" href="https://dinkyfiles.com" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <link rel="apple-touch-icon" href="app-icon.webp" />
 
   <meta property="og:title" content="Dinky makes files smaller." />
-  <meta property="og:description" content="Dinky compresses images, videos &amp; PDFs on macOS—WebP, AVIF, MP4, presets, watch folders, URL drop, clipboard paste. Free, open source, runs on your Mac." />
+  <meta property="og:description" content="Dinky compresses images, videos &amp; PDFs on macOS — modern formats, native video export, and honest PDF tradeoffs (flatten vs qpdf preserve). Free, open source, runs on your Mac." />
   <meta property="og:image" content="https://dinkyfiles.com/screenshots/screenshot-drop-zone.webp" />
   <meta property="og:url" content="https://dinkyfiles.com" />
   <meta property="og:type" content="website" />
 
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Dinky makes files smaller." />
-  <meta name="twitter:description" content="Dinky compresses images, videos &amp; PDFs on macOS—WebP, AVIF, MP4, presets, watch folders, URL drop, clipboard paste. Free, open source, runs on your Mac." />
+  <meta name="twitter:description" content="Dinky compresses images, videos &amp; PDFs on macOS — modern formats, native video, honest PDF modes (flatten vs qpdf preserve). Free, open source, local." />
   <meta name="twitter:image" content="https://dinkyfiles.com/screenshots/screenshot-drop-zone.webp" />
 
   <script type="application/ld+json">
@@ -28,10 +28,10 @@
     "name": "Dinky",
     "operatingSystem": "macOS",
     "applicationCategory": "UtilitiesApplication",
-    "description": "Dinky compresses images, videos & PDFs on macOS—WebP, AVIF, MP4, presets, watch folders, URL drop, clipboard paste. Free, open source, runs on your Mac.",
+    "description": "Dinky compresses images, videos & PDFs on macOS — WebP, AVIF, MP4, honest PDF modes (flatten for size, qpdf + preserve for text). Presets, watch folders, URL drop. Free, open source, local.",
     "url": "https://dinkyfiles.com",
-    "downloadUrl": "https://github.com/heyderekj/dinky/releases/download/v2.3.0/Dinky-2.3.0.dmg",
-    "softwareVersion": "2.3.0",
+    "downloadUrl": "https://github.com/heyderekj/dinky/releases/download/v2.4.0/Dinky-2.4.0.dmg",
+    "softwareVersion": "2.4.0",
     "fileSize": "~16 MB",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
     "author": { "@type": "Person", "name": "Derek Castelli", "url": "https://heyderekj.com" },
@@ -447,6 +447,29 @@
       color: var(--text-secondary);
     }
 
+    .ss-card.is-hero .ss-card-hero-text + .ss-card-hero-text {
+      margin-top: 10px;
+    }
+
+    .ss-card-hero-text a {
+      color: var(--brand);
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 2px;
+    }
+
+    .ss-card-hero-text a:hover {
+      color: var(--brand-hover);
+    }
+
+    .ss-card-hero-text code {
+      font-size: 0.92em;
+      padding: 0.12em 0.35em;
+      border-radius: 4px;
+      background: var(--surface);
+      color: var(--text);
+    }
+
     .ss-hero-stat {
       display: flex;
       align-items: baseline;
@@ -513,6 +536,50 @@
       text-wrap: pretty;
     }
 
+    .approach {
+      max-width: 820px;
+      margin: 40px auto 12px;
+      padding: 26px 24px 22px;
+      border: 1px solid var(--divider);
+      border-radius: 12px;
+      background: var(--surface);
+    }
+    .approach-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text);
+      margin: 0 0 18px;
+      letter-spacing: -0.02em;
+      text-align: center;
+      line-height: 1.25;
+    }
+    .approach-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 22px 36px;
+    }
+    .approach-col h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin: 0 0 8px;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+    .approach-col p {
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--text-secondary);
+      margin: 0;
+      text-wrap: pretty;
+    }
+    .approach-col strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+    @media (max-width: 700px) {
+      .approach { margin-top: 32px; padding: 20px 16px 18px; }
+      .approach-grid { grid-template-columns: 1fr; }
+    }
 
     .features {
       display: grid;
@@ -1250,7 +1317,7 @@
     </p>
 
     <div class="buttons">
-      <a class="btn btn-primary" href="https://github.com/heyderekj/dinky/releases/download/v2.3.0/Dinky-2.3.0.dmg" onclick="fathom.trackEvent('Download macOS'); document.getElementById('install-modal').classList.add('open')">
+      <a class="btn btn-primary" href="https://github.com/heyderekj/dinky/releases/download/v2.4.0/Dinky-2.4.0.dmg" onclick="fathom.trackEvent('Download macOS'); document.getElementById('install-modal').classList.add('open')">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" aria-hidden="true">
           <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
         </svg>
@@ -1263,7 +1330,21 @@
         GitHub<span id="gh-stars"> · <span class="gh-star-anchor" aria-hidden="true">★</span><span id="gh-stars-count"></span></span>
       </a>
     </div>
-    <p class="version">~16 MB · v2.3.0 · Requires macOS 15 Sequoia</p>
+    <p class="version">~16 MB · v2.4.0 · Requires macOS 15 Sequoia</p>
+  </section>
+
+  <section class="approach" aria-labelledby="approach-heading">
+    <h2 id="approach-heading" class="approach-title">Real compression, honest tradeoffs</h2>
+    <div class="approach-grid">
+      <div class="approach-col">
+        <h3>Images &amp; video</h3>
+        <p>Still images go through real format conversion — WebP, AVIF, or lossless PNG — with bundled encoders, not just “squeeze the same JPEG.” Video is exported with AVFoundation (H.264 or HEVC) and clear quality presets. Smart Quality nudges settings from content so you’re not guessing.</p>
+      </div>
+      <div class="approach-col">
+        <h3>PDFs — two modes, no hand‑waving</h3>
+        <p><strong>Smallest file (flatten)</strong> is the default for actual byte savings: each page is rasterized with PDFKit and saved as efficient JPEG. <strong>Preserve text (best-effort)</strong> runs bundled <strong>qpdf</strong> on streams, then PDFKit — and only replaces your file when the result is truly smaller. Many exports are already optimized; we say so in the app instead of pretending every PDF will shrink like magic.</p>
+      </div>
+    </div>
   </section>
 
   <!-- Install modal -->
@@ -1276,7 +1357,7 @@
         <li>
           <span>
             Open the <strong>.dmg</strong> from your Downloads and drag <strong>Dinky</strong> into your <strong>Applications</strong> folder.
-            <span class="install-fallback">Download didn't start? <a href="https://github.com/heyderekj/dinky/releases/download/v2.3.0/Dinky-2.3.0.dmg" onclick="fathom.trackEvent('Download macOS')">Download again</a>.</span>
+            <span class="install-fallback">Download didn't start? <a href="https://github.com/heyderekj/dinky/releases/download/v2.4.0/Dinky-2.4.0.dmg" onclick="fathom.trackEvent('Download macOS')">Download again</a>.</span>
           </span>
         </li>
         <li>
@@ -1395,6 +1476,7 @@
         </div>
         <h3 class="ss-card-hero-title">Compress while you work</h3>
         <p class="ss-card-hero-text">Pick a folder for Dinky to mind. New files that land there get shrunk on the way in — one global watcher, or one per preset.</p>
+        <p class="ss-card-hero-text">For example, watch a Dropbox-synced folder such as <code>~/Dropbox/Inbox</code> so saves and downloads compress as they appear on disk. <a href="#faq-watch-folder">Cloud folders &amp; details in the FAQ →</a></p>
       </div>
     </div>
 
@@ -1771,9 +1853,9 @@
         <p class="faq-a">Saved settings (format, quality, destination, etc.) — one click from the sidebar. Create them in Settings → Presets.</p>
       </div>
 
-      <div class="faq-item">
+      <div class="faq-item" id="faq-watch-folder">
         <h3 class="faq-q">Can Dinky compress files automatically?</h3>
-        <p class="faq-a">Yes, with Watch Folder. Any supported file saved or moved into a watched folder is picked up and compressed — handy for Figma, Lightroom, or screenshot exports.</p>
+        <p class="faq-a">Yes, with Watch Folder. Any supported file saved or moved into a watched folder is picked up and compressed — handy for Figma, Lightroom, or screenshot exports. You can watch a path inside Dropbox, Google Drive, iCloud Drive, or any other cloud folder that syncs to your Mac; Dinky reacts once the file is fully on disk (the sync app has to finish downloading first). To deliver compressed files back into the cloud, set a preset’s destination to a synced folder — <a href="#faq-cloud-destination">see this answer</a>.</p>
       </div>
 
       <div class="faq-item">
@@ -1781,9 +1863,9 @@
         <p class="faq-a">Yes. Drag a direct media link (<code>https://…/photo.jpg</code>, etc.) onto the window, or copy it and hit ⌘⇧V (Clipboard Compress). Direct file URLs only — not web pages.</p>
       </div>
 
-      <div class="faq-item">
+      <div class="faq-item" id="faq-cloud-destination">
         <h3 class="faq-q">Can I share a URL’s compressed version straight to Dropbox or Google Drive?</h3>
-        <p class="faq-a">Not directly. Set a preset’s destination to a cloud-synced folder (e.g. <code>~/Dropbox/Compressed/</code>) so outputs sync automatically.</p>
+        <p class="faq-a">Not directly. Set a preset’s destination to a cloud-synced folder (e.g. <code>~/Dropbox/Compressed/</code>) so outputs sync automatically. The same idea applies to Watch Folder: pick a watched path under your Dropbox (or Drive) folder for inputs, or a synced subfolder as the destination so compressed files upload with everything else.</p>
       </div>
 
       <div class="faq-item">

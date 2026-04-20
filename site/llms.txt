@@ -6,7 +6,7 @@
 
 - **Images** — JPG, PNG, WebP, AVIF, TIFF, BMP → WebP, AVIF, or lossless PNG
 - **Videos** — common formats (e.g. MP4, MOV) → MP4 with H.264 or HEVC and quality presets
-- **PDFs** — preserve selectable text and links, or flatten pages to images for maximum shrink
+- **PDFs** — **Flatten (default)** rasterizes pages (PDFKit + JPEG) for reliable size wins; **Preserve (best-effort)** uses bundled **qpdf** then PDFKit and only keeps output when smaller — no fake “optimize” promise on already-tight exports
 - Drag and drop or file picker; batch compression with live results
 - **URL drop** — drag or paste a direct `http(s)` link to an image, video, or PDF; Dinky downloads (max 500 MB), compresses, and cleans up the temp file
 - **Clipboard Compress** — system-wide hotkey (default ⌘⇧V) works even when Dinky isn't focused; pastes file URLs, raw image bytes, or media URLs from the clipboard
@@ -34,7 +34,7 @@
 - SwiftUI + AppKit, zero SPM dependencies
 - ~16 MB installed
 - Image engines bundled: cwebp (Google), avifenc (AOM), oxipng (Rust/MIT)
-- PDF via PDFKit; video via AVFoundation export
+- PDF: flatten via PDFKit + ImageIO; preserve path via bundled **qpdf** + PDFKit; video via AVFoundation export
 - No cloud, no accounts, no telemetry (site uses Fathom analytics, app has none)
 - Open source: MIT license
 
@@ -51,7 +51,7 @@
 - Support: help@dinkyfiles.com
 - GitHub: https://github.com/heyderekj/dinky
 - Latest release: https://github.com/heyderekj/dinky/releases/latest
-- Download v2.3.0: https://github.com/heyderekj/dinky/releases/download/v2.3.0/Dinky-2.3.0.dmg
+- Download v2.4.0: https://github.com/heyderekj/dinky/releases/download/v2.4.0/Dinky-2.4.0.dmg
 
 ## Author
 

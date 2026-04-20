@@ -10,6 +10,7 @@
 		5CBDB89C2F9041F600E7E9C0 /* avifenc in Resources */ = {isa = PBXBuildFile; fileRef = 5CBDB8972F9041F600E7E9C0 /* avifenc */; };
 		5CBDB89D2F9041F600E7E9C0 /* oxipng in Resources */ = {isa = PBXBuildFile; fileRef = 5CBDB89A2F9041F600E7E9C0 /* oxipng */; };
 		5CBDB89E2F9041F600E7E9C0 /* cwebp in Resources */ = {isa = PBXBuildFile; fileRef = 5CBDB8992F9041F600E7E9C0 /* cwebp */; };
+		QP000001000000000000001 /* qpdf in Resources */ = {isa = PBXBuildFile; fileRef = QP100001000000000000001 /* qpdf */; };
 		AA000001000000000000001 /* DinkyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1983E259BC5A494A9D936B63 /* DinkyApp.swift */; };
 		AA000002000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96F9AD6A1BD04233828DC140 /* ContentView.swift */; };
 		AA000003000000000000003 /* CompressionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BEB16B6B1534C999F261F79 /* CompressionService.swift */; };
@@ -24,6 +25,7 @@
 		AA000012000000000000012 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 74EE7205601D464484113FEB /* Assets.xcassets */; };
 		AA000013000000000000013 /* Preview Content/Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E71A34AFC5CA41FDACAEE19D /* Preview Content/Preview Assets.xcassets */; };
 		BB000001000000000000001 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB100001000000000000001 /* SidebarView.swift */; };
+		SC000001000000000000001 /* SettingsChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = SC100001000000000000001 /* SettingsChrome.swift */; };
 		DD000003000000000000003 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000002000000000000002 /* AppDelegate.swift */; };
 		UC000001000000000000001 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = UC100001000000000000001 /* UpdateChecker.swift */; };
 		UB000001000000000000001 /* UpdateBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = UB100001000000000000001 /* UpdateBanner.swift */; };
@@ -32,14 +34,20 @@
 		LB000001000000000000001 /* lib in Resources */ = {isa = PBXBuildFile; fileRef = LB100001000000000000001 /* lib */; };
 		CI000001000000000000001 /* ClipboardImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CI100001000000000000001 /* ClipboardImporter.swift */; };
 		OH000001000000000000001 /* OriginalsHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = OH100001000000000000001 /* OriginalsHandler.swift */; };
+		CU000001000000000000001 /* CompressionUndo.swift in Sources */ = {isa = PBXBuildFile; fileRef = CU100001000000000000001 /* CompressionUndo.swift */; };
 		UD000001000000000000001 /* URLDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = UD100001000000000000001 /* URLDownloader.swift */; };
 		LL000001000000000000001 /* LaunchAtLoginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = LL100001000000000000001 /* LaunchAtLoginManager.swift */; };
 		FW000001000000000000001 /* FolderWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = FW100001000000000000001 /* FolderWatcher.swift */; };
 		IPS00001000000000000001 /* ImagePreviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = IPS10001000000000000001 /* ImagePreviewSheet.swift */; };
 		HS000001000000000000001 /* HistorySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = HS100001000000000000001 /* HistorySheet.swift */; };
+		BC000001000000000000001 /* BatchCompletionSummarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC100001000000000000001 /* BatchCompletionSummarySheet.swift */; };
+		CRD000001000000000000001 /* CompressionResultDetailSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = CRD100001000000000000001 /* CompressionResultDetailSheets.swift */; };
 		CP000001000000000000001 /* CompressionPreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = CP100001000000000000001 /* CompressionPreset.swift */; };
 		SR000001000000000000001 /* SessionRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = SR100001000000000000001 /* SessionRecord.swift */; };
 		INT00001000000000000001 /* CompressImagesIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = INT10001000000000000001 /* CompressImagesIntent.swift */; };
+		INT00002000000000000001 /* CompressPDFIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = INT10002000000000000001 /* CompressPDFIntent.swift */; };
+		INT00003000000000000001 /* CompressVideoIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = INT10003000000000000001 /* CompressVideoIntent.swift */; };
+		ASH00001000000000000001 /* DinkyAppShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = ASH10001000000000000001 /* DinkyAppShortcuts.swift */; };
 		MT000001000000000000001 /* MediaType.swift in Sources */ = {isa = PBXBuildFile; fileRef = MT100001000000000000001 /* MediaType.swift */; };
 		PC000001000000000000001 /* PDFCompressor.swift in Sources */ = {isa = PBXBuildFile; fileRef = PC100001000000000000001 /* PDFCompressor.swift */; };
 		VC000001000000000000001 /* VideoCompressor.swift in Sources */ = {isa = PBXBuildFile; fileRef = VC100001000000000000001 /* VideoCompressor.swift */; };
@@ -55,6 +63,10 @@
 		SH000001000000000000001 /* ShortcutRecorderField.swift in Sources */ = {isa = PBXBuildFile; fileRef = SH100001000000000000001 /* ShortcutRecorderField.swift */; };
 		GH000001000000000000001 /* GlobalHotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = GH100001000000000000001 /* GlobalHotkeyManager.swift */; };
 		DR000001000000000000001 /* DiagnosticsReporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = DR100001000000000000001 /* DiagnosticsReporter.swift */; };
+		CT000001000000000000001 /* CompressionTiming.swift in Sources */ = {isa = PBXBuildFile; fileRef = CT100001000000000000001 /* CompressionTiming.swift */; };
+		PM000001000000000000001 /* PDFCompressionMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = PM100001000000000000001 /* PDFCompressionMetrics.swift */; };
+		OP000001000000000000001 /* OutputPathUniqueness.swift in Sources */ = {isa = PBXBuildFile; fileRef = OP100001000000000000001 /* OutputPathUniqueness.swift */; };
+		SP000001000000000000001 /* SavingsPerspective.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP100001000000000000001 /* SavingsPerspective.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -70,11 +82,13 @@
 		LB100001000000000000001 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; path = lib; sourceTree = "<group>"; };
 		5CBDB8992F9041F600E7E9C0 /* cwebp */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = cwebp; sourceTree = "<group>"; };
 		5CBDB89A2F9041F600E7E9C0 /* oxipng */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = oxipng; sourceTree = "<group>"; };
+		QP100001000000000000001 /* qpdf */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = qpdf; sourceTree = "<group>"; };
 		74EE7205601D464484113FEB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		89ED8C350A5D404EA5F1CCF6 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 		96F9AD6A1BD04233828DC140 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		AC05EE39C6DE4195A1EF551B /* CompressionFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompressionFormat.swift; sourceTree = "<group>"; };
 		BB100001000000000000001 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
+		SC100001000000000000001 /* SettingsChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsChrome.swift; sourceTree = "<group>"; };
 		UC100001000000000000001 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
 		UB100001000000000000001 /* UpdateBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateBanner.swift; sourceTree = "<group>"; };
 		CC100001000000000000001 /* ContentClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentClassifier.swift; sourceTree = "<group>"; };
@@ -87,14 +101,20 @@
 		F68BBF685BAD4911BEC725DB /* Dinky.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Dinky.entitlements; sourceTree = "<group>"; };
 		CI100001000000000000001 /* ClipboardImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardImporter.swift; sourceTree = "<group>"; };
 		OH100001000000000000001 /* OriginalsHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OriginalsHandler.swift; sourceTree = "<group>"; };
+		CU100001000000000000001 /* CompressionUndo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompressionUndo.swift; sourceTree = "<group>"; };
 		UD100001000000000000001 /* URLDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLDownloader.swift; sourceTree = "<group>"; };
 		LL100001000000000000001 /* LaunchAtLoginManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginManager.swift; sourceTree = "<group>"; };
 		FW100001000000000000001 /* FolderWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderWatcher.swift; sourceTree = "<group>"; };
 		IPS10001000000000000001 /* ImagePreviewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePreviewSheet.swift; sourceTree = "<group>"; };
 		HS100001000000000000001 /* HistorySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistorySheet.swift; sourceTree = "<group>"; };
+		BC100001000000000000001 /* BatchCompletionSummarySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchCompletionSummarySheet.swift; sourceTree = "<group>"; };
+		CRD100001000000000000001 /* CompressionResultDetailSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompressionResultDetailSheets.swift; sourceTree = "<group>"; };
 		CP100001000000000000001 /* CompressionPreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompressionPreset.swift; sourceTree = "<group>"; };
 		SR100001000000000000001 /* SessionRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRecord.swift; sourceTree = "<group>"; };
 		INT10001000000000000001 /* CompressImagesIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompressImagesIntent.swift; sourceTree = "<group>"; };
+		INT10002000000000000001 /* CompressPDFIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompressPDFIntent.swift; sourceTree = "<group>"; };
+		INT10003000000000000001 /* CompressVideoIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompressVideoIntent.swift; sourceTree = "<group>"; };
+		ASH10001000000000000001 /* DinkyAppShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DinkyAppShortcuts.swift; sourceTree = "<group>"; };
 		MT100001000000000000001 /* MediaType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaType.swift; sourceTree = "<group>"; };
 		PC100001000000000000001 /* PDFCompressor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFCompressor.swift; sourceTree = "<group>"; };
 		VC100001000000000000001 /* VideoCompressor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoCompressor.swift; sourceTree = "<group>"; };
@@ -142,6 +162,10 @@
 		SH100001000000000000001 /* ShortcutRecorderField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorderField.swift; sourceTree = "<group>"; };
 		GH100001000000000000001 /* GlobalHotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalHotkeyManager.swift; sourceTree = "<group>"; };
 		DR100001000000000000001 /* DiagnosticsReporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsReporter.swift; sourceTree = "<group>"; };
+		CT100001000000000000001 /* CompressionTiming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompressionTiming.swift; sourceTree = "<group>"; };
+		PM100001000000000000001 /* PDFCompressionMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFCompressionMetrics.swift; sourceTree = "<group>"; };
+		OP100001000000000000001 /* OutputPathUniqueness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputPathUniqueness.swift; sourceTree = "<group>"; };
+		SP100001000000000000001 /* SavingsPerspective.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavingsPerspective.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -176,9 +200,12 @@
 				5B63EBD7088E4C9BAB7A45DC /* ResultsRowView.swift */,
 				D1032BF7B7A74FAF99A74DB7 /* AntyMascotView.swift */,
 				BB100001000000000000001 /* SidebarView.swift */,
+				SC100001000000000000001 /* SettingsChrome.swift */,
 				UB100001000000000000001 /* UpdateBanner.swift */,
 				IPS10001000000000000001 /* ImagePreviewSheet.swift */,
 				HS100001000000000000001 /* HistorySheet.swift */,
+				BC100001000000000000001 /* BatchCompletionSummarySheet.swift */,
+				CRD100001000000000000001 /* CompressionResultDetailSheets.swift */,
 				HW100001000000000000001 /* HelpWindow.swift */,
 				SH100001000000000000001 /* ShortcutRecorderField.swift */,
 			);
@@ -190,6 +217,7 @@
 			children = (
 				UC100001000000000000001 /* UpdateChecker.swift */,
 				OH100001000000000000001 /* OriginalsHandler.swift */,
+				CU100001000000000000001 /* CompressionUndo.swift */,
 				UD100001000000000000001 /* URLDownloader.swift */,
 				LL100001000000000000001 /* LaunchAtLoginManager.swift */,
 				CC100001000000000000001 /* ContentClassifier.swift */,
@@ -203,6 +231,10 @@
 				WR100001000000000000001 /* WatchRegistry.swift */,
 				GH100001000000000000001 /* GlobalHotkeyManager.swift */,
 				DR100001000000000000001 /* DiagnosticsReporter.swift */,
+				CT100001000000000000001 /* CompressionTiming.swift */,
+				PM100001000000000000001 /* PDFCompressionMetrics.swift */,
+				OP100001000000000000001 /* OutputPathUniqueness.swift */,
+				SP100001000000000000001 /* SavingsPerspective.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -227,6 +259,9 @@
 			isa = PBXGroup;
 			children = (
 				INT10001000000000000001 /* CompressImagesIntent.swift */,
+				INT10002000000000000001 /* CompressPDFIntent.swift */,
+				INT10003000000000000001 /* CompressVideoIntent.swift */,
+				ASH10001000000000000001 /* DinkyAppShortcuts.swift */,
 			);
 			path = Intents;
 			sourceTree = "<group>";
@@ -280,6 +315,7 @@
 				5CBDB8972F9041F600E7E9C0 /* avifenc */,
 				5CBDB8992F9041F600E7E9C0 /* cwebp */,
 				5CBDB89A2F9041F600E7E9C0 /* oxipng */,
+				QP100001000000000000001 /* qpdf */,
 				5BC7D00FC2B14EF09CB7F833 /* README.md */,
 			);
 			path = bin;
@@ -361,6 +397,7 @@
 				5CBDB89C2F9041F600E7E9C0 /* avifenc in Resources */,
 				5CBDB89D2F9041F600E7E9C0 /* oxipng in Resources */,
 				5CBDB89E2F9041F600E7E9C0 /* cwebp in Resources */,
+				QP000001000000000000001 /* qpdf in Resources */,
 				LB000001000000000000001 /* lib in Resources */,
 				HM000001000000000000001 /* Help.md in Resources */,
 				LCAT00000100000000000001 /* Localizable.xcstrings in Resources */,
@@ -388,20 +425,27 @@
 				AA000010000000000000010 /* ResultsRowView.swift in Sources */,
 				AA000011000000000000011 /* AntyMascotView.swift in Sources */,
 				BB000001000000000000001 /* SidebarView.swift in Sources */,
+				SC000001000000000000001 /* SettingsChrome.swift in Sources */,
 				UC000001000000000000001 /* UpdateChecker.swift in Sources */,
 				UB000001000000000000001 /* UpdateBanner.swift in Sources */,
 				CC000001000000000000001 /* ContentClassifier.swift in Sources */,
 				AG000001000000000000001 /* View+AdaptiveGlass.swift in Sources */,
 				CI000001000000000000001 /* ClipboardImporter.swift in Sources */,
 				OH000001000000000000001 /* OriginalsHandler.swift in Sources */,
+				CU000001000000000000001 /* CompressionUndo.swift in Sources */,
 				UD000001000000000000001 /* URLDownloader.swift in Sources */,
 				LL000001000000000000001 /* LaunchAtLoginManager.swift in Sources */,
 				FW000001000000000000001 /* FolderWatcher.swift in Sources */,
 				IPS00001000000000000001 /* ImagePreviewSheet.swift in Sources */,
 				HS000001000000000000001 /* HistorySheet.swift in Sources */,
+				BC000001000000000000001 /* BatchCompletionSummarySheet.swift in Sources */,
+				CRD000001000000000000001 /* CompressionResultDetailSheets.swift in Sources */,
 				CP000001000000000000001 /* CompressionPreset.swift in Sources */,
 				SR000001000000000000001 /* SessionRecord.swift in Sources */,
 				INT00001000000000000001 /* CompressImagesIntent.swift in Sources */,
+				INT00002000000000000001 /* CompressPDFIntent.swift in Sources */,
+				INT00003000000000000001 /* CompressVideoIntent.swift in Sources */,
+				ASH00001000000000000001 /* DinkyAppShortcuts.swift in Sources */,
 				MT000001000000000000001 /* MediaType.swift in Sources */,
 				PC000001000000000000001 /* PDFCompressor.swift in Sources */,
 				VC000001000000000000001 /* VideoCompressor.swift in Sources */,
@@ -414,6 +458,10 @@
 				SH000001000000000000001 /* ShortcutRecorderField.swift in Sources */,
 				GH000001000000000000001 /* GlobalHotkeyManager.swift in Sources */,
 				DR000001000000000000001 /* DiagnosticsReporter.swift in Sources */,
+				CT000001000000000000001 /* CompressionTiming.swift in Sources */,
+				PM000001000000000000001 /* PDFCompressionMetrics.swift in Sources */,
+				OP000001000000000000001 /* OutputPathUniqueness.swift in Sources */,
+				SP000001000000000000001 /* SavingsPerspective.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -432,7 +480,7 @@
 			outputPaths = ();
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Re-sign all bundled CLI binaries and dylibs with ad-hoc signatures.\n# Required because install_name_tool invalidates Homebrew-supplied signatures.\nRESOURCES=\"$BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/Resources\"\nfor f in \"$RESOURCES/avifenc\" \"$RESOURCES/cwebp\" \"$RESOURCES/oxipng\" \"$RESOURCES\"/lib/*.dylib; do\n  [ -f \"$f\" ] && codesign -s - --force \"$f\"\ndone\n";
+			shellScript = "# Re-sign all bundled CLI binaries and dylibs with ad-hoc signatures.\n# Required because install_name_tool invalidates Homebrew-supplied signatures.\nRESOURCES=\"$BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/Resources\"\nfor f in \"$RESOURCES/avifenc\" \"$RESOURCES/cwebp\" \"$RESOURCES/oxipng\" \"$RESOURCES/qpdf\" \"$RESOURCES\"/lib/*.dylib; do\n  [ -f \"$f\" ] && codesign -s - --force \"$f\"\ndone\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -566,7 +614,7 @@
 				CODE_SIGN_ENTITLEMENTS = Dinky/Dinky.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2.3.0;
+				CURRENT_PROJECT_VERSION = 2.4.0;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = NO;
@@ -579,7 +627,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 2.3.0;
+				MARKETING_VERSION = 2.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.dinky.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -596,7 +644,7 @@
 				CODE_SIGN_ENTITLEMENTS = Dinky/Dinky.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2.3.0;
+				CURRENT_PROJECT_VERSION = 2.4.0;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = NO;
@@ -609,7 +657,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 2.3.0;
+				MARKETING_VERSION = 2.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.dinky.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
