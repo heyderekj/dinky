@@ -349,7 +349,8 @@
       display: grid;
       grid-template-columns: 3fr 2fr;
       gap: 16px;
-      align-items: center;
+      /* Stretch so the screenshot column matches the text card height */
+      align-items: stretch;
     }
 
     .ss-row.is-rev {
@@ -358,8 +359,11 @@
 
     .ss-row > img {
       width: 100%;
-      height: auto;
-      align-self: center;
+      height: 100%;
+      min-height: 0;
+      align-self: stretch;
+      object-fit: contain;
+      object-position: center;
     }
 
     /* Multi-feature rows: narrower max-width so the square screenshot isn't enormous */
