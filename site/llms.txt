@@ -32,7 +32,7 @@
 
 - macOS 15 Sequoia or later (liquid glass UI on macOS 26 Tahoe; frosted material fallback on Sequoia)
 - SwiftUI + AppKit, zero SPM dependencies
-- ~16 MB installed
+- ~28 MB installed
 - Image engines bundled: cwebp (Google), avifenc (AOM), oxipng (Rust/MIT)
 - PDF: flatten via PDFKit + ImageIO; preserve path via bundled **qpdf** + PDFKit; video via AVFoundation export
 - No cloud, no accounts, no telemetry (site uses Fathom analytics, app has none)
@@ -43,7 +43,7 @@
 - vs **ImageOptim**: ImageOptim is lossless-only — it squeezes a JPEG and returns a JPEG. Dinky converts image formats, where the real savings are (30–80% vs same-format squeeze).
 - vs **TinyPNG**: TinyPNG uploads images to their servers. Dinky is 100% local.
 - vs **Squoosh**: Browser-based, one image at a time. Dinky is native, batch, offline.
-- vs **Optimage**: Similar feature set but Optimage costs $15 and weighs 62 MB. Dinky is free and ~16 MB.
+- vs **Optimage**: Similar feature set but Optimage costs $15 and weighs 62 MB. Dinky is free and ~28 MB.
 
 ## Links
 
