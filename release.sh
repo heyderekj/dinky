@@ -3,59 +3,111 @@
 #
 # Usage:
 #   ./release.sh 1.2.3
+#   ./release.sh 1.2.3 --bump-only   # steps 1–2 only (no build, git, or gh)
 #
 # What it does:
-#   1. Bumps MARKETING_VERSION in the Xcode project
-#   2. Updates version + download URLs in site/index.html and site/llms.txt
+#   1. Bumps MARKETING_VERSION + CURRENT_PROJECT_VERSION in the Xcode project
+#   2. Updates version + download URLs in site/index.html, site/llms.txt, site/homepage.md
 #   3. Builds the Release scheme
-#   4. Creates the DMG
+#   4. Creates the DMG (+ zip for in-app updater)
 #   5. Commits, tags, pushes, and publishes the GitHub release
 #
-# Release notes are built from `git log v$PREV_VERSION..HEAD` (subjects only, chronological),
+# Release notes are built from `git log $PREV_GIT_TAG..HEAD` (subjects only, chronological),
 # excluding the “Bump to v$VERSION” commit, so what ships on GitHub matches the repo. Edit the
 # release on GitHub afterward if you want prose or grouping; the list is the source of truth.
+#
+# Commit all app/source changes before running: the tag must point at a tree that includes the full
+# app, not only version-string files.
 #
 # Prerequisites: create-dmg (brew install create-dmg), gh (brew install gh)
 
 set -e  # exit on any error
 
-# ── Validate ──────────────────────────────────────────────────────────────────
+# ── Args ──────────────────────────────────────────────────────────────────────
 
-if [ -z "$1" ]; then
-  echo "Usage: ./release.sh <version>  (e.g. ./release.sh 1.2.3)"
+BUMP_ONLY=false
+VERSION=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --bump-only) BUMP_ONLY=true; shift ;;
+    *)
+      if [ -n "$VERSION" ]; then
+        echo "Usage: ./release.sh <version> [--bump-only]"
+        exit 1
+      fi
+      VERSION="$1"
+      shift
+      ;;
+  esac
+done
+
+if [ -z "$VERSION" ]; then
+  echo "Usage: ./release.sh <version> [--bump-only]  (e.g. ./release.sh 2.4.1 --bump-only)"
   exit 1
 fi
 
-VERSION="$1"
-PREV_VERSION=$(grep "MARKETING_VERSION" Dinky.xcodeproj/project.pbxproj | head -1 | sed 's/.*= //;s/;//')
-PREV_BUILD=$(grep "CURRENT_PROJECT_VERSION" Dinky.xcodeproj/project.pbxproj | head -1 | sed 's/.*= //;s/;//')
+if git rev-parse "refs/tags/v$VERSION" >/dev/null 2>&1; then
+  echo "✗ Git tag v$VERSION already exists locally. Remove it or choose another version."
+  exit 1
+fi
 
-echo "▶ Releasing Dinky v$VERSION (was $PREV_VERSION, build $PREV_BUILD)"
+FILE_MARKETING=$(grep "MARKETING_VERSION" Dinky.xcodeproj/project.pbxproj | head -1 | sed 's/.*= //;s/;//')
+FILE_BUILD=$(grep "CURRENT_PROJECT_VERSION" Dinky.xcodeproj/project.pbxproj | head -1 | sed 's/.*= //;s/;//')
+OLD_MARKETING="$FILE_MARKETING"
+
+echo "▶ Releasing Dinky v$VERSION (project marketing version is $FILE_MARKETING)"
 echo ""
 
-# ── 1. Bump version ───────────────────────────────────────────────────────────
+# ── 1. Bump version (skip if project + site already at $VERSION) ─────────────
 
-echo "→ Bumping version in project.pbxproj…"
-sed -i '' "s/MARKETING_VERSION = $PREV_VERSION/MARKETING_VERSION = $VERSION/g" \
-  Dinky.xcodeproj/project.pbxproj
-sed -i '' "s/CURRENT_PROJECT_VERSION = $PREV_BUILD/CURRENT_PROJECT_VERSION = $VERSION/g" \
-  Dinky.xcodeproj/project.pbxproj
+if [ "$FILE_MARKETING" != "$VERSION" ]; then
+  echo "→ Bumping version in project.pbxproj…"
+  sed -i '' "s/MARKETING_VERSION = $FILE_MARKETING/MARKETING_VERSION = $VERSION/g" \
+    Dinky.xcodeproj/project.pbxproj
+  sed -i '' "s/CURRENT_PROJECT_VERSION = $FILE_BUILD/CURRENT_PROJECT_VERSION = $VERSION/g" \
+    Dinky.xcodeproj/project.pbxproj
+else
+  echo "→ Project already at $VERSION (skipping pbxproj bump)"
+fi
 
 # ── 2. Update site ────────────────────────────────────────────────────────────
 
-echo "→ Updating site/index.html…"
-sed -i '' "s/v$PREV_VERSION · Requires/v$VERSION · Requires/g" site/index.html
-sed -i '' "s/v$PREV_VERSION\/Dinky-$PREV_VERSION.dmg/v$VERSION\/Dinky-$VERSION.dmg/g" site/index.html
-sed -i '' "s/\"softwareVersion\": \"$PREV_VERSION\"/\"softwareVersion\": \"$VERSION\"/g" site/index.html
+if [ "$OLD_MARKETING" != "$VERSION" ]; then
+  echo "→ Updating site/index.html…"
+  sed -i '' "s/v$OLD_MARKETING · Requires/v$VERSION · Requires/g" site/index.html
+  sed -i '' "s/v$OLD_MARKETING\/Dinky-$OLD_MARKETING.dmg/v$VERSION\/Dinky-$VERSION.dmg/g" site/index.html
+  sed -i '' "s/\"softwareVersion\": \"$OLD_MARKETING\"/\"softwareVersion\": \"$VERSION\"/g" site/index.html
 
-echo "→ Updating site/llms.txt…"
-sed -i '' "s/v$PREV_VERSION/v$VERSION/g" site/llms.txt
-sed -i '' "s/Dinky-$PREV_VERSION\.dmg/Dinky-$VERSION.dmg/g" site/llms.txt
+  echo "→ Updating site/llms.txt…"
+  sed -i '' "s/v$OLD_MARKETING/v$VERSION/g" site/llms.txt
+  sed -i '' "s/Dinky-$OLD_MARKETING\.dmg/Dinky-$VERSION.dmg/g" site/llms.txt
 
-if [ -f site/homepage.md ]; then
-  echo "→ Updating site/homepage.md…"
-  sed -i '' "s/v$PREV_VERSION/v$VERSION/g" site/homepage.md
-  sed -i '' "s/Dinky-$PREV_VERSION\.dmg/Dinky-$VERSION.dmg/g" site/homepage.md
+  if [ -f site/homepage.md ]; then
+    echo "→ Updating site/homepage.md…"
+    sed -i '' "s/v$OLD_MARKETING/v$VERSION/g" site/homepage.md
+    sed -i '' "s/Dinky-$OLD_MARKETING\.dmg/Dinky-$VERSION.dmg/g" site/homepage.md
+  fi
+else
+  echo "→ Site strings already match v$VERSION (skipping site sed)"
+fi
+
+if [ "$BUMP_ONLY" = true ]; then
+  echo ""
+  echo "✓ Bump only — updated project + site strings to v$VERSION."
+  echo "  When ready: ./release.sh $VERSION  (full build, tag, gh release)"
+  exit 0
+fi
+
+if [ -n "$(git status --porcelain)" ]; then
+  echo "✗ Working tree is not clean. Commit or stash all changes first so the v$VERSION tag includes the full app."
+  git status -sb
+  exit 1
+fi
+
+PREV_GIT_TAG=$(git tag -l 'v*' --sort=-version:refname | head -1 || true)
+if [ -z "$PREV_GIT_TAG" ]; then
+  echo "✗ No previous v* tags found. Create at least one release tag first, or edit release.sh for your case."
+  exit 1
 fi
 
 # ── 3. Build ──────────────────────────────────────────────────────────────────
@@ -87,27 +139,31 @@ ditto -c -k --sequesterRsrc --keepParent \
   "build/Build/Products/Release/Dinky.app" \
   "Dinky-$VERSION.zip"
 
-# ── 5. Commit, tag, push, release ────────────────────────────────────────────
+# ── 5. Optional bump commit, push, tag, release ─────────────────────────────
 
-echo "→ Committing…"
+echo "→ Committing version files (if changed by this run)…"
 git add Dinky.xcodeproj/project.pbxproj site/index.html site/llms.txt README.md
 [ -f site/homepage.md ] && git add site/homepage.md
-git commit -m "Bump to v$VERSION"
+if git diff --cached --quiet; then
+  echo "  (nothing to commit — version already in repo)"
+else
+  git commit -m "Bump to v$VERSION"
+fi
 git push origin main
 
 echo "→ Tagging and publishing release…"
 git tag "v$VERSION"
 git push origin "v$VERSION"
 
-echo "→ Composing release notes from git (v$PREV_VERSION..HEAD, excluding version bump)…"
+echo "→ Composing release notes from git ($PREV_GIT_TAG..HEAD, excluding version bump)…"
 NOTES_FILE=$(mktemp)
 {
   echo "## Dinky $VERSION"
   echo ""
-  echo "Changes since **v$PREV_VERSION** (commit subjects from this repo):"
+  echo "Changes since **$PREV_GIT_TAG** (commit subjects from this repo):"
   echo ""
-  if git rev-parse "v$PREV_VERSION" >/dev/null 2>&1; then
-    LIST=$(git log --no-merges "v$PREV_VERSION"..HEAD --pretty=format:'%s' --reverse | grep -vFx "Bump to v$VERSION" || true)
+  if git rev-parse "$PREV_GIT_TAG" >/dev/null 2>&1; then
+    LIST=$(git log --no-merges "$PREV_GIT_TAG"..HEAD --pretty=format:'%s' --reverse | grep -vFx "Bump to v$VERSION" || true)
     if [ -n "$LIST" ]; then
       echo "$LIST" | while IFS= read -r subject; do
         [ -n "$subject" ] && echo "- $subject"
@@ -116,7 +172,7 @@ NOTES_FILE=$(mktemp)
       echo "- *(No commits listed besides the version bump — describe this release manually on GitHub if needed.)*"
     fi
   else
-    echo "- **Warning:** git tag \`v$PREV_VERSION\` not found locally. Run \`git fetch --tags\` or ensure the previous release was tagged, then edit release notes on GitHub."
+    echo "- **Warning:** git tag \`$PREV_GIT_TAG\` not found locally. Run \`git fetch --tags\` or edit release notes on GitHub."
   fi
   echo ""
   echo "## Install"
