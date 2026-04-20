@@ -1287,6 +1287,7 @@ struct ContentView: View {
     @State private var selectedIDs: Set<UUID> = []
     @State private var showingHistory  = false
     @AppStorage("manualModeHintDismissed") private var manualModeHintDismissed = false
+    @AppStorage("reviewPromptBelowUpdateDismissed") private var reviewPromptBelowUpdateDismissed = false
     /// Stacked over the batch summary sheet when the user opens skipped / zero-gain / error detail from the summary list.
     @State private var batchSummaryFollowUp: BatchSummaryFollowUpSheet?
 
@@ -1470,8 +1471,17 @@ struct ContentView: View {
         ZStack(alignment: .leading) {
             VStack(spacing: 0) {
                 if updater.shouldShow(dismissedVersion: prefs.dismissedUpdateVersion) {
-                    UpdateBanner(updater: updater, itemCount: vm.items.count)
-                        .environmentObject(prefs)
+                    VStack(spacing: 8) {
+                        UpdateBanner(updater: updater, itemCount: vm.items.count)
+                            .environmentObject(prefs)
+                        if !reviewPromptBelowUpdateDismissed {
+                            ReviewPromptBanner {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    reviewPromptBelowUpdateDismissed = true
+                                }
+                            }
+                        }
+                    }
                 }
                 if prefs.manualMode && !manualModeHintDismissed {
                     manualModeHintBanner

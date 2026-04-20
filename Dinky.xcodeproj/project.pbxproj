@@ -30,6 +30,7 @@
 		DD000003000000000000003 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000002000000000000002 /* AppDelegate.swift */; };
 		UC000001000000000000001 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = UC100001000000000000001 /* UpdateChecker.swift */; };
 		UB000001000000000000001 /* UpdateBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = UB100001000000000000001 /* UpdateBanner.swift */; };
+		RB000001000000000000001 /* ReviewPromptBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = RB100001000000000000001 /* ReviewPromptBanner.swift */; };
 		CC000001000000000000001 /* ContentClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC100001000000000000001 /* ContentClassifier.swift */; };
 		AG000001000000000000001 /* View+AdaptiveGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = AG100001000000000000001 /* View+AdaptiveGlass.swift */; };
 		LB000001000000000000001 /* lib in Resources */ = {isa = PBXBuildFile; fileRef = LB100001000000000000001 /* lib */; };
@@ -95,6 +96,7 @@
 		SC100001000000000000001 /* SettingsChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsChrome.swift; sourceTree = "<group>"; };
 		UC100001000000000000001 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
 		UB100001000000000000001 /* UpdateBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateBanner.swift; sourceTree = "<group>"; };
+		RB100001000000000000001 /* ReviewPromptBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewPromptBanner.swift; sourceTree = "<group>"; };
 		CC100001000000000000001 /* ContentClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentClassifier.swift; sourceTree = "<group>"; };
 		AG100001000000000000001 /* View+AdaptiveGlass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+AdaptiveGlass.swift"; sourceTree = "<group>"; };
 		D1032BF7B7A74FAF99A74DB7 /* AntyMascotView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AntyMascotView.swift; sourceTree = "<group>"; };
@@ -209,6 +211,7 @@
 				BB100001000000000000001 /* SidebarView.swift */,
 				SC100001000000000000001 /* SettingsChrome.swift */,
 				UB100001000000000000001 /* UpdateBanner.swift */,
+				RB100001000000000000001 /* ReviewPromptBanner.swift */,
 				IPS10001000000000000001 /* ImagePreviewSheet.swift */,
 				HS100001000000000000001 /* HistorySheet.swift */,
 				BC100001000000000000001 /* BatchCompletionSummarySheet.swift */,
@@ -438,6 +441,7 @@
 				SC000001000000000000001 /* SettingsChrome.swift in Sources */,
 				UC000001000000000000001 /* UpdateChecker.swift in Sources */,
 				UB000001000000000000001 /* UpdateBanner.swift in Sources */,
+				RB000001000000000000001 /* ReviewPromptBanner.swift in Sources */,
 				CC000001000000000000001 /* ContentClassifier.swift in Sources */,
 				AG000001000000000000001 /* View+AdaptiveGlass.swift in Sources */,
 				CI000001000000000000001 /* ClipboardImporter.swift in Sources */,
