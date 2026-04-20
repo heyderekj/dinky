@@ -51,6 +51,12 @@ if git rev-parse "refs/tags/v$VERSION" >/dev/null 2>&1; then
   exit 1
 fi
 
+if [ -n "$(git status --porcelain)" ]; then
+  echo "✗ Working tree is not clean. Commit or stash all changes first so the v$VERSION tag includes the full app."
+  git status -sb
+  exit 1
+fi
+
 FILE_MARKETING=$(grep "MARKETING_VERSION" Dinky.xcodeproj/project.pbxproj | head -1 | sed 's/.*= //;s/;//')
 FILE_BUILD=$(grep "CURRENT_PROJECT_VERSION" Dinky.xcodeproj/project.pbxproj | head -1 | sed 's/.*= //;s/;//')
 OLD_MARKETING="$FILE_MARKETING"
@@ -94,14 +100,8 @@ fi
 if [ "$BUMP_ONLY" = true ]; then
   echo ""
   echo "✓ Bump only — updated project + site strings to v$VERSION."
-  echo "  When ready: ./release.sh $VERSION  (full build, tag, gh release)"
+  echo "  Commit those files, then: ./release.sh $VERSION  (full build, tag, gh release)"
   exit 0
-fi
-
-if [ -n "$(git status --porcelain)" ]; then
-  echo "✗ Working tree is not clean. Commit or stash all changes first so the v$VERSION tag includes the full app."
-  git status -sb
-  exit 1
 fi
 
 PREV_GIT_TAG=$(git tag -l 'v*' --sort=-version:refname | head -1 || true)
