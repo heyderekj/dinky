@@ -2183,6 +2183,10 @@ private func presentManualUpdateResult(_ result: UpdateChecker.CheckResult,
         alert.addButton(withTitle: String(localized: "What’s new", comment: "Manual update alert."))
         alert.addButton(withTitle: String(localized: "Maybe later", comment: "Manual update alert."))
 
+        // If the user already kicked off an install (e.g. hit Install Update twice),
+        // don't stack another Task on top — downloadAndInstall guards against this too,
+        // but skipping the alert avoids the confusing "keep popping up" appearance.
+        guard case .idle = updater.installState else { return }
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
             Task { await updater.downloadAndInstall() }
