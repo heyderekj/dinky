@@ -107,6 +107,52 @@ struct CompressionPreset: Codable, Identifiable {
         self.createdAt = .now
     }
 
+    /// Deep copy for preset duplication: new identity and timestamp; all settings preserved.
+    init(duplicating source: CompressionPreset, name: String) {
+        self.id = UUID()
+        self.name = name
+        self.format = source.format
+        self.smartQuality = source.smartQuality
+        self.autoFormat = source.autoFormat
+        self.maxWidthEnabled = source.maxWidthEnabled
+        self.maxWidth = source.maxWidth
+        self.maxFileSizeEnabled = source.maxFileSizeEnabled
+        self.maxFileSizeKB = source.maxFileSizeKB
+        self.saveLocationRaw = source.saveLocationRaw
+        self.filenameHandlingRaw = source.filenameHandlingRaw
+        self.customSuffix = source.customSuffix
+        self.collisionNamingStyleRaw = source.collisionNamingStyleRaw
+        self.collisionCustomPattern = source.collisionCustomPattern
+        self.stripMetadata = source.stripMetadata
+        self.sanitizeFilenames = source.sanitizeFilenames
+        self.openFolderWhenDone = source.openFolderWhenDone
+        self.notifyWhenDone = source.notifyWhenDone
+        self.watchFolderEnabled = source.watchFolderEnabled
+        self.watchFolderModeRaw = source.watchFolderModeRaw
+        self.watchFolderPath = source.watchFolderPath
+        self.watchFolderBookmark = source.watchFolderBookmark
+        self.presetCustomFolderPath = source.presetCustomFolderPath
+        self.presetCustomFolderBookmark = source.presetCustomFolderBookmark
+        self.contentTypeHintRaw = source.contentTypeHintRaw
+        self.presetMediaScopeRaw = source.presetMediaScopeRaw
+        self.pdfOutputModeRaw = source.pdfOutputModeRaw
+        self.pdfQualityRaw = source.pdfQualityRaw
+        self.videoQualityRaw = source.videoQualityRaw
+        self.videoCodecFamilyRaw = source.videoCodecFamilyRaw
+        self.pdfGrayscale = source.pdfGrayscale
+        self.pdfAutoGrayscaleMonoScans = source.pdfAutoGrayscaleMonoScans
+        self.pdfPreserveExperimentalRaw = source.pdfPreserveExperimentalRaw
+        self.pdfMaxFileSizeEnabled = source.pdfMaxFileSizeEnabled
+        self.pdfMaxFileSizeKB = source.pdfMaxFileSizeKB
+        self.pdfResolutionDownsampling = source.pdfResolutionDownsampling
+        self.videoRemoveAudio = source.videoRemoveAudio
+        self.videoMaxResolutionEnabled = source.videoMaxResolutionEnabled
+        self.videoMaxResolutionLines = source.videoMaxResolutionLines
+        self.pdfEnableOCR = source.pdfEnableOCR
+        self.pdfOCRLanguages = source.pdfOCRLanguages
+        self.createdAt = .now
+    }
+
     // Custom decoder so old presets (missing new fields) still load
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -210,6 +256,22 @@ struct CompressionPreset: Codable, Identifiable {
 // MARK: - Output paths (same rules as `DinkyPreferences`, with per-preset destination)
 
 extension CompressionPreset {
+
+    /// Finder-style unique name among existing presets: `Name copy`, `Name copy 2`, … (matches ``OutputPathUniqueness`` / Finder duplicate files).
+    static func uniqueDuplicatePresetName(baseName: String, existingNames: Set<String>) -> String {
+        let copyFrag = String(localized: " copy", comment: "Filename: first duplicate after base name, as in Finder “file copy”.")
+        var n = 1
+        while true {
+            let candidate: String
+            if n == 1 {
+                candidate = baseName + copyFrag
+            } else {
+                candidate = baseName + copyFrag + " \(n)"
+            }
+            if !existingNames.contains(candidate) { return candidate }
+            n += 1
+        }
+    }
 
     /// Media types this preset applies to (non-empty; unknown legacy raw values decode as all three).
     var includedMediaTypes: Set<MediaType> {

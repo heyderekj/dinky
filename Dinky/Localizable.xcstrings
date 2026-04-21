@@ -10145,8 +10145,14 @@
         }
       }
     },
+    "Duplicate" : {
+      "comment" : "Settings UI: duplicate preset."
+    },
     "Duplicate naming" : {
       "comment" : "Settings UI: section for name collisions."
+    },
+    "Duplicate preset" : {
+      "comment" : "VoiceOver: duplicate selected preset."
     },
     "Duration" : {
       "comment" : "Tooltip for video duration chip.",

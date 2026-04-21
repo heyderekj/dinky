@@ -25,6 +25,8 @@ extension Notification.Name {
     static let dinkyStartCompression    = Notification.Name("dinkyStartCompression")
     /// Re-register the system-wide “Clipboard Compress” hotkey (toggle or shortcut changed).
     static let dinkyGlobalPasteHotkeyChanged = Notification.Name("dinkyGlobalPasteHotkeyChanged")
+    /// Posted before quit so SwiftUI can dismiss sheets; used with `applicationShouldTerminate` / `terminateLater`.
+    static let dinkyPrepareQuit = Notification.Name("dinkyPrepareQuit")
 }
 
 enum S {

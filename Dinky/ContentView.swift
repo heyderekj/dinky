@@ -1490,6 +1490,16 @@ struct ContentView: View {
         alert.runModal()
     }
 
+    /// Dismisses SwiftUI presentations before `NSApp.reply(toApplicationShouldTerminate:)`.
+    private func prepareForQuit() {
+        showingHistory = false
+        vm.pendingBatchSummary = nil
+        batchSummaryFollowUp = nil
+        pendingCompressionConfirmation = nil
+        vm.undoErrorMessage = nil
+        diagnostics.pendingCrashReport = nil
+    }
+
     private var isUndoErrorAlertPresented: Binding<Bool> {
         Binding(
             get: { vm.undoErrorMessage != nil },
@@ -1670,6 +1680,7 @@ struct ContentView: View {
                 }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .dinkyPrepareQuit)) { _ in prepareForQuit() }
     }
 
     var body: some View {

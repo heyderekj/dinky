@@ -22,6 +22,9 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
+	<!-- One running instance: Finder "Open With" and Services route new files to the existing app instead of launching another copy. -->
+	<key>LSMultipleInstancesProhibited</key>
+	<true/>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSHumanReadableCopyright</key>

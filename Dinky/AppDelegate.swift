@@ -23,6 +23,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DiagnosticsReporter.shared.clearSentinel()
     }
 
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        let runTeardown = {
+            var iterations = 0
+            while iterations < 16, NSApp.modalWindow != nil {
+                NSApp.abortModal()
+                iterations += 1
+            }
+            NotificationCenter.default.post(name: .dinkyPrepareQuit, object: nil)
+            DispatchQueue.main.async {
+                DispatchQueue.main.async {
+                    NSApp.reply(toApplicationShouldTerminate: true)
+                }
+            }
+        }
+        if Thread.isMainThread {
+            runTeardown()
+        } else {
+            DispatchQueue.main.async(execute: runTeardown)
+        }
+        return .terminateLater
+    }
+
     // MARK: - Open with Dinky / drag onto Dock icon
 
     func application(_ application: NSApplication, open urls: [URL]) {

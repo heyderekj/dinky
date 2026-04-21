@@ -385,6 +385,9 @@ private struct GeneralTab: View {
         } message: {
             Text(String(localized: "This does not clear the per-session list in History.", comment: "Settings UI."))
         }
+        .onReceive(NotificationCenter.default.publisher(for: .dinkyPrepareQuit)) { _ in
+            confirmResetLifetime = false
+        }
     }
 
     private func pickOriginalsBackupFolder() {
@@ -843,6 +846,10 @@ private struct PresetsTab: View {
             HStack(spacing: 12) {
                 Button { addPreset() } label: { Label(String(localized: "Add", comment: "Settings UI."), systemImage: "plus") }
                 if selectedID != nil {
+                    Button { duplicateSelected() } label: {
+                        Label(String(localized: "Duplicate", comment: "Settings UI: duplicate preset."), systemImage: "doc.on.doc")
+                    }
+                    .accessibilityLabel(String(localized: "Duplicate preset", comment: "VoiceOver: duplicate selected preset."))
                     Button(role: .destructive) { deleteSelected() } label: {
                         Label(String(localized: "Delete", comment: "Settings UI."), systemImage: "trash")
                     }
@@ -1293,6 +1300,18 @@ private struct PresetsTab: View {
         list.append(preset)
         prefs.savedPresets = list
         withAnimation { selectedID = preset.id }
+    }
+
+    private func duplicateSelected() {
+        guard let id = selectedID,
+              let source = prefs.savedPresets.first(where: { $0.id == id }) else { return }
+        let existingNames = Set(prefs.savedPresets.map(\.name))
+        let newName = CompressionPreset.uniqueDuplicatePresetName(baseName: source.name, existingNames: existingNames)
+        let copy = CompressionPreset(duplicating: source, name: newName)
+        var list = prefs.savedPresets
+        list.append(copy)
+        prefs.savedPresets = list
+        withAnimation { selectedID = copy.id }
     }
 
     private func deleteSelected() {

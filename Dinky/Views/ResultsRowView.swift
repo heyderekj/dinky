@@ -177,6 +177,12 @@ struct ResultsRowView: View {
                 )
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .dinkyPrepareQuit)) { _ in
+            showingError = false
+            showingPreview = false
+            showingSkippedInfo = false
+            showingZeroGainInfo = false
+        }
     }
 
     private var rowTitle: String {
