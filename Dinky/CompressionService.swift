@@ -201,7 +201,9 @@ private func resizeImageMaxWidthUsingImageIO(source: URL, maxWidth: Int) throws 
         .appendingPathComponent("dinky_resize_io_\(UUID().uuidString)")
         .appendingPathExtension("png")
 
-    let colorSpace = cgImage.colorSpace ?? CGColorSpaceCreateDeviceSRGB()
+    let colorSpace: CGColorSpace = cgImage.colorSpace
+        ?? CGColorSpace(name: CGColorSpace.sRGB)
+        ?? CGColorSpaceCreateDeviceRGB()
     let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
     guard let ctx = CGContext(
         data: nil,
@@ -214,7 +216,7 @@ private func resizeImageMaxWidthUsingImageIO(source: URL, maxWidth: Int) throws 
     ) else {
         throw CompressionError.imageResizeFailed
     }
-    ctx.interpolationQuality = .high
+    ctx.interpolationQuality = CGInterpolationQuality.high
     ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: outW, height: outH))
     guard let scaled = ctx.makeImage() else {
         throw CompressionError.imageResizeFailed
