@@ -201,7 +201,7 @@ private func resizeImageMaxWidthUsingImageIO(source: URL, maxWidth: Int) throws 
         .appendingPathComponent("dinky_resize_io_\(UUID().uuidString)")
         .appendingPathExtension("png")
 
-    let colorSpace = CGColorSpaceCreateDeviceRGB()
+    let colorSpace = cgImage.colorSpace ?? CGColorSpaceCreateDeviceSRGB()
     let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
     guard let ctx = CGContext(
         data: nil,
@@ -719,7 +719,7 @@ actor CompressionService {
             case .none:     args = ["-preset", "picture", "-m", "4", "-q", q]
             }
         }
-        if strip { args += ["-metadata", "none"] }
+        args += ["-metadata", strip ? "icc" : "all"]
         args += [source.path, "-o", output.path]
         try await run(binary, args: args)
     }
@@ -748,7 +748,7 @@ actor CompressionService {
         // Copy source to output first — oxipng optimizes in-place with --out
         try FileManager.default.copyItem(at: source, to: output)
         var args = ["--opt", "max"]
-        if strip { args += ["--strip", "all"] }
+        if strip { args += ["--strip", "safe"] }
         args += ["--out", output.path, output.path]
         try await run(binary, args: args)
     }
