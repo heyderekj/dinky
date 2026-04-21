@@ -37,7 +37,7 @@ enum CompressionFormat: String, CaseIterable, Identifiable, Codable {
 
     var acceptedInputTypes: [UTType] {
         switch self {
-        case .webp: return [.jpeg, .png, .webP, .tiff, .heic, .heif]
+        case .webp: return [.jpeg, .png, .webP, .tiff, .heic, .heif, .gif]
         case .avif: return [.jpeg, .png, .tiff, .heic, .heif]
         case .png:  return [.png, .heic, .heif]
         case .heic: return [.jpeg, .png, .webP, .tiff, .heic, .heif]

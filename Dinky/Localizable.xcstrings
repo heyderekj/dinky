@@ -5667,7 +5667,6 @@
       }
     },
     "Compress ${images} as ${format}" : {
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5742,6 +5741,12 @@
           }
         }
       }
+    },
+    "Compress ${pdfs}" : {
+
+    },
+    "Compress ${videos}" : {
+
     },
     "Compress 1 file" : {
       "comment" : "Main window: primary action when one file is queued.",
@@ -7709,6 +7714,12 @@
           }
         }
       }
+    },
+    "Could not read image data from this file." : {
+      "comment" : "Error when ImageIO fails to read source."
+    },
+    "Could not write the compressed image file." : {
+      "comment" : "Error when ImageIO fails to finalize output."
     },
     "Couldn’t phone home." : {
       "comment" : "Manual update: network error title.",

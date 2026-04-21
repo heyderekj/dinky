@@ -40,6 +40,8 @@ enum CompressionError: LocalizedError {
     case heicTranscodeFailed
     case heicEncodeFailed
     case imageResizeFailed
+    case imageReadFailed
+    case imageWriteFailed
 
     var errorDescription: String? {
         switch self {
@@ -54,6 +56,10 @@ enum CompressionError: LocalizedError {
         case .heicEncodeFailed:
             return String(localized: "Could not encode this image as HEIC.", comment: "Error when HEIC export fails.")
         case .imageResizeFailed: return "Could not resize this image for the width limit."
+        case .imageReadFailed:
+            return String(localized: "Could not read image data from this file.", comment: "Error when ImageIO fails to read source.")
+        case .imageWriteFailed:
+            return String(localized: "Could not write the compressed image file.", comment: "Error when ImageIO fails to finalize output.")
         }
     }
 }
@@ -250,6 +256,79 @@ private func runHeicEncode(source: URL, quality: Int, output: URL) throws {
     }
 }
 
+/// Animated GIF → animated WebP via ImageIO (`CGImageDestination`, no bundled encoder).
+private func compressAnimatedGIFToWebP(
+    source: URL,
+    output: URL,
+    quality: Int,
+    strip: Bool,
+    progress: (@Sendable (Float) -> Void)?
+) throws {
+    guard let src = CGImageSourceCreateWithURL(source as CFURL, nil) else {
+        throw CompressionError.imageReadFailed
+    }
+    let frameCount = CGImageSourceGetCount(src)
+    guard frameCount > 1 else { throw CompressionError.imageReadFailed }
+
+    if FileManager.default.fileExists(atPath: output.path) {
+        try? FileManager.default.removeItem(at: output)
+    }
+
+    let webpUTI = "org.webmproject.webp" as CFString
+    guard let dst = CGImageDestinationCreateWithURL(output as CFURL, webpUTI, frameCount, nil) else {
+        throw CompressionError.imageWriteFailed
+    }
+
+    let srcProps = CGImageSourceCopyProperties(src, nil) as? [CFString: Any]
+    let gifProps = srcProps?[kCGImagePropertyGIFDictionary] as? [CFString: Any]
+    let loopCount = (gifProps?[kCGImagePropertyGIFLoopCount] as? Int) ?? 0
+    let containerProps: [CFString: Any] = [
+        kCGImagePropertyWebPDictionary: [
+            kCGImagePropertyWebPLoopCount: loopCount,
+        ] as CFDictionary,
+    ]
+    CGImageDestinationSetProperties(dst, containerProps as CFDictionary)
+
+    let q = max(0, min(100, quality))
+    let qualityCG = Double(q) / 100.0
+
+    for i in 0..<frameCount {
+        guard let frame = CGImageSourceCreateImageAtIndex(src, i, nil) else {
+            try? FileManager.default.removeItem(at: output)
+            throw CompressionError.imageReadFailed
+        }
+
+        let frameProps = CGImageSourceCopyPropertiesAtIndex(src, i, nil) as? [CFString: Any]
+        let gifFrameProps = frameProps?[kCGImagePropertyGIFDictionary] as? [CFString: Any]
+        let delay = (gifFrameProps?[kCGImagePropertyGIFUnclampedDelayTime] as? Double)
+            ?? (gifFrameProps?[kCGImagePropertyGIFDelayTime] as? Double)
+            ?? 0.1
+
+        var outFrameProps: [CFString: Any] = [
+            kCGImageDestinationLossyCompressionQuality: qualityCG,
+            kCGImagePropertyWebPDictionary: [
+                kCGImagePropertyWebPDelayTime: delay,
+            ] as CFDictionary,
+        ]
+        if !strip, let fp = frameProps {
+            if let exif = fp[kCGImagePropertyExifDictionary] {
+                outFrameProps[kCGImagePropertyExifDictionary] = exif
+            }
+            if let iptc = fp[kCGImagePropertyIPTCDictionary] {
+                outFrameProps[kCGImagePropertyIPTCDictionary] = iptc
+            }
+        }
+
+        CGImageDestinationAddImage(dst, frame, outFrameProps as CFDictionary)
+        progress?(Float(i + 1) / Float(frameCount))
+    }
+
+    guard CGImageDestinationFinalize(dst) else {
+        try? FileManager.default.removeItem(at: output)
+        throw CompressionError.imageWriteFailed
+    }
+}
+
 actor CompressionService {
 
     static let shared = CompressionService()
@@ -303,25 +382,7 @@ actor CompressionService {
             withIntermediateDirectories: true
         )
 
-        // Step 1: HEIC/HEIF → PNG when needed for CLI encoders; HEIC output uses the source file when already HEIC/HEIF.
-        let tHeic = CFAbsoluteTimeGetCurrent()
-        let encoderInputURL = try await Task.detached {
-            try encoderInputURLForImageCompression(source: source, outputFormat: format)
-        }.value
-        CompressionTiming.logPhase("image.heicTranscodeOrPassthrough", startedAt: tHeic)
-        report(0.12)
-        let encoderInputIsTemp = encoderInputURL != source
-        defer { if encoderInputIsTemp { try? FileManager.default.removeItem(at: encoderInputURL) } }
-
-        // Step 2: maybe resize
-        let tResize = CFAbsoluteTimeGetCurrent()
-        let workURL = try await maybeResize(source: encoderInputURL, maxWidth: goals.maxWidth)
-        CompressionTiming.logPhase("image.resize", startedAt: tResize)
-        report(0.22)
-        let isTempWork = workURL != encoderInputURL
-        defer { if isTempWork { try? FileManager.default.removeItem(at: workURL) } }
-
-        // Step 3: classify for Smart Quality on the **original** URL (EXIF intact).
+        // Classify for Smart Quality on the **original** URL (EXIF intact), before branches that need quality.
         // Off-actor so Vision/pixel work doesn't serialize on this actor.
         let tClassify = CFAbsoluteTimeGetCurrent()
         let detected: ContentType?
@@ -338,9 +399,80 @@ actor CompressionService {
             }
         }
         CompressionTiming.logPhase("image.classify", startedAt: tClassify)
-        report(0.33)
+        report(0.10)
 
-        // Step 4: compress — lossless formats skip quality targeting
+        let isGIF = UTType(filenameExtension: source.pathExtension)?.conforms(to: .gif) == true
+            || source.pathExtension.lowercased() == "gif"
+
+        if format == .webp,
+           sourceHasMultipleFrames,
+           goals.maxFileSizeKB == nil,
+           goals.maxWidth == nil,
+           isGIF {
+            let tEncodeAnim = CFAbsoluteTimeGetCurrent()
+            let q = quality(for: format, content: detected)
+            report(0.38)
+            let ph = progressHandler
+            try await Task.detached {
+                try compressAnimatedGIFToWebP(
+                    source: source,
+                    output: outputURL,
+                    quality: q,
+                    strip: stripMetadata,
+                    progress: { frac in ph?(0.38 + 0.62 * frac) }
+                )
+            }.value
+            CompressionTiming.logPhase("image.encodeAnimatedWebP", startedAt: tEncodeAnim)
+            report(1)
+
+            guard FileManager.default.fileExists(atPath: outputURL.path) else {
+                throw CompressionError.outputMissing
+            }
+
+            var recovery: URL?
+            if isURLDownloadSource {
+                try? FileManager.default.removeItem(at: source)
+            } else {
+                switch originalsAction {
+                case .keep:
+                    break
+                case .trash:
+                    recovery = try? OriginalsHandler.dispose(originalAt: source, action: .trash, backupFolder: nil)
+                case .backup:
+                    recovery = try? OriginalsHandler.dispose(originalAt: source, action: .backup, backupFolder: backupFolderURL)
+                }
+            }
+
+            CompressionTiming.logPhase("image.compressTotal", startedAt: tTotal)
+            return CompressionResult(
+                outputURL: outputURL,
+                originalSize: originalSize,
+                outputSize: fileSize(outputURL),
+                originalRecoveryURL: recovery,
+                detectedContentType: detected,
+                usedFirstFrameOnly: false
+            )
+        }
+
+        // Step 1: HEIC/HEIF → PNG when needed for CLI encoders; HEIC output uses the source file when already HEIC/HEIF.
+        let tHeic = CFAbsoluteTimeGetCurrent()
+        let encoderInputURL = try await Task.detached {
+            try encoderInputURLForImageCompression(source: source, outputFormat: format)
+        }.value
+        CompressionTiming.logPhase("image.heicTranscodeOrPassthrough", startedAt: tHeic)
+        report(0.22)
+        let encoderInputIsTemp = encoderInputURL != source
+        defer { if encoderInputIsTemp { try? FileManager.default.removeItem(at: encoderInputURL) } }
+
+        // Step 2: maybe resize
+        let tResize = CFAbsoluteTimeGetCurrent()
+        let workURL = try await maybeResize(source: encoderInputURL, maxWidth: goals.maxWidth)
+        CompressionTiming.logPhase("image.resize", startedAt: tResize)
+        report(0.33)
+        let isTempWork = workURL != encoderInputURL
+        defer { if isTempWork { try? FileManager.default.removeItem(at: workURL) } }
+
+        // Step 3: compress — lossless formats skip quality targeting
         let tEncode = CFAbsoluteTimeGetCurrent()
         if format == .png {
             report(0.38)
