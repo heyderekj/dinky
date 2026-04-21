@@ -51,7 +51,7 @@
 - Support: help@dinkyfiles.com
 - GitHub: https://github.com/heyderekj/dinky
 - Latest release: https://github.com/heyderekj/dinky/releases/latest
-- Download v2.7.4: https://github.com/heyderekj/dinky/releases/download/v2.7.4/Dinky-2.7.4.dmg
+- Download v2.7.5: https://github.com/heyderekj/dinky/releases/download/v2.7.5/Dinky-2.7.5.dmg
 
 ## Author
 
