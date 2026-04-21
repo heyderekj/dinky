@@ -1840,6 +1840,36 @@
       </div>
 
       <div class="faq-item">
+        <h3 class="faq-q">How does Dinky compare to Picmal?</h3>
+        <p class="faq-a"><a href="https://picmal.app/" target="_blank" rel="noopener">Picmal</a> is $15.99 one-time; Dinky is free. Both are native macOS apps that process files locally and handle images, video, and PDFs. The main difference: Dinky is open source under MIT and includes watch folders out of the box. Picmal adds audio compression if that matters to you.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3 class="faq-q">Why Dinky over ImageOptim?</h3>
+        <p class="faq-a"><a href="https://imageoptim.com/" target="_blank" rel="noopener">ImageOptim</a> compresses your existing format losslessly — great for what it does. Dinky goes further: it converts to WebP and AVIF, which can cut file sizes 40–60% compared to JPEG or PNG at the same visual quality. Dinky also handles video and PDFs in the same app.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3 class="faq-q">Why Dinky over web tools like TinyPNG or Squoosh?</h3>
+        <p class="faq-a">Your files never leave your Mac. Web tools upload every image to a remote server — a real concern for client work, confidential designs, or anything with faces in it. Dinky runs entirely offline, works without an internet connection, and processes in batch with a watch folder.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3 class="faq-q">Why Dinky for video instead of HandBrake?</h3>
+        <p class="faq-a"><a href="https://handbrake.fr/" target="_blank" rel="noopener">HandBrake</a> is excellent for full video production — encoding libraries, subtitle tracks, chapter markers, hundreds of settings. Dinky is drop-and-done: drag in an MP4 or MOV, get a smaller one out. If you just need to shrink a screen recording or export from Figma Prototype, Dinky is faster to reach for.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3 class="faq-q">Why Dinky over Adobe Acrobat for PDFs?</h3>
+        <p class="faq-a">Acrobat is 500+ MB and costs a monthly subscription. Dinky is 31 MB and free. For straight compression — flatten layers, hit a target size, optionally run OCR on scan-like PDFs — Dinky covers the common cases without the overhead.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3 class="faq-q">What makes Dinky uniquely different from everything else?</h3>
+        <p class="faq-a">Most tools specialise: ImageOptim does images, HandBrake does video, Acrobat does PDFs. Dinky handles all three in one lightweight app (31 MB). It’s free and open source, processes everything locally, converts formats (WebP, AVIF, HEIC, H.264, HEVC), supports batch and watch folders, and strips metadata — no Pro tier, no subscription, no uploads.</p>
+      </div>
+
+      <div class="faq-item">
         <h3 class="faq-q">What changed in 2.0?</h3>
         <p class="faq-a">The 1.x line (from 1.0) was images only. 2.0 added videos and PDFs alongside images. Older 1.x DMGs and ZIPs stay on <a href="https://github.com/heyderekj/dinky/releases" target="_blank">GitHub Releases</a> for archival use.</p>
       </div>
@@ -1920,21 +1950,25 @@
           { name: 'Squoosh',     data: { price: 'Free',     mac: 'Web', batch: CROSS,     presets: CROSS, watch: CROSS, strip: CHECK, local: CHECK, size: 'Web' } },
           { name: 'TinyPNG',     data: { price: 'Freemium', mac: 'Web', batch: 'Limited', presets: CROSS, watch: CROSS, strip: CHECK, local: CROSS, size: 'Web' } },
           { name: 'Optimage',    data: { price: 'Freemium', mac: CHECK, batch: CHECK,     presets: CROSS, watch: CROSS, strip: CHECK, local: CHECK, size: '62 MB' } },
-          { name: 'Clop',        data: { price: 'Freemium', mac: CHECK, batch: CHECK,     presets: CHECK, watch: 'Pro', strip: CHECK, local: CHECK, size: '~90 MB' } }
+          { name: 'Clop',        data: { price: 'Freemium', mac: CHECK, batch: CHECK,     presets: CHECK, watch: 'Pro', strip: CHECK, local: CHECK, size: '~90 MB' } },
+          { name: 'Picmal',      data: { price: 'Paid',     mac: CHECK, batch: CHECK,     presets: CHECK, watch: CROSS, strip: CHECK, local: CHECK, size: '330 MB' } },
+          { name: 'JPEGmini',    data: { price: '$60+',     mac: CHECK, batch: CHECK,     presets: CHECK, watch: CROSS, strip: CROSS, local: CHECK, size: '~50 MB' } }
         ],
         pdf: [
           { name: 'Preview',       data: { price: 'Free',     mac: CHECK, batch: CROSS,     presets: CROSS, watch: CROSS, strip: CROSS, local: CHECK, size: 'Built-in' } },
           { name: 'Adobe Acrobat', data: { price: '$$',       mac: CHECK, batch: 'Limited', presets: CHECK, watch: CROSS, strip: CHECK, local: CHECK, size: '500+ MB' } },
           { name: 'PDF Squeezer',  data: { price: 'Paid',     mac: CHECK, batch: CHECK,     presets: CHECK, watch: CHECK, strip: CHECK, local: CHECK, size: '20 MB' } },
           { name: 'Smallpdf',      data: { price: 'Freemium', mac: 'Web', batch: 'Limited', presets: CROSS, watch: CROSS, strip: CROSS, local: CROSS, size: 'Web' } },
-          { name: 'Clop',          data: { price: 'Freemium', mac: CHECK, batch: CHECK,     presets: CHECK, watch: 'Pro', strip: CHECK, local: CHECK, size: '~90 MB' } }
+          { name: 'Clop',          data: { price: 'Freemium', mac: CHECK, batch: CHECK,     presets: CHECK, watch: 'Pro', strip: CHECK, local: CHECK, size: '~90 MB' } },
+          { name: 'Picmal',        data: { price: 'Paid',     mac: CHECK, batch: CHECK,     presets: CHECK, watch: CROSS, strip: CHECK, local: CHECK, size: '330 MB' } }
         ],
         video: [
-          { name: 'HandBrake',  data: { price: 'Free',      mac: CHECK, batch: CHECK, presets: CHECK,    watch: CHECK, strip: CHECK, local: CHECK, size: '46 MB' } },
-          { name: 'Permute',    data: { price: 'Paid',      mac: CHECK, batch: CHECK, presets: CHECK,    watch: CROSS, strip: CHECK, local: CHECK, size: '60 MB' } },
-          { name: 'FFmpeg',     data: { price: 'Free',      mac: 'CLI', batch: CHECK, presets: 'Manual', watch: CROSS, strip: CHECK, local: CHECK, size: '80 MB' } },
-          { name: 'Compressor', data: { price: '$$',        mac: CHECK, batch: CHECK, presets: CHECK,    watch: CHECK, strip: CHECK, local: CHECK, size: '500+ MB' } },
-          { name: 'Clop',       data: { price: 'Freemium', mac: CHECK, batch: CHECK, presets: CHECK,    watch: 'Pro', strip: CHECK, local: CHECK, size: '~90 MB' } }
+          { name: 'HandBrake',  data: { price: 'Free',     mac: CHECK, batch: CHECK, presets: CHECK,    watch: CHECK, strip: CHECK, local: CHECK, size: '46 MB' } },
+          { name: 'Permute',    data: { price: 'Paid',     mac: CHECK, batch: CHECK, presets: CHECK,    watch: CROSS, strip: CHECK, local: CHECK, size: '60 MB' } },
+          { name: 'FFmpeg',     data: { price: 'Free',     mac: 'CLI', batch: CHECK, presets: 'Manual', watch: CROSS, strip: CHECK, local: CHECK, size: '80 MB' } },
+          { name: 'Compressor', data: { price: '$$',       mac: CHECK, batch: CHECK, presets: CHECK,    watch: CHECK, strip: CHECK, local: CHECK, size: '500+ MB' } },
+          { name: 'Clop',       data: { price: 'Freemium', mac: CHECK, batch: CHECK, presets: CHECK,    watch: 'Pro', strip: CHECK, local: CHECK, size: '~90 MB' } },
+          { name: 'Picmal',     data: { price: 'Paid',     mac: CHECK, batch: CHECK, presets: CHECK,    watch: CROSS, strip: CHECK, local: CHECK, size: '330 MB' } }
         ]
       };
       const idx = { image: 0, pdf: 0, video: 0 };
