@@ -2,7 +2,7 @@
 
 ## App Size (Non-negotiable)
 
-Dinky is 31 MB installed (image/video encoders plus bundled **qpdf** and its dylibs, e.g. OpenSSL). That's still the whole point: before adding **anything** — a framework, dependency, asset, font, or feature — mentally check its bundle size impact first.
+Dinky is 32 MB installed (image/video encoders plus bundled **qpdf** and its dylibs, e.g. OpenSSL). That's still the whole point: before adding **anything** — a framework, dependency, asset, font, or feature — mentally check its bundle size impact first.
 
 **Rules:**
 - Prefer Apple frameworks always: SwiftUI, Foundation, AppKit, UserNotifications, AVFoundation, etc. They're free — already in the OS, zero bundle cost.
@@ -11,7 +11,7 @@ Dinky is 31 MB installed (image/video encoders plus bundled **qpdf** and its dyl
 - No Electron, no web views, no bundled runtimes, no embedded web engines. Ever.
 - Assets (images, fonts) should be SVG/SF Symbols where possible. Raster assets must be justified.
 
-**Current footprint reference:** Dinky 31 MB vs Optimage 62 MB vs ImageOptim 17.6 MB. Keep it dinky.
+**Current footprint reference:** Dinky 32 MB vs Optimage 62 MB vs ImageOptim 17.6 MB. Keep it dinky.
 
 ## Project Context
 
