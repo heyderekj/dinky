@@ -187,18 +187,21 @@ final class UpdateChecker: ObservableObject {
         let pid = ProcessInfo.processInfo.processIdentifier
         var lines: [String] = [
             "#!/bin/bash",
-            "set -e",
+            // No set -e: we want open to run even if xattr exits non-zero.
             // Poll until this PID is gone (handles both the fast NSApp.terminate path
             // and the 4-second hard-exit fallback). 10s cap is a safety valve.
             "deadline=$(( $(date +%s) + 10 ))",
             "while kill -0 \(pid) 2>/dev/null && [ $(date +%s) -lt $deadline ]; do sleep 0.2; done",
-            "rm -rf \(bashSingleQuotedPath(destination.path))",
-            "/usr/bin/ditto \(bashSingleQuotedPath(stagedApp.path)) \(bashSingleQuotedPath(destination.path))",
+            "rm -rf \(bashSingleQuotedPath(destination.path)) || exit 1",
+            "/usr/bin/ditto \(bashSingleQuotedPath(stagedApp.path)) \(bashSingleQuotedPath(destination.path)) || exit 1",
+            // Strip quarantine so Gatekeeper doesn't block the freshly-written bundle.
+            "/usr/bin/xattr -rd com.apple.quarantine \(bashSingleQuotedPath(destination.path)) 2>/dev/null || true",
         ]
         for p in cleanupPaths {
             lines.append("rm -rf \(bashSingleQuotedPath(p))")
         }
-        lines.append("/usr/bin/open \(bashSingleQuotedPath(destination.path))")
+        // -n forces a new instance rather than connecting to any stale Launch Services entry.
+        lines.append("/usr/bin/open -n \(bashSingleQuotedPath(destination.path))")
         try lines.joined(separator: "\n").write(to: scriptURL, atomically: true, encoding: .utf8)
         try fm.setAttributes([.posixPermissions: NSNumber(value: Int16(0o755))], ofItemAtPath: scriptURL.path)
 
