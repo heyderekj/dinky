@@ -4,10 +4,10 @@
 
 A tiny macOS app that shrinks images, videos, and PDFs. Drag, drop, get smaller files back. Free and open source.
 
-- **Download:** [Dinky for macOS (DMG)](https://github.com/heyderekj/dinky/releases/download/v2.7.8/Dinky-2.7.8.dmg)
+- **Download:** [Dinky for macOS (DMG)](https://github.com/heyderekj/dinky/releases/download/v2.7.9/Dinky-2.7.9.dmg)
 - **Source:** [GitHub — heyderekj/dinky](https://github.com/heyderekj/dinky)
 - **Support:** [help@dinkyfiles.com](mailto:help@dinkyfiles.com)
-- **Version:** 32 MB · v2.7.8 · Requires macOS 15 Sequoia or later
+- **Version:** 33 MB · v2.7.9 · Requires macOS 15 Sequoia or later
 - **Note:** 1.x (from 1.0) was images only; **2.0** added videos and PDFs. Older 1.x downloads stay on GitHub for archival use.
 
 ## Highlights
