@@ -197,6 +197,10 @@
       filter:
         drop-shadow(0 1px 1px var(--shadow-xs))
         drop-shadow(0 10px 20px var(--shadow-md));
+      /* Safari compositing: pre-promote layer so filter+transform animation
+         doesn't create an opaque backing store mid-animation */
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
     }
 
     .app-icon-stage.is-wiggling {
@@ -2069,9 +2073,9 @@
         stage.classList.add('is-wiggling');
       }
 
-      stage.addEventListener('animationend', function () {
-        stage.classList.remove('is-wiggling');
-      });
+      function clearWiggle() { stage.classList.remove('is-wiggling'); }
+      stage.addEventListener('animationend', clearWiggle);
+      stage.addEventListener('animationcancel', clearWiggle);
 
       function trigger(initial) {
         if (initial) {
