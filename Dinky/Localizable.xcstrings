@@ -428,6 +428,7 @@
     },
     "## Apple diagnostic summary\n\n%@\n\n" : {
       "comment" : "Email body: Markdown heading and MetricKit crash text. Argument is diagnostic dump.\nGitHub issue body: Markdown heading and MetricKit crash text. Argument is diagnostic dump.",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8005,6 +8006,9 @@
     "Could not write the compressed image file." : {
       "comment" : "Error when ImageIO fails to finalize output."
     },
+    "Couldn't mount the update disk image." : {
+      "comment" : "In-app updater error."
+    },
     "Couldn’t phone home." : {
       "comment" : "Manual update: network error title.",
       "localizations" : {
@@ -11913,6 +11917,9 @@
           }
         }
       }
+    },
+    "Full crash details copied to your clipboard — paste here.\n\n" : {
+      "comment" : "Email body fallback when crash text is too long for a URL.\nGitHub issue body fallback when crash text is too long for a URL."
     },
     "Full error…" : {
       "comment" : "Batch summary row: open error detail sheet."
@@ -20982,6 +20989,9 @@
         }
       }
     },
+    "Previous session ended unexpectedly; no Apple diagnostic payload is attached yet.\n\n" : {
+      "comment" : "Crash body note when MetricKit summary is unavailable."
+    },
     "Print" : {
       "comment" : "System shortcut name for conflict warning.",
       "localizations" : {
@@ -27270,6 +27280,9 @@
           }
         }
       }
+    },
+    "The update didn’t contain Dinky.app." : {
+      "comment" : "In-app updater error."
     },
     "The video files to compress." : {
       "comment" : "Shortcuts: videos parameter description."

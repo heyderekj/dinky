@@ -717,8 +717,8 @@ actor CompressionService {
             switch content {
             case .photo:    args = ["-preset", "photo",   "-m", "4", "-sharp_yuv", "-pass", "4", "-af", "-q", q]
             case .graphic:  args = ["-preset", "text",    "-m", "4", "-sharp_yuv", "-alpha_q", "100", "-exact", "-q", q]
-            case .mixed:    args = ["-preset", "picture", "-m", "4", "-sharp_yuv", "-q", q]
-            case .none:     args = ["-preset", "picture", "-m", "4", "-q", q]
+            case .mixed:    args = ["-preset", "picture", "-m", "4", "-sharp_yuv", "-af", "-alpha_q", "100", "-exact", "-q", q]
+            case .none:     args = ["-preset", "picture", "-m", "4", "-sharp_yuv", "-af", "-q", q]
             }
         }
         args += ["-metadata", strip ? "icc" : "all"]
@@ -733,12 +733,15 @@ actor CompressionService {
         let jobsArg = String(avifJobs)
         var args: [String]
         switch content {
-        case .photo:    args = ["--speed", "6", "--yuv", "420", "--depth", "10", "--jobs", jobsArg, "--qcolor", qColor, "--qalpha", qAlpha]
+        // Photo: speed 5 matches graphic — photos have the most perceptually sensitive detail
+        // (gradients, skin tones) and deserve the same encode-time budget.
+        case .photo:    args = ["--speed", "5", "--yuv", "420", "--depth", "10", "--jobs", jobsArg, "--qcolor", qColor, "--qalpha", qAlpha]
         // Graphic: 4:4:4 keeps color edges sharp (no chroma subsampling).
         // Speed 5 balances edge quality with encode time (444 is already heavier than 420).
         case .graphic:  args = ["--speed", "5", "--yuv", "444", "--jobs", jobsArg, "--qcolor", qColor, "--qalpha", qAlpha]
-        case .mixed:    args = ["--speed", "6", "--yuv", "422", "--depth", "10", "--jobs", jobsArg, "--qcolor", qColor, "--qalpha", qAlpha]
-        case .none:     args = ["--speed", "6", "--yuv", "420", "--jobs", jobsArg, "--qcolor", qColor, "--qalpha", qAlpha]
+        case .mixed:    args = ["--speed", "5", "--yuv", "422", "--depth", "10", "--jobs", jobsArg, "--qcolor", qColor, "--qalpha", qAlpha]
+        // --depth 10 prevents posterization in gradients; unclassified files are most likely photos.
+        case .none:     args = ["--speed", "6", "--yuv", "420", "--depth", "10", "--jobs", jobsArg, "--qcolor", qColor, "--qalpha", qAlpha]
         }
         if strip { args += ["--ignore-exif", "--ignore-xmp"] }
         args += [source.path, output.path]
