@@ -647,6 +647,41 @@
       color: var(--text);
     }
 
+    .install-modal-tabstrip {
+      margin: 0 0 18px;
+    }
+    .install-modal-tabstrip .cmp-segmented {
+      max-width: none;
+      width: 100%;
+    }
+    .install-homebrew-note {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+    .install-homebrew-note a {
+      color: var(--brand);
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 2px;
+    }
+    .install-homebrew-note a:hover {
+      color: var(--text);
+    }
+    .install-code-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .install-homebrew-foot {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.45;
+      margin-top: 4px;
+    }
+
     /* Modal */
     .modal-overlay {
       display: none;
@@ -661,12 +696,20 @@
       padding: 24px;
     }
     .modal-overlay.open { display: flex; }
+
+    /* Lock page scroll while any modal is open */
+    html.modal-scroll-locked {
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
     .modal {
       background: var(--modal-bg);
       border-radius: 16px;
       padding: 32px;
-      max-width: 480px;
+      max-width: 520px;
       width: 100%;
+      max-height: min(90vh, 720px);
+      overflow-y: auto;
       box-shadow: 0 24px 64px var(--shadow-md);
       position: relative;
     }
@@ -848,6 +891,13 @@
       color: var(--text);
     }
     .gatekeeper-lead,
+    .install-modal-sublead {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.55;
+      margin: 0 0 14px;
+    }
+
     .install-modal-lead {
       font-size: 14px;
       line-height: 1.5;
@@ -1384,7 +1434,7 @@
 
       mc.registerTool({
         name: 'dinky_open_install_modal',
-        description: 'Open the “How to install” modal with Gatekeeper / quarantine steps.',
+        description: 'Open the “How to install” modal (Download & install vs Homebrew tabs, Gatekeeper / quarantine).',
         category: 'install',
         inputSchema: { type: 'object', properties: {}, additionalProperties: false },
         execute: function () {
@@ -1461,24 +1511,47 @@
     <div class="modal">
       <button class="modal-close" onclick="document.getElementById('install-modal').classList.remove('open')" aria-label="Close">✕</button>
       <h2>How to install Dinky</h2>
-      <p class="install-modal-lead">macOS will say Dinky can't be opened — that's Gatekeeper, not a virus. Both steps take less than a minute.</p>
-      <ol class="install-steps">
-        <li>
-          <span>
-            Open the <strong>.dmg</strong> from your Downloads and drag <strong>Dinky</strong> into your <strong>Applications</strong> folder.
-            <span class="install-fallback">Download didn't start? <a href="https://github.com/heyderekj/dinky/releases/download/v2.7.10/Dinky-2.7.10.dmg" onclick="fathom.trackEvent('Download macOS')">Download again</a>.</span>
-          </span>
-        </li>
-        <li>
-          <div class="install-step-stack">
-            <p>Open <strong>Terminal</strong> and paste this command:</p>
-            <div class="code-block">
-              <code id="xattr-cmd">xattr -dr com.apple.quarantine /Applications/Dinky.app</code>
-              <button class="copy-btn" onclick="copyCmd(this)">Copy</button>
+      <p class="install-modal-lead">Pick the path that fits you — both put Dinky in Applications.</p>
+      <div class="install-modal-tabstrip">
+        <div class="cmp-segmented" role="tablist" aria-label="Install method">
+          <button type="button" class="cmp-tab is-active" role="tab" aria-selected="true" aria-controls="install-panel-dmg" id="install-tab-dmg" data-install-tab="dmg">Download &amp; install</button>
+          <button type="button" class="cmp-tab" role="tab" aria-selected="false" aria-controls="install-panel-brew" id="install-tab-brew" data-install-tab="brew">Homebrew</button>
+        </div>
+      </div>
+      <div id="install-panel-dmg" role="tabpanel" aria-labelledby="install-tab-dmg" data-install-panel="dmg">
+        <p class="install-modal-sublead">macOS will say Dinky can't be opened — that's Gatekeeper, not a virus. Both steps take less than a minute.</p>
+        <ol class="install-steps">
+          <li>
+            <span>
+              Open the <strong>installer</strong> from your Downloads, then drag <strong>Dinky</strong> into your <strong>Applications</strong> folder.
+              <span class="install-fallback">Download didn't start? <a href="https://github.com/heyderekj/dinky/releases/download/v2.7.10/Dinky-2.7.10.dmg" onclick="fathom.trackEvent('Download macOS')">Download again</a>.</span>
+            </span>
+          </li>
+          <li>
+            <div class="install-step-stack">
+              <p>Open <strong>Terminal</strong> and paste this command:</p>
+              <div class="code-block">
+                <code id="xattr-cmd">xattr -dr com.apple.quarantine /Applications/Dinky.app</code>
+                <button class="copy-btn" onclick="copyCmd(this)">Copy</button>
+              </div>
             </div>
+          </li>
+        </ol>
+      </div>
+      <div id="install-panel-brew" role="tabpanel" aria-labelledby="install-tab-brew" data-install-panel="brew" hidden>
+        <p class="install-homebrew-note">Requires <a href="https://brew.sh" target="_blank" rel="noopener noreferrer">Homebrew</a>. In Terminal, run once to add this repo as a tap, then install the app:</p>
+        <div class="install-code-stack">
+          <div class="code-block">
+            <code>brew tap heyderekj/dinky https://github.com/heyderekj/dinky</code>
+            <button class="copy-btn" onclick="copyCmd(this)">Copy</button>
           </div>
-        </li>
-      </ol>
+          <div class="code-block">
+            <code>brew install --cask dinky</code>
+            <button class="copy-btn" onclick="copyCmd(this)">Copy</button>
+          </div>
+        </div>
+        <p class="install-homebrew-foot"><strong>Upgrading Dinky:</strong> in Terminal, run <code style="font-size: 12px; background: var(--surface); padding: 2px 6px; border-radius: 4px;">brew update &amp;&amp; brew upgrade --cask dinky</code> when you want a newer release. <strong>If macOS blocks the first launch,</strong> switch to the <strong>Download &amp; install</strong> tab and run the Terminal command in step 2.</p>
+      </div>
       <div class="install-callout">
         <!-- arrow-path (same icon as Easy updating feature) -->
         <svg class="install-callout-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -2111,6 +2184,40 @@
       });
     }
 
+    (function initInstallModalTabs() {
+      const modal = document.getElementById('install-modal');
+      if (!modal) return;
+      const tabs = modal.querySelectorAll('[data-install-tab]');
+      const panels = modal.querySelectorAll('[data-install-panel]');
+      if (!tabs.length || !panels.length) return;
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          const id = tab.getAttribute('data-install-tab');
+          tabs.forEach(t => {
+            const on = t === tab;
+            t.classList.toggle('is-active', on);
+            t.setAttribute('aria-selected', on ? 'true' : 'false');
+          });
+          panels.forEach(p => {
+            const on = p.getAttribute('data-install-panel') === id;
+            p.hidden = !on;
+          });
+          if (typeof fathom !== 'undefined') fathom.trackEvent('install_modal_tab_' + id);
+        });
+      });
+    })();
+
+    (function initModalScrollLock() {
+      function sync() {
+        const locked = !!document.querySelector('.modal-overlay.open');
+        document.documentElement.classList.toggle('modal-scroll-locked', locked);
+      }
+      document.querySelectorAll('.modal-overlay').forEach(function (el) {
+        new MutationObserver(sync).observe(el, { attributes: true, attributeFilter: ['class'] });
+      });
+      sync();
+    })();
+
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
         document.getElementById('install-modal').classList.remove('open');
@@ -2184,11 +2291,11 @@
       });
 
       const table = document.querySelector('.comparison-table');
-      document.querySelectorAll('.cmp-tab').forEach(tab => {
+      document.querySelectorAll('.comparison .cmp-segmented .cmp-tab').forEach(tab => {
         tab.addEventListener('click', () => {
           const cat = tab.getAttribute('data-cat');
           if (table) table.setAttribute('data-active-cat', cat);
-          document.querySelectorAll('.cmp-tab').forEach(t => {
+          document.querySelectorAll('.comparison .cmp-segmented .cmp-tab').forEach(t => {
             const active = t === tab;
             t.classList.toggle('is-active', active);
             t.setAttribute('aria-selected', active ? 'true' : 'false');

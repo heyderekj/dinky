@@ -4,7 +4,7 @@
 
 A tiny macOS app that shrinks images, videos, and PDFs. Drag, drop, get smaller files back. Free and open source.
 
-- **Download:** [Dinky for macOS (DMG)](https://github.com/heyderekj/dinky/releases/download/v2.7.10/Dinky-2.7.10.dmg)
+- **Download:** [Dinky for macOS (DMG)](https://github.com/heyderekj/dinky/releases/download/v2.7.10/Dinky-2.7.10.dmg) — or install with [Homebrew](https://brew.sh): `brew tap heyderekj/dinky https://github.com/heyderekj/dinky` then `brew install --cask dinky`
 - **Source:** [GitHub — heyderekj/dinky](https://github.com/heyderekj/dinky)
 - **Support:** [help@dinkyfiles.com](mailto:help@dinkyfiles.com)
 - **Version:** 33 MB · v2.7.10 · Requires macOS 15 Sequoia or later
@@ -29,7 +29,18 @@ A tiny macOS app that shrinks images, videos, and PDFs. Drag, drop, get smaller 
 
 ## Install
 
-Download the DMG and drag Dinky to Applications. If Gatekeeper blocks the first launch, use **System Settings → Privacy & Security → Open Anyway**, or:
+**Download & install:** grab the installer from GitHub Releases and drag Dinky into Applications.
+
+**Homebrew:** if you use [Homebrew](https://brew.sh), run:
+
+```bash
+brew tap heyderekj/dinky https://github.com/heyderekj/dinky
+brew install --cask dinky
+```
+
+To upgrade later: `brew update && brew upgrade --cask dinky`.
+
+**Gatekeeper:** if macOS blocks the first launch, use **System Settings → Privacy & Security → Open Anyway**, or:
 
 ```bash
 xattr -dr com.apple.quarantine /Applications/Dinky.app

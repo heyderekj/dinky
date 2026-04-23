@@ -9,7 +9,7 @@
 #   1. Bumps MARKETING_VERSION + CURRENT_PROJECT_VERSION in the Xcode project
 #   2. Updates version + download URLs in site/index.html, site/llms.txt, site/homepage.md, site/compare/*/index.html
 #   3. Builds the Release scheme
-#   4. Creates the DMG (+ zip for in-app updater)
+#   4. Creates the DMG (+ zip for in-app updater), then updates Casks/dinky.rb (version + sha256 of the zip) for Homebrew
 #   5. Commits, tags, pushes, and publishes the GitHub release
 #
 # Release notes are built from `git log $PREV_GIT_TAG..HEAD` (subjects only, chronological),
@@ -148,10 +148,15 @@ ditto -c -k --sequesterRsrc --keepParent \
   "build/Build/Products/Release/Dinky.app" \
   "Dinky-$VERSION.zip"
 
+CASK_SHASUM=$(shasum -a 256 "Dinky-$VERSION.zip" | awk '{print $1}')
+echo "→ Updating Casks/dinky.rb (version $VERSION, sha256)…"
+sed -i '' "s/version \".*\"/version \"$VERSION\"/" Casks/dinky.rb
+sed -i '' "s/sha256 \".*\"/sha256 \"$CASK_SHASUM\"/" Casks/dinky.rb
+
 # ── 5. Optional bump commit, push, tag, release ─────────────────────────────
 
 echo "→ Committing version files (if changed by this run)…"
-git add Dinky.xcodeproj/project.pbxproj site/index.html site/llms.txt README.md
+git add Casks/dinky.rb Dinky.xcodeproj/project.pbxproj site/index.html site/llms.txt README.md
 [ -f site/homepage.md ] && git add site/homepage.md
 if compgen -G "site/compare/*/index.html" > /dev/null; then
   git add site/compare/*/index.html
@@ -190,7 +195,14 @@ NOTES_FILE=$(mktemp)
   echo ""
   echo "## Install"
   echo ""
-  echo "Download **Dinky-$VERSION.dmg** from the assets below and drag **Dinky** into Applications. Already using Dinky? Choose **Install Update** from the in-app banner when it appears."
+  echo "**Homebrew (optional):**"
+  echo ""
+  echo "\`\`\`bash"
+  echo "brew tap heyderekj/dinky https://github.com/heyderekj/dinky"
+  echo "brew install --cask dinky"
+  echo "\`\`\`"
+  echo ""
+  echo "**Or** download **Dinky-$VERSION.dmg** from the assets below and drag **Dinky** into Applications. Already using Dinky? Choose **Install Update** from the in-app banner when it appears."
 } > "$NOTES_FILE"
 
 gh release create "v$VERSION" \

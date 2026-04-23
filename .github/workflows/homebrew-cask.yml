@@ -1,0 +1,26 @@
+name: Homebrew cask
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - Casks/dinky.rb
+      - .github/workflows/homebrew-cask.yml
+  pull_request:
+    paths:
+      - Casks/dinky.rb
+      - .github/workflows/homebrew-cask.yml
+
+concurrency:
+  group: homebrew-cask-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cask:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: style + audit
+        run: |
+          brew style Casks/dinky.rb
+          brew audit --cask --strict Casks/dinky.rb

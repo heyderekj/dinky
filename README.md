@@ -18,6 +18,13 @@ A small macOS utility that compresses **images**, **videos**, and **PDFs**. Drop
 
 **1.x** (from 1.0 on) was **images only**. **2.0** added **videos and PDFs** alongside images. Older 1.x DMGs and ZIPs stay on [GitHub Releases](https://github.com/heyderekj/dinky/releases) for anyone who needs them; use the [latest release](https://github.com/heyderekj/dinky/releases/latest) for full format support.
 
+**Homebrew:** add this repo as a tap once, then install the cask (see [Casks/README.md](Casks/README.md) for why it lives in-tree):
+
+```bash
+brew tap heyderekj/dinky https://github.com/heyderekj/dinky
+brew install --cask dinky
+```
+
 ## About the developer
 
 Hey! I'm [Derek Castelli](https://www.heyderekj.com), a full-time freelance web designer working primarily in Webflow and Figma (and now more in Cursor and Claude). Image compression is a constant part of the job — every site build involves optimizing photos for fast load times, and doing that by hand in a browser or through a bloated app gets old fast. Dinky came out of that frustration.
