@@ -9,4 +9,6 @@ brew install --cask dinky
 
 **Rationale:** One repo, one source of truth; [release.sh](../release.sh) updates `dinky.rb` (version and `sha256` from the release zip) on every publish. No sync step with a second Homebrew repository.
 
+**After upgrades:** Homebrew keeps previous cask payloads under `Caskroom` until cleanup. That can make Finder’s **Open With** menu show two Dinkys (two versions). Run `brew cleanup dinky` or `brew cleanup` to drop old installs.
+
 **Optional later:** A maintainer or community member can also open a pull request to [homebrew-cask](https://github.com/Homebrew/homebrew-cask) so `brew install --cask dinky` works without a tap, subject to Homebrew’s notability and audit rules. This file does not block that; the cask format is the same.

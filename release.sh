@@ -203,6 +203,13 @@ NOTES_FILE=$(mktemp)
   echo "\`\`\`"
   echo ""
   echo "**Or** download **Dinky-$VERSION.dmg** from the assets below and drag **Dinky** into Applications. Already using Dinky? Choose **Install Update** from the in-app banner when it appears."
+  echo ""
+  echo "## Finder “Open With” shows two Dinkys"
+  echo ""
+  echo "macOS lists each **Dinky.app** on disk with its own version. After an upgrade, an older copy is often still around."
+  echo ""
+  echo "- **Homebrew:** \`brew cleanup dinky\` (or \`brew cleanup\`) removes old cask versions under Caskroom."
+  echo '- **List every copy:** `mdfind '\''kMDItemCFBundleIdentifier == "com.dinky.app"'\''` in Terminal; delete extras you do not need (e.g. in Downloads).'
 } > "$NOTES_FILE"
 
 gh release create "v$VERSION" \

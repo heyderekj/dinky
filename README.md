@@ -121,3 +121,18 @@ xattr -dr com.apple.quarantine /Applications/Dinky.app
 ```
 
 Updating Dinky is one click — no browser, no re-drag, no quarantine step. A banner appears when a new version is out; click **Install Update** and the app downloads, installs, and relaunches on its own.
+
+## FAQ
+
+### Finder shows two Dinkys in “Open With” (different versions)
+
+macOS lists **every `Dinky.app` on disk** in that menu, with the version in parentheses. If you still have an older copy somewhere, you will see both.
+
+- **Homebrew:** old versions stay under Homebrew’s Caskroom until pruned. Run `brew cleanup dinky` (or `brew cleanup`).
+- **Find every copy:** in Terminal:
+
+```bash
+mdfind 'kMDItemCFBundleIdentifier == "com.dinky.app"'
+```
+
+Delete or move any extra `Dinky.app` you do not need (for example an old one left in Downloads). Log out and back in if the menu still looks stale.

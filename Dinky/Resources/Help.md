@@ -174,6 +174,9 @@ You used *Smallest file (flatten pages)*. Switch the preset's PDF output to *Pre
 **Right-click "Compress with Dinky" isn't showing up.**
 Open Dinky once after installing so macOS registers the Service. If it still doesn't appear, enable it in **System Settings → Keyboard → Keyboard Shortcuts → Services → Files and Folders**.
 
+**Finder’s “Open With” lists two Dinkys (two different versions).**
+macOS shows one line per **Dinky.app** path it knows about. If you upgraded via **Homebrew**, run `brew cleanup dinky` so old versions are removed from Caskroom. Otherwise, in Terminal run `mdfind 'kMDItemCFBundleIdentifier == "com.dinky.app"'` to see every copy on disk and delete extras (for example an old app left in Downloads).
+
 **Why doesn't Dinky output JPEG?**
 WebP and AVIF are strictly better than JPEG — same visual quality, smaller file, and supported everywhere that matters. If your platform requires a `.jpg`, try WebP first; it's accepted almost universally now. If you hit a place that genuinely rejects it, get in touch and let us know.
 

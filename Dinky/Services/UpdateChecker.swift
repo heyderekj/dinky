@@ -186,6 +186,8 @@ final class UpdateChecker: ObservableObject {
         let fm = FileManager.default
         let scriptURL = fm.temporaryDirectory.appendingPathComponent("dinky-install-\(UUID().uuidString).sh")
         let pid = ProcessInfo.processInfo.processIdentifier
+        let bundleId = Bundle.main.bundleIdentifier ?? "com.dinky.app"
+        let mdfindPredicate = "kMDItemCFBundleIdentifier == \"\(bundleId)\""
         var lines: [String] = [
             "#!/bin/bash",
             // No set -e: we want open to run even if xattr exits non-zero.
@@ -197,9 +199,20 @@ final class UpdateChecker: ObservableObject {
             "/usr/bin/ditto \(bashSingleQuotedPath(stagedApp.path)) \(bashSingleQuotedPath(destination.path)) || exit 1",
             // Strip quarantine so Gatekeeper doesn't block the freshly-written bundle.
             "/usr/bin/xattr -rd com.apple.quarantine \(bashSingleQuotedPath(destination.path)) 2>/dev/null || true",
-            // Re-register with Launch Services so the old version stops appearing in
-            // Finder's "Open With" menu and other LS-backed pickers.
-            "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f \(bashSingleQuotedPath(destination.path)) 2>/dev/null || true",
+            // Finder lists every Dinky.app on disk in "Open With". Unregister other paths
+            // (e.g. old Homebrew Caskroom copies) so only this install stays visible, then
+            // register the new bundle. Does not delete files — brew cleanup still frees disk.
+            "LSREG=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister",
+            "DEST=\(bashSingleQuotedPath(destination.path))",
+            "D_CAN=$(/usr/bin/realpath \"$DEST\" 2>/dev/null || echo \"$DEST\")",
+            "/usr/bin/mdfind \(bashSingleQuotedPath(mdfindPredicate)) 2>/dev/null | while IFS= read -r other; do",
+            "  [ -z \"$other\" ] && continue",
+            "  [ ! -e \"$other\" ] && continue",
+            "  O_CAN=$(/usr/bin/realpath \"$other\" 2>/dev/null || echo \"$other\")",
+            "  [ \"$O_CAN\" = \"$D_CAN\" ] && continue",
+            "  \"$LSREG\" -u \"$other\" 2>/dev/null || true",
+            "done",
+            "\"$LSREG\" -f \"$DEST\" 2>/dev/null || true",
         ]
         for p in cleanupPaths {
             lines.append("rm -rf \(bashSingleQuotedPath(p))")
