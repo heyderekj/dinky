@@ -1,6 +1,9 @@
 # release.sh pushes the cask to main *before* gh release create uploads the zip.
 # brew audit --cask --strict fetches the url — it will 404 until the release exists.
 # Run style on every cask/PR change; run strict audit only after a release is published.
+#
+# Tap the repo and use the cask name (not Casks/dinky.rb): recent Homebrew disables
+# brew audit / brew style on raw paths.
 
 name: Homebrew cask
 
@@ -27,8 +30,10 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - name: tap this repo
+        run: brew tap heyderekj/dinky "$GITHUB_WORKSPACE"
       - name: style
-        run: brew style Casks/dinky.rb
+        run: brew style --cask dinky
       - name: strict audit (zip must exist on GitHub)
         if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
-        run: brew audit --cask --strict Casks/dinky.rb
+        run: brew audit --cask --strict dinky
