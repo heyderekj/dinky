@@ -1,0 +1,32 @@
+# Build + unit tests on every PR and on main. Pair with branch protection:
+# Settings → Branches → Add rule for `main` → require this check, require PR.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and test
+        run: |
+          set -eo pipefail
+          xcodebuild \
+            -project Dinky.xcodeproj \
+            -scheme Dinky \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            CODE_SIGN_IDENTITY=- \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            test
