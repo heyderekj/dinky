@@ -94,6 +94,16 @@ Binds a TCP listener (default port **17381**). For agents, use **`127.0.0.1`** o
 - Only files you pass are read; output paths are under your control.
 - Prefer loopback and explicit paths when wiring agents or scripts.
 
+## Roadmap (next work)
+
+Suggested order for continuing development:
+
+1. **Harden `serve`** — bind listener to loopback only, cap request size, structured JSON errors, optional path allowlist.
+2. **More tests** — HTTP handler unit tests without sockets; snapshot or contract tests for JSON responses.
+3. **CLI polish** — `dinky --version`, consistent help/exit codes vs this doc.
+4. **App parity** — audit `Dinky/CompressionService.swift` after extraction for dead code or drift vs `DinkyCoreImage`.
+5. **Distribution** — decide whether `dinky` ships inside the app bundle, Homebrew, or build-from-source only.
+
 ## Testing
 
 ```bash
