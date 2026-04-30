@@ -1,0 +1,3 @@
+# Exclude static marketing/compare site from GitHub language statistics.
+# Primary codebase is Swift (macOS app); site/ is HTML/CSS/JSON content.
+site/** linguist-vendored
