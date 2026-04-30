@@ -1,4 +1,5 @@
 import Foundation
+import DinkyPDFSignals
 import PDFKit
 import CoreGraphics
 import AppKit

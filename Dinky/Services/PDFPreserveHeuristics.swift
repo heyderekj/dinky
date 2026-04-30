@@ -1,3 +1,4 @@
+import DinkyPDFSignals
 import Foundation
 
 /// One qpdf attempt on the preserve path (`extraArgs` append after base `--optimize-images` args).

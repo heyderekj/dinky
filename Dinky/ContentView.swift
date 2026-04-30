@@ -1,4 +1,5 @@
 import SwiftUI
+import DinkyPDFSignals
 import UniformTypeIdentifiers
 import UserNotifications
 import Darwin
