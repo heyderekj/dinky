@@ -16,7 +16,8 @@ concurrency:
 
 jobs:
   macos:
-    runs-on: macos-15
+    # macOS 26 + Xcode 26 (e.g. SwiftUI `.glassEffect()`); macos-15 images only ship Xcode 16.x.
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
       - name: Build and test
