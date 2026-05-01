@@ -1,6 +1,9 @@
 # Build + unit tests on every PR and on main. Pair with branch protection:
 # Settings → Branches → Add rule for `main` → require this check, require PR.
 # Do not pass CODE_SIGNING_ALLOWED=NO — macOS test bundles need ad-hoc signing to launch.
+#
+# Site-only pushes (changes exclusively under site/) skip the Xcode and SPM
+# build steps but still complete green so the required "macos" check passes.
 
 name: CI
 
@@ -20,7 +23,24 @@ jobs:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Detect site-only change
+        id: paths
+        # On push: diff HEAD^ → HEAD. On PR or workflow_dispatch: always build.
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            BASE=$(git rev-parse HEAD^ 2>/dev/null || echo "")
+            if [ -n "$BASE" ] && ! git diff --name-only "$BASE" HEAD | grep -qvE '^site/'; then
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "skip=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Build and test
+        if: steps.paths.outputs.skip != 'true'
         run: |
           set -eo pipefail
           xcodebuild \
@@ -37,7 +57,23 @@ jobs:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Detect site-only change
+        id: paths
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            BASE=$(git rev-parse HEAD^ 2>/dev/null || echo "")
+            if [ -n "$BASE" ] && ! git diff --name-only "$BASE" HEAD | grep -qvE '^site/'; then
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "skip=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Install encoders for pipeline smoke tests
+        if: steps.paths.outputs.skip != 'true'
         run: |
           set -eo pipefail
           brew install webp libavif oxipng
@@ -48,6 +84,7 @@ jobs:
           ln -sf "$(brew --prefix oxipng)/bin/oxipng" "$BIN/oxipng"
           echo "DINKY_BIN=$BIN" >> "$GITHUB_ENV"
       - name: Swift build and test (DinkyCoreImage)
+        if: steps.paths.outputs.skip != 'true'
         run: |
           set -eo pipefail
           cd DinkyCoreImage
