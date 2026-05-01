@@ -55,6 +55,7 @@ Hey! I'm [Derek Castelli](https://www.heyderekj.com), a full-time freelance web 
 - **Session history** — review past compression sessions with file counts and total bytes saved
 - **Apple Shortcuts** — compress images from automations via a native Shortcuts action
 - **Custom keyboard shortcuts** — rebind Open Files, Clipboard Compress, Compress Now, Clear, and Delete in Settings → Shortcuts
+- **CLI + local API (pro users)** — optional `dinky` CLI and local `dinky serve` endpoint for scripts and AI-agent workflows (`--json` output, loopback/local use)
 - **Launch at login** — opt in once and Dinky's ready the moment you log in (handy alongside Watch Folders for set-and-forget compression)
 - **Easy updating** — one click checks for a new release, installs, and relaunches; no browser, no re-drag
 - **Skip threshold** — skip files below a minimum savings target: Off, 2%, 5%, or 10%
@@ -145,3 +146,18 @@ mdfind 'kMDItemCFBundleIdentifier == "com.dinky.app"'
 ```
 
 Delete or move any extra `Dinky.app` you do not need (for example an old one left in Downloads). Log out and back in if the menu still looks stale.
+
+### How do I access the CLI or use Dinky with AI agents?
+
+Use the optional local package in this repo:
+
+```bash
+cd DinkyCoreImage
+swift build -c release
+./.build/release/dinky --help
+```
+
+- One-shot automation: run `dinky compress ... --json`
+- Repeated automation/agents: run `dinky serve --port 17381` and call `127.0.0.1` endpoints
+
+See [docs/local-cli.md](docs/local-cli.md) for commands, JSON schemas, and examples.
