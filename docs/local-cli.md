@@ -75,6 +75,30 @@ Binds a TCP listener (default port **17381**). For agents, use **`127.0.0.1`** o
 - `GET /v1/health` — `{"ok":true,"schema":"dinky.image.serve/1.0.0"}`
 - `POST /v1/compress` — JSON body, same options as compress; response body matches `dinky compress --json` (schema `dinky.image.compress/1.0.0`). HTTP `200` if all files OK, `422` if any failed.
 
+## For humans and agents
+
+Quirky but straightforward:
+
+- **Human mode:** give Dinky one or more file paths; get smaller files back.
+- **Robot mode:** same behavior, but with `--json` so your script/agent can parse results.
+
+For AI agents (Claude/Cursor/etc.), two good patterns:
+
+1. **One-shot CLI**
+   - Run `dinky compress ... --json`
+   - Parse `schema: dinky.image.compress/1.0.0`
+2. **Local server for repeated jobs**
+   - Start once with `dinky serve --port 17381`
+   - Poll `GET /v1/health`
+   - Submit `POST /v1/compress`
+
+Suggested guardrails for agent workflows:
+
+- Use `127.0.0.1` only.
+- Use explicit absolute file paths.
+- Keep the service local (no public binding/reverse proxy).
+- Treat output as local filesystem automation, not a cloud API.
+
 ### Example POST body
 
 ```json
