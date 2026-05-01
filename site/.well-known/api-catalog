@@ -1,5 +1,5 @@
 {
-  "description": "Static marketing site for the Dinky macOS app. No public HTTP API, OAuth/OIDC, or protected resource — see https://dinkyfiles.com/llms.txt (Agent integration) and https://dinkyfiles.com/openapi.yaml.",
+  "description": "Static marketing site for the Dinky macOS app. No public HTTP API on dinkyfiles.com, OAuth/OIDC, or protected resource. Optional local dinky image CLI/loopback (open-source repo, docs/local-cli.md) is not hosted here — see https://dinkyfiles.com/llms.txt and https://dinkyfiles.com/openapi.yaml.",
   "linkset": [
     {
       "anchor": "https://dinkyfiles.com/",

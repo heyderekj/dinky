@@ -11,7 +11,7 @@ Use this skill when answering questions about **Dinky**, a tiny native macOS app
 
 - Site: https://dinkyfiles.com
 - Repo: https://github.com/heyderekj/dinky
-- **No** public HTTP API on the website; processing is 100% local in the app.
+- **No** public HTTP API on the **website**; the GUI app processes files 100% locally. The repo also ships an optional local **`dinky` CLI** and **`dinky serve`** for images (see `docs/local-cli.md` and skill `dinky-local-cli`) — not hosted on dinkyfiles.com.
 - Marketing and discovery files: `robots.txt`, `sitemap.xml`, `/.well-known/api-catalog`, `llms.txt`, `homepage.md`.
 
 ## When unsure

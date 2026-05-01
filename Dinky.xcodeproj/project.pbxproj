@@ -19,7 +19,10 @@
 		AA000005000000000000005 /* Strings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FE17DC818E44D3F88D6F88A /* Strings.swift */; };
 		AA000006000000000000006 /* ImageItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FFDD8F0AED14F8CA2C3F9A7 /* ImageItem.swift */; };
 		PE000001000000000000001 /* PDFPreserveExperimentalMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = PE100001000000000000001 /* PDFPreserveExperimentalMode.swift */; };
-		AA000007000000000000007 /* CompressionFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC05EE39C6DE4195A1EF551B /* CompressionFormat.swift */; };
+		DCBFMT0001 /* CompressionFormat+App.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCRFMT0001 /* CompressionFormat+App.swift */; };
+		DCBSHR0001 /* SharedEnums+App.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCRSHR0001 /* SharedEnums+App.swift */; };
+		DCBEXP0001 /* DinkyCoreImageExports.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCREXP0001 /* DinkyCoreImageExports.swift */; };
+		DCBERR0001 /* DinkyImageCompression+AppError.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCRERR0001 /* DinkyImageCompression+AppError.swift */; };
 		AA000008000000000000008 /* DinkyPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D3DAE858994431BC84C13F /* DinkyPreferences.swift */; };
 		AA000009000000000000009 /* DropZoneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56D9DE1C999B470FBB27E454 /* DropZoneView.swift */; };
 		AA000010000000000000010 /* ResultsRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B63EBD7088E4C9BAB7A45DC /* ResultsRowView.swift */; };
@@ -33,12 +36,10 @@
 		UC000001000000000000001 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = UC100001000000000000001 /* UpdateChecker.swift */; };
 		UB000001000000000000001 /* UpdateBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = UB100001000000000000001 /* UpdateBanner.swift */; };
 		RB000001000000000000001 /* ReviewPromptBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = RB100001000000000000001 /* ReviewPromptBanner.swift */; };
-		CC000001000000000000001 /* ContentClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC100001000000000000001 /* ContentClassifier.swift */; };
 		ICFR0000010000000000001 /* ImageCompressionFormatResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = ICFR1000010000000000001 /* ImageCompressionFormatResolver.swift */; };
 		AG000001000000000000001 /* View+AdaptiveGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = AG100001000000000000001 /* View+AdaptiveGlass.swift */; };
 		LB000001000000000000001 /* lib in Resources */ = {isa = PBXBuildFile; fileRef = LB100001000000000000001 /* lib */; };
 		CI000001000000000000001 /* ClipboardImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CI100001000000000000001 /* ClipboardImporter.swift */; };
-		OH000001000000000000001 /* OriginalsHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = OH100001000000000000001 /* OriginalsHandler.swift */; };
 		CU000001000000000000001 /* CompressionUndo.swift in Sources */ = {isa = PBXBuildFile; fileRef = CU100001000000000000001 /* CompressionUndo.swift */; };
 		UD000001000000000000001 /* URLDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = UD100001000000000000001 /* URLDownloader.swift */; };
 		LL000001000000000000001 /* LaunchAtLoginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = LL100001000000000000001 /* LaunchAtLoginManager.swift */; };
@@ -76,7 +77,6 @@
 		PM000001000000000000001 /* PDFCompressionMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = PM100001000000000000001 /* PDFCompressionMetrics.swift */; };
 		PI000001000000000000001 /* PDFImageDownsampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = PI100001000000000000001 /* PDFImageDownsampler.swift */; };
 		FC000001000000000000001 /* FinderCommentsCopier.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC100001000000000000001 /* FinderCommentsCopier.swift */; };
-		OP000001000000000000001 /* OutputPathUniqueness.swift in Sources */ = {isa = PBXBuildFile; fileRef = OP100001000000000000001 /* OutputPathUniqueness.swift */; };
 		SP000001000000000000001 /* SavingsPerspective.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP100001000000000000001 /* SavingsPerspective.swift */; };
 		XTBLD00000000000000001 /* PDFScanDetectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = XTREF00000000000000001 /* PDFScanDetectionTests.swift */; };
 		PSFBLD0000000000000001 /* PDFScanSignals.swift in Sources */ = {isa = PBXBuildFile; fileRef = PSFILE000000000000001 /* PDFScanSignals.swift */; };
@@ -106,13 +106,15 @@
 		74EE7205601D464484113FEB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		89ED8C350A5D404EA5F1CCF6 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 		96F9AD6A1BD04233828DC140 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		AC05EE39C6DE4195A1EF551B /* CompressionFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompressionFormat.swift; sourceTree = "<group>"; };
+		DCRFMT0001 /* CompressionFormat+App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CompressionFormat+App.swift"; sourceTree = "<group>"; };
+		DCRSHR0001 /* SharedEnums+App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SharedEnums+App.swift"; sourceTree = "<group>"; };
+		DCREXP0001 /* DinkyCoreImageExports.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DinkyCoreImageExports.swift; sourceTree = "<group>"; };
+		DCRERR0001 /* DinkyImageCompression+AppError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DinkyImageCompression+AppError.swift"; sourceTree = "<group>"; };
 		BB100001000000000000001 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
 		SC100001000000000000001 /* SettingsChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsChrome.swift; sourceTree = "<group>"; };
 		UC100001000000000000001 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
 		UB100001000000000000001 /* UpdateBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateBanner.swift; sourceTree = "<group>"; };
 		RB100001000000000000001 /* ReviewPromptBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewPromptBanner.swift; sourceTree = "<group>"; };
-		CC100001000000000000001 /* ContentClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentClassifier.swift; sourceTree = "<group>"; };
 		ICFR1000010000000000001 /* ImageCompressionFormatResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCompressionFormatResolver.swift; sourceTree = "<group>"; };
 		AG100001000000000000001 /* View+AdaptiveGlass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+AdaptiveGlass.swift"; sourceTree = "<group>"; };
 		D1032BF7B7A74FAF99A74DB7 /* AntyMascotView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AntyMascotView.swift; sourceTree = "<group>"; };
@@ -122,7 +124,6 @@
 		F5D3DAE858994431BC84C13F /* DinkyPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DinkyPreferences.swift; sourceTree = "<group>"; };
 		F68BBF685BAD4911BEC725DB /* Dinky.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Dinky.entitlements; sourceTree = "<group>"; };
 		CI100001000000000000001 /* ClipboardImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardImporter.swift; sourceTree = "<group>"; };
-		OH100001000000000000001 /* OriginalsHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OriginalsHandler.swift; sourceTree = "<group>"; };
 		CU100001000000000000001 /* CompressionUndo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompressionUndo.swift; sourceTree = "<group>"; };
 		UD100001000000000000001 /* URLDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLDownloader.swift; sourceTree = "<group>"; };
 		LL100001000000000000001 /* LaunchAtLoginManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginManager.swift; sourceTree = "<group>"; };
@@ -192,7 +193,6 @@
 		PM100001000000000000001 /* PDFCompressionMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFCompressionMetrics.swift; sourceTree = "<group>"; };
 		PI100001000000000000001 /* PDFImageDownsampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFImageDownsampler.swift; sourceTree = "<group>"; };
 		FC100001000000000000001 /* FinderCommentsCopier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderCommentsCopier.swift; sourceTree = "<group>"; };
-		OP100001000000000000001 /* OutputPathUniqueness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputPathUniqueness.swift; sourceTree = "<group>"; };
 		SP100001000000000000001 /* SavingsPerspective.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavingsPerspective.swift; sourceTree = "<group>"; };
 		XTREF00000000000000001 /* PDFScanDetectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFScanDetectionTests.swift; sourceTree = "<group>"; };
 		XTPRD00000000000000001 /* DinkyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DinkyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -232,7 +232,8 @@
 			children = (
 				4FFDD8F0AED14F8CA2C3F9A7 /* ImageItem.swift */,
 				PE100001000000000000001 /* PDFPreserveExperimentalMode.swift */,
-				AC05EE39C6DE4195A1EF551B /* CompressionFormat.swift */,
+				DCRFMT0001 /* CompressionFormat+App.swift */,
+				DCRSHR0001 /* SharedEnums+App.swift */,
 				F5D3DAE858994431BC84C13F /* DinkyPreferences.swift */,
 				CP100001000000000000001 /* CompressionPreset.swift */,
 				SR100001000000000000001 /* SessionRecord.swift */,
@@ -268,11 +269,9 @@
 			isa = PBXGroup;
 			children = (
 				UC100001000000000000001 /* UpdateChecker.swift */,
-				OH100001000000000000001 /* OriginalsHandler.swift */,
 				CU100001000000000000001 /* CompressionUndo.swift */,
 				UD100001000000000000001 /* URLDownloader.swift */,
 				LL100001000000000000001 /* LaunchAtLoginManager.swift */,
-				CC100001000000000000001 /* ContentClassifier.swift */,
 				ICFR1000010000000000001 /* ImageCompressionFormatResolver.swift */,
 				CI100001000000000000001 /* ClipboardImporter.swift */,
 				FW100001000000000000001 /* FolderWatcher.swift */,
@@ -291,7 +290,7 @@
 				PM100001000000000000001 /* PDFCompressionMetrics.swift */,
 				PI100001000000000000001 /* PDFImageDownsampler.swift */,
 				FC100001000000000000001 /* FinderCommentsCopier.swift */,
-				OP100001000000000000001 /* OutputPathUniqueness.swift */,
+				DCRERR0001 /* DinkyImageCompression+AppError.swift */,
 				SP100001000000000000001 /* SavingsPerspective.swift */,
 			);
 			path = Services;
@@ -340,6 +339,7 @@
 				1983E259BC5A494A9D936B63 /* DinkyApp.swift */,
 				DD000002000000000000002 /* AppDelegate.swift */,
 				96F9AD6A1BD04233828DC140 /* ContentView.swift */,
+				DCREXP0001 /* DinkyCoreImageExports.swift */,
 				5BEB16B6B1534C999F261F79 /* CompressionService.swift */,
 				89ED8C350A5D404EA5F1CCF6 /* PreferencesView.swift */,
 				4FE17DC818E44D3F88D6F88A /* Strings.swift */,
@@ -419,6 +419,9 @@
 				PSTTD00000000000000001 /* PBXTargetDependency */,
 			);
 			name = Dinky;
+			packageProductDependencies = (
+				DCI1000010000000000001 /* DinkyCoreImage */,
+			);
 			productName = Dinky;
 			productReference = 06FD4F8D9AC8412C83F517C6 /* Dinky.app */;
 			productType = "com.apple.product-type.application";
@@ -522,6 +525,9 @@
 				"zh-Hant",
 			);
 			mainGroup = AABBCCDD00000000000000001;
+			packageReferences = (
+				DCI2000010000000000001 /* XCLocalSwiftPackageReference "DinkyCoreImage" */,
+			);
 			productRefGroup = 3337D9E5CCB647BAA20571DE /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -581,7 +587,10 @@
 				AA000005000000000000005 /* Strings.swift in Sources */,
 				AA000006000000000000006 /* ImageItem.swift in Sources */,
 				PE000001000000000000001 /* PDFPreserveExperimentalMode.swift in Sources */,
-				AA000007000000000000007 /* CompressionFormat.swift in Sources */,
+				DCBEXP0001 /* DinkyCoreImageExports.swift in Sources */,
+				DCBFMT0001 /* CompressionFormat+App.swift in Sources */,
+				DCBSHR0001 /* SharedEnums+App.swift in Sources */,
+				DCBERR0001 /* DinkyImageCompression+AppError.swift in Sources */,
 				AA000008000000000000008 /* DinkyPreferences.swift in Sources */,
 				AA000009000000000000009 /* DropZoneView.swift in Sources */,
 				AA000010000000000000010 /* ResultsRowView.swift in Sources */,
@@ -593,11 +602,9 @@
 				UC000001000000000000001 /* UpdateChecker.swift in Sources */,
 				UB000001000000000000001 /* UpdateBanner.swift in Sources */,
 				RB000001000000000000001 /* ReviewPromptBanner.swift in Sources */,
-				CC000001000000000000001 /* ContentClassifier.swift in Sources */,
 				ICFR0000010000000000001 /* ImageCompressionFormatResolver.swift in Sources */,
 				AG000001000000000000001 /* View+AdaptiveGlass.swift in Sources */,
 				CI000001000000000000001 /* ClipboardImporter.swift in Sources */,
-				OH000001000000000000001 /* OriginalsHandler.swift in Sources */,
 				CU000001000000000000001 /* CompressionUndo.swift in Sources */,
 				UD000001000000000000001 /* URLDownloader.swift in Sources */,
 				LL000001000000000000001 /* LaunchAtLoginManager.swift in Sources */,
@@ -631,7 +638,6 @@
 				PM000001000000000000001 /* PDFCompressionMetrics.swift in Sources */,
 				PI000001000000000000001 /* PDFImageDownsampler.swift in Sources */,
 				FC000001000000000000001 /* FinderCommentsCopier.swift in Sources */,
-				OP000001000000000000001 /* OutputPathUniqueness.swift in Sources */,
 				SP000001000000000000001 /* SavingsPerspective.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -981,6 +987,21 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		DCI2000010000000000001 /* XCLocalSwiftPackageReference "DinkyCoreImage" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = DinkyCoreImage;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		DCI1000010000000000001 /* DinkyCoreImage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DCI2000010000000000001 /* XCLocalSwiftPackageReference "DinkyCoreImage" */;
+			productName = DinkyCoreImage;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 30998CF249484469BEA4BC05 /* Project object */;
 }

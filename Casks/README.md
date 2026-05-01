@@ -12,3 +12,14 @@ brew install --cask dinky
 **After upgrades:** Homebrew keeps previous cask payloads under `Caskroom` until cleanup. That can make Finder’s **Open With** menu show two Dinkys (two versions). Run `brew cleanup dinky` or `brew cleanup` to drop old installs.
 
 **Optional later:** A maintainer or community member can also open a pull request to [homebrew-cask](https://github.com/Homebrew/homebrew-cask) so `brew install --cask dinky` works without a tap, subject to Homebrew’s notability and audit rules. This file does not block that; the cask format is the same.
+
+## `dinky` CLI (SwiftPM, from source)
+
+The GUI app cask is **not** the same as the `dinky` **terminal** binary. The CLI lives in the `DinkyCoreImage` package:
+
+```bash
+cd DinkyCoreImage && swift build -c release
+# .build/release/dinky
+```
+
+Install WebP/AVIF/oxipng via Homebrew (or set `DINKY_BIN` to the app’s `Contents/Resources` tools). There is no separate Homebrew formula in this tap yet; see [../docs/local-cli.md](../docs/local-cli.md).

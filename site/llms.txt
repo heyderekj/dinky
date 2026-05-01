@@ -31,7 +31,7 @@
 ## Technical details
 
 - macOS 15 Sequoia or later (liquid glass UI on macOS 26 Tahoe; frosted material fallback on Sequoia)
-- SwiftUI + AppKit, zero SPM dependencies
+- SwiftUI + AppKit; the app uses an in-tree Swift package for shared image code + optional `dinky` CLI (not a remote SPM dependency)
 - 33 MB installed
 - Image engines bundled: cwebp (Google), avifenc (AOM), oxipng (Rust/MIT)
 - PDF: flatten via PDFKit + ImageIO; preserve path via bundled **qpdf** + PDFKit; video via AVFoundation export
@@ -77,6 +77,7 @@ Derek Castelli — freelance web designer (Webflow, Figma, Cursor)
 
 This website is a static marketing page for the Dinky macOS app. There is **no public HTTP API**, **no OAuth/OIDC**, **no protected API resource**, and **no remote MCP server** on dinkyfiles.com.
 
-- Machine-readable discovery: `https://dinkyfiles.com/openapi.yaml` (empty paths; documents no API), `https://dinkyfiles.com/.well-known/api-catalog`, `https://dinkyfiles.com/.well-known/agent-skills/index.json`, and this file (`https://dinkyfiles.com/llms.txt`).
+- Machine-readable discovery: `https://dinkyfiles.com/openapi.yaml` (empty paths for the *site*; see description for the local product), `https://dinkyfiles.com/.well-known/api-catalog`, `https://dinkyfiles.com/.well-known/agent-skills/index.json`, and this file (`https://dinkyfiles.com/llms.txt`).
+- **Local automation (images):** the open-source app repo ships a `dinky` **CLI** and optional **loopback** `dinky serve` (build from `DinkyCoreImage/` on a Mac). Same JSON contract for `--json` and `POST /v1/compress`. Documented in-repo: `docs/local-cli.md` (schema `dinky.image.compress/1.0.0`). **No** upload to dinkyfiles.com; paths are explicit and on-device.
 - **WebMCP** (Chromium): when supported, the homepage registers in-browser tools via `navigator.modelContext.registerTool()` — e.g. scroll to FAQ, open install help, copy the quarantine Terminal command, open GitHub Releases.
-- Automation outside the browser: use **GitHub** (source, issues, releases) and direct **DMG download URLs** from the Releases page — not site APIs.
+- Automation outside the browser: use **GitHub** (source, issues, releases) and direct **DMG download URLs** from the Releases page for the GUI app. For image compression from Terminal/agents, use the **local** `dinky` tool from the repository — not this website.

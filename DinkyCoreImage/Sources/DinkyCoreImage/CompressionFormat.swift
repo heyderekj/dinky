@@ -1,23 +1,15 @@
+import Foundation
 import UniformTypeIdentifiers
 
-enum CompressionFormat: String, CaseIterable, Identifiable, Codable {
+public enum CompressionFormat: String, CaseIterable, Identifiable, Codable, Sendable {
     case webp = "webp"
     case avif = "avif"
     case png  = "png"
     case heic = "heic"
 
-    var id: String { rawValue }
+    public var id: String { rawValue }
 
-    var displayName: String {
-        switch self {
-        case .webp: return S.webp
-        case .avif: return S.avif
-        case .png:  return S.png
-        case .heic: return S.heic
-        }
-    }
-
-    var outputExtension: String {
+    public var outputExtension: String {
         switch self {
         case .webp: return "webp"
         case .avif: return "avif"
@@ -26,7 +18,7 @@ enum CompressionFormat: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    var binaryName: String {
+    public var binaryName: String {
         switch self {
         case .webp: return "cwebp"
         case .avif: return "avifenc"
@@ -35,7 +27,7 @@ enum CompressionFormat: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    var acceptedInputTypes: [UTType] {
+    public var acceptedInputTypes: [UTType] {
         switch self {
         case .webp: return [.jpeg, .png, .webP, .tiff, .heic, .heif, .gif]
         case .avif: return [.jpeg, .png, .tiff, .heic, .heif]

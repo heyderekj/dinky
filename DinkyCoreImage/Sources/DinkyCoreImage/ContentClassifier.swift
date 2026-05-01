@@ -1,31 +1,16 @@
 // ContentClassifier.swift — multi-signal photo vs. graphic detection.
-// Drives Smart Quality: photos compress harder, graphics (UI, screenshots,
-// illustrations, logos, diagrams) keep more quality so edges stay crisp.
-//
-// Signals, in order of confidence:
-//   1. EXIF/TIFF metadata (camera make/model, FNumber, ExposureTime) → photo
-//   2. Screenshot metadata hints (macOS / iOS screenshots add specific keys) → graphic
-//   3. Pixel sample on thumbnail — strong photo (many colors, low flatness) → photo (skip Vision)
-//   4. Vision text-rect detection — >18% text coverage → graphic
-//   5. Pixel heuristics (unique-color count + flat-region ratio) → fallback
-//
-// All signals use Apple frameworks only (ImageIO, Vision, CoreGraphics).
-// No SPM/CocoaPods dependencies. Dinky stays dinky.
-
-import Foundation
+// (Same logic as the Dinky app; used by the macOS app and DinkyCoreImage CLI.)
 import CoreGraphics
+import Foundation
 import ImageIO
 import Vision
 
-enum ContentType: String {
+public enum ContentType: String, Sendable, Codable {
     case photo
-    /// UI screenshots, illustrations, logos, diagrams, line art — anything
-    /// edge-heavy / flat-region. All want the same compression treatment.
     case graphic
     case mixed
 
-    /// Short label for the results chip.
-    var label: String {
+    public var label: String {
         switch self {
         case .photo:   return "photo"
         case .graphic: return "graphic"
@@ -33,7 +18,7 @@ enum ContentType: String {
         }
     }
 
-    var tooltipLabel: String {
+    public var tooltipLabel: String {
         switch self {
         case .photo:   return "Detected as a photo — compressed more aggressively"
         case .graphic: return "Detected as a graphic (screenshot, UI, illustration, or logo) — quality preserved to keep edges crisp"
@@ -42,29 +27,21 @@ enum ContentType: String {
     }
 }
 
-enum ContentClassifier {
-
-    /// Classify a local image by URL. Returns `.mixed` when we can't read it
-    /// (keeps default quality behavior). Runs fast — typically under 20 ms
-    /// including the Vision pass, since we classify from a small thumbnail.
-    static func classify(_ url: URL) -> ContentType {
-        // Signal 1: EXIF/TIFF metadata. Strongest and cheapest — no decode needed.
+public enum ContentClassifier {
+    public static func classify(_ url: URL) -> ContentType {
         if let metaSignal = classifyFromMetadata(url: url) {
             return metaSignal
         }
 
-        // Need a thumbnail for the remaining signals (320px: enough for Vision + heuristics, faster decode than 384).
         guard let cg = makeThumbnail(url: url, maxPixel: 320) else { return .mixed }
 
         let stats = sample(cgImage: cg)
         if let stats {
-            // Strong photo signal: lots of unique colors + barely any flat regions — skip Vision.
             if stats.uniqueColors > 10_000, stats.flatRatio < 0.10 {
                 return .photo
             }
         }
 
-        // Vision text detection. UI/screenshots almost always carry a significant text region.
         let textCoverage = detectTextCoverage(cgImage: cg)
         if textCoverage > 0.18 {
             return .graphic
@@ -73,12 +50,9 @@ enum ContentClassifier {
         if let stats {
             let (uniqueColors, flatRatio) = stats
 
-            // Strong graphic signal: few colors + large flat regions
-            // (illustrations, logos, vector exports, UI all live here).
             if uniqueColors < 1_200, flatRatio > 0.30 {
                 return .graphic
             }
-            // Weak graphic: some text-ish regions even without Vision hit.
             if textCoverage > 0.08, flatRatio > 0.20 {
                 return .graphic
             }
@@ -87,7 +61,7 @@ enum ContentClassifier {
         return .mixed
     }
 
-    // MARK: - Signal 1: EXIF / TIFF metadata
+    // MARK: - EXIF / TIFF
 
     private static func classifyFromMetadata(url: URL) -> ContentType? {
         guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
@@ -97,37 +71,29 @@ enum ContentClassifier {
         let exif = props[kCGImagePropertyExifDictionary as String] as? [String: Any] ?? [:]
         let tiff = props[kCGImagePropertyTIFFDictionary as String] as? [String: Any] ?? [:]
 
-        // Screenshot hints: macOS and iOS tag screenshots with specific
-        // Software fields ("Screenshot" / "Preview") or they carry almost
-        // no camera metadata while still having a Make. We trust Software
-        // strings — they're a loud, clean signal.
         let software = (tiff["Software"] as? String ?? "").lowercased()
         if software.contains("screenshot") || software == "screencapture" {
             return .graphic
         }
 
-        // Strong photo signal: genuine camera EXIF. The FNumber/ExposureTime
-        // pair is only written by real cameras (or apps that mimic one —
-        // which means the picture is photographic in intent either way).
         let hasCameraBrand = (tiff["Make"] as? String)?.isEmpty == false
-                           && (tiff["Model"] as? String)?.isEmpty == false
+            && (tiff["Model"] as? String)?.isEmpty == false
         let hasExposure = exif["FNumber"] != nil
-                        || exif["ExposureTime"] != nil
-                        || exif["ISOSpeedRatings"] != nil
-                        || exif["FocalLength"] != nil
+            || exif["ExposureTime"] != nil
+            || exif["ISOSpeedRatings"] != nil
+            || exif["FocalLength"] != nil
         if hasCameraBrand && hasExposure {
             return .photo
         }
 
-        // Lens info alone is also a solid photo tell.
         if exif["LensModel"] != nil || exif["LensMake"] != nil {
             return .photo
         }
 
-        return nil   // inconclusive — continue to pixel signals
+        return nil
     }
 
-    // MARK: - Signal 2: Vision text detection
+    // MARK: - Vision
 
     private static func detectTextCoverage(cgImage: CGImage) -> Double {
         let request = VNDetectTextRectanglesRequest()
@@ -143,8 +109,6 @@ enum ContentClassifier {
         }
         guard let observations = request.results, !observations.isEmpty else { return 0 }
 
-        // boundingBox is in normalized [0,1] coords — sum of areas is the coverage.
-        // Two regions overlapping count twice, which is fine for a rough signal.
         var coverage = 0.0
         for obs in observations {
             let box = obs.boundingBox
@@ -152,8 +116,6 @@ enum ContentClassifier {
         }
         return min(1.0, coverage)
     }
-
-    // MARK: - Thumbnail
 
     private static func makeThumbnail(url: URL, maxPixel: Int) -> CGImage? {
         guard let src = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
@@ -166,15 +128,8 @@ enum ContentClassifier {
         return CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary)
     }
 
-    // MARK: - Signal 3: pixel heuristics
-
-    /// Draw the thumbnail into an RGBA buffer and compute:
-    /// - unique color count across the whole buffer (quantized to 5 bits/ch)
-    /// - flat-region ratio: fraction of 16x16 tiles where ≤3 unique colors appear
-    ///
-    /// Exposed at module scope (via ``samplePixelStats(_:)``) so video frame classification
-    /// can reuse the exact same heuristic on extracted video frames.
-    static func samplePixelStats(_ cgImage: CGImage) -> (uniqueColors: Int, flatRatio: Double)? {
+    /// Reused by video frame classification in the Dinky app.
+    public static func samplePixelStats(_ cgImage: CGImage) -> (uniqueColors: Int, flatRatio: Double)? {
         sample(cgImage: cgImage)
     }
 
@@ -191,7 +146,7 @@ enum ContentClassifier {
 
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
-                       | CGBitmapInfo.byteOrder32Big.rawValue
+            | CGBitmapInfo.byteOrder32Big.rawValue
 
         guard let ctx = buffer.withUnsafeMutableBytes({ rawPtr -> CGContext? in
             guard let base = rawPtr.baseAddress else { return nil }

@@ -15,20 +15,7 @@ enum SaveLocation: String, CaseIterable, Identifiable {
     }
 }
 
-/// What to do with the original file after a successful compress (global setting).
-enum OriginalsAction: String, CaseIterable, Identifiable {
-    case keep = "keep"
-    case trash = "trash"
-    case backup = "backup"
-    var id: String { rawValue }
-    var displayName: String {
-        switch self {
-        case .keep: return "Stay where they are"
-        case .trash: return "Move to Trash"
-        case .backup: return "Move to Backup folder"
-        }
-    }
-}
+// OriginalsAction and CollisionNamingStyle: see DinkyCoreImage (re-exported via DinkyCoreImageExports.swift).
 
 enum FilenameHandling: String, CaseIterable, Identifiable {
     case appendSuffix  = "appendSuffix"
@@ -40,24 +27,6 @@ enum FilenameHandling: String, CaseIterable, Identifiable {
         case .appendSuffix:  return "Append suffix (default: -dinky)"
         case .replaceOrigin: return "Replace original"
         case .customSuffix:  return "Custom suffix"
-        }
-    }
-}
-
-/// How to pick a new filename when the computed output path is already occupied.
-enum CollisionNamingStyle: String, CaseIterable, Identifiable {
-    case finderDuplicate = "finderDuplicate"
-    case finderNumbered = "finderNumbered"
-    case custom = "custom"
-    var id: String { rawValue }
-    var displayName: String {
-        switch self {
-        case .finderDuplicate:
-            return String(localized: "“Copy”, “Copy 2”, …", comment: "Collision naming style: Finder duplicate.")
-        case .finderNumbered:
-            return String(localized: "“(1)”, “(2)”, …", comment: "Collision naming style: numbered parentheses.")
-        case .custom:
-            return String(localized: "Add my own text", comment: "Collision naming style: user-defined extra text in the filename.")
         }
     }
 }

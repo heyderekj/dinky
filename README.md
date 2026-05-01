@@ -81,7 +81,7 @@ I liked [Squoosh](https://github.com/GoogleChromeLabs/squoosh) but didn't want t
 
 ## How it works
 
-Built entirely in Swift and SwiftUI, targeting macOS 15 Sequoia and later. On macOS 26 Tahoe you get the full liquid glass UI; on Sequoia it uses the frosted material fallback. No Electron, no web views, no third-party UI frameworks, no SPM dependencies. The whole app is 33 MB, still appropriately dinky.
+Built entirely in Swift and SwiftUI, targeting macOS 15 Sequoia and later. On macOS 26 Tahoe you get the full liquid glass UI; on Sequoia it uses the frosted material fallback. No Electron, no web views, no third-party UI frameworks. Image compression logic is shared with an in-tree Swift package (`DinkyCoreImage`) and optional `dinky` CLI — no network-downloaded dependencies. The whole app is 33 MB, still appropriately dinky.
 
 Compression runs through a native `actor`-based service. **Images** use bundled CLI encoders (cwebp, avifenc, oxipng) plus **ImageIO** for HEIC output. **Video** uses AVFoundation export. **PDFs** use **PDFKit** plus **ImageIO** for flattening, and bundled **qpdf** (then PDFKit) on the preserve-text path; **Vision** can add an invisible text layer on scan-like inputs before those steps when OCR is enabled. See `docs/PDF_COMPRESSION.md` for modes, metrics logging (`pdf_metrics` in Console), and manual fixture checks. Multiple files can run concurrently according to your batch speed setting; heavy PDF flattening and HEIC transcoding run off the actor so parallel slots stay useful, and AVIF encoder threads scale with batch width so many concurrent jobs don’t each claim all cores.
 
@@ -121,6 +121,15 @@ xattr -dr com.apple.quarantine /Applications/Dinky.app
 ```
 
 Updating Dinky is one click — no browser, no re-drag, no quarantine step. A banner appears when a new version is out; click **Install Update** and the app downloads, installs, and relaunches on its own.
+
+## CLI and local image API (optional)
+
+The same **image** engine as the app is also shipped as a small Swift package in this repo (`DinkyCoreImage/`). You can build the `dinky` binary with SwiftPM and run **`dinky compress`** (terminal) or **`dinky serve`** (loopback HTTP for scripts/agents). **PDF and video** stay in the GUI app for now.
+
+- **Docs:** [docs/local-cli.md](docs/local-cli.md) — flags, exit codes, JSON schema (`dinky.image.compress/1.0.0`), and `serve` endpoints.
+- **Encoders** must be on disk (`DINKY_BIN`, `bin/` next to the binary, or Homebrew `cwebp` / `avifenc` / `oxipng`), matching how the app bundles them.
+
+This is **local-only** (no cloud API). The website still has no public HTTP API; see [site/llms.txt](site/llms.txt).
 
 ## FAQ
 

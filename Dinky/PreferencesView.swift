@@ -370,6 +370,18 @@ private struct GeneralTab: View {
             } header: {
                 Text(String(localized: "Support", comment: "Settings UI."))
             }
+
+            Section {
+                Text(String(localized: "Dinky includes advanced local tools for pro users: a `dinky` command-line tool and optional local HTTP mode (`dinky serve`) for automation and AI agents.", comment: "Settings UI."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(String(localized: "Quirky but straightforward: give Dinky file paths, get smaller files back. Everything runs on your Mac.", comment: "Settings UI."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Link(String(localized: "CLI docs and examples…", comment: "Settings UI."), destination: URL(string: "https://github.com/heyderekj/dinky/blob/main/docs/local-cli.md")!)
+            } header: {
+                Text(String(localized: "Pro tools (CLI/API)", comment: "Settings UI."))
+            }
         }
         .formStyle(.grouped)
         .onAppear { launchAtLoginEnabled = LaunchAtLoginManager.isEnabled }

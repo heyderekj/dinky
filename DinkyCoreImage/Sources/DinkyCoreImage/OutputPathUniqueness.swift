@@ -1,11 +1,8 @@
 import Foundation
 import Darwin
 
-/// Picks an available filename in the same directory when the desired path is already taken.
-enum OutputPathUniqueness {
-
-    /// Re-run uniqueness after long-running work so another job cannot claim the same path between the first check and the write/move.
-    static func refreshUniqueOutput(
+public enum OutputPathUniqueness {
+    public static func refreshUniqueOutput(
         currentCandidate: URL,
         sourceURL: URL,
         style: CollisionNamingStyle,
@@ -19,8 +16,7 @@ enum OutputPathUniqueness {
         )
     }
 
-    /// Moves a finished temp file into `desiredOutput`’s directory, re-resolving a free basename until the move succeeds (handles TOCTOU races).
-    static func moveTempItemToUniqueOutput(
+    public static func moveTempItemToUniqueOutput(
         temp: URL,
         desiredOutput: URL,
         sourceURL: URL,
@@ -59,10 +55,7 @@ enum OutputPathUniqueness {
         return false
     }
 
-    /// Returns `desired` if it does not exist, or the first free path using `style` disambiguation.
-    /// When `desired` is the same file as `sourceURL`, returns `desired` so in-place replace can proceed.
-    /// For ``CollisionNamingStyle/custom``, `customPattern` is used; `{n}` is replaced by the try index (1, 2, …).
-    static func uniqueOutputURL(
+    public static func uniqueOutputURL(
         desired: URL,
         sourceURL: URL,
         style: CollisionNamingStyle,
@@ -114,7 +107,6 @@ enum OutputPathUniqueness {
         }
     }
 
-    /// When the pattern is blank, behave like Finder’s first duplicate suffix.
     private static func effectiveCustomPattern(_ raw: String) -> String {
         let t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         if t.isEmpty {

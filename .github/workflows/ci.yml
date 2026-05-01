@@ -31,3 +31,25 @@ jobs:
             CODE_SIGN_IDENTITY=- \
             CODE_SIGNING_REQUIRED=NO \
             test
+
+  # Swift package: `dinky` CLI + DinkyCoreImage engine (local SPM, not bundled in the .app target).
+  spm:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install encoders for pipeline smoke tests
+        run: |
+          set -eo pipefail
+          brew install webp libavif oxipng
+          BIN="${RUNNER_TEMP:-/tmp}/dinky-encoders"
+          mkdir -p "$BIN"
+          ln -sf "$(brew --prefix webp)/bin/cwebp" "$BIN/cwebp"
+          ln -sf "$(brew --prefix libavif)/bin/avifenc" "$BIN/avifenc"
+          ln -sf "$(brew --prefix oxipng)/bin/oxipng" "$BIN/oxipng"
+          echo "DINKY_BIN=$BIN" >> "$GITHUB_ENV"
+      - name: Swift build and test (DinkyCoreImage)
+        run: |
+          set -eo pipefail
+          cd DinkyCoreImage
+          swift build -c debug
+          swift test

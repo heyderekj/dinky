@@ -14,3 +14,6 @@ Dinky-*.zip
 
 # Local Netlify folder
 .netlify
+
+# SwiftPM package build (DinkyCoreImage)
+DinkyCoreImage/.build/
