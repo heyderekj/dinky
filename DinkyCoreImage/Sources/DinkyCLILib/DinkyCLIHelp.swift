@@ -17,6 +17,7 @@ public enum DinkyCLIHelp {
           dinky compress-video <files>… [options]
           dinky compress-pdf <files>… [options]
           dinky ocr <pdf>… [--languages en-US,fr] [-o dir] [--json]
+          dinky make-fixtures [--output-dir <path>] [--types images,video,pdf] [--count 1..20] …   # developer testing
           dinky serve --port <n>
           dinky help | --help
           dinky version
@@ -67,6 +68,16 @@ public enum DinkyCLIHelp {
           POST /v1/video/compress  video JSON
           POST /v1/pdf/compress    PDF JSON
           GET /v1/health           schema \(dinkyImageServeInfoSchema)
+
+        make-fixtures (developer / local testing only):
+          Writes valid sample images (png, jpg, tiff, bmp, heic, optional webp+avif), short synthetic videos (.mov, .mp4),
+          and PDFs (text-heavy + scan-like) plus manifest.json. Default output: ./.dinky-fixtures/<iso8601>/ (path-safe).
+          --output-dir, -o <dir>   target folder
+          --types images,video,pdf   subset (default: all)
+          --count 1..20            batches per selected family (default 1)
+          --seed <u64>             RNG seed (default: built-in)
+          --overwrite              allow reusing existing output dir
+          --json                   print manifest JSON to stdout
 
         """
         print(help, terminator: "")

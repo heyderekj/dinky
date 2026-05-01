@@ -38,6 +38,9 @@ struct Dinky {
         if args[0] == "ocr" {
             runAsync { (await DinkyOcrCommand.run(Array(args.dropFirst())), 0) }
         }
+        if args[0] == "make-fixtures" {
+            runAsync { await DinkyMakeFixturesCommand.run(Array(args.dropFirst())) }
+        }
         FileHandle.standardError.write(Data("dinky: unknown command '\(args[0])'. Try dinky help\n".utf8))
         Foundation.exit(1)
     }

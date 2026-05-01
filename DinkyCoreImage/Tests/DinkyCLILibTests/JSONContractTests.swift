@@ -8,6 +8,7 @@ final class JSONContractTests: XCTestCase {
         XCTAssertEqual(dinkyImageServeInfoSchema, "dinky.image.serve/1.0.0")
         XCTAssertEqual(dinkyVideoCompressResultSchema, "dinky.video.compress/1.0.0")
         XCTAssertEqual(dinkyPdfCompressResultSchema, "dinky.pdf.compress/1.0.0")
+        XCTAssertEqual(DinkyMakeFixturesCommand.manifestSchema, "dinky.fixtures.manifest/1.0.0")
     }
 
     func testRoundTripEncode() throws {

@@ -202,6 +202,22 @@ HTTP **200** if all files OK, **422** if any failed (image/video/PDF). **503** i
 
 ---
 
+## Developer tools — `dinky make-fixtures`
+
+**Local testing only**: generates valid sample **images**, **videos**, and **PDFs** under a folder you choose (default `./.dinky-fixtures/<ISO8601-timestamp>/`, with `:` replaced for path safety). Writes `manifest.json` (`schema: dinky.fixtures.manifest/1.0.0`) listing each file, size, and notes (including skips when an encoder is missing).
+
+```text
+dinky make-fixtures [--output-dir <path>] [--types images,video,pdf] [--count 1..20] [--seed <u64>] [--overwrite] [--json]
+```
+
+- **Images:** PNG, JPEG, TIFF, BMP, HEIC via ImageIO; WebP and AVIF when `cwebp` / `avifenc` resolve via `DINKY_BIN` (same as compress-image).
+- **Video:** Short synthetic H.264 clips (`.mov` and `.mp4`) via `AVAssetWriter`.
+- **PDF:** Core Text “text-heavy” page and a raster-heavy “scan-like” page via Core Graphics.
+
+Use `--json` to print the manifest to stdout after writing.
+
+---
+
 ## Roadmap / follow-ups
 
 - Loopback-only bind option for `serve`, request size caps, structured errors.

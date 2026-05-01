@@ -125,7 +125,7 @@ Updating Dinky is one click — no browser, no re-drag, no quarantine step. A ba
 
 ## CLI and local image API (optional)
 
-The same **image** engine as the app is also shipped as a small Swift package in this repo (`DinkyCoreImage/`). You can build the `dinky` binary with SwiftPM and run **`dinky compress`** (terminal) or **`dinky serve`** (loopback HTTP for scripts/agents). **PDF and video** stay in the GUI app for now.
+The same compression engines as the app are shipped as a small Swift package in this repo (`DinkyCoreImage/`). Build the `dinky` binary with SwiftPM and run **`dinky compress-image`**, **`dinky compress-video`**, **`dinky compress-pdf`**, **`dinky ocr`**, **`dinky serve`** (loopback HTTP), or **`dinky make-fixtures`** (developer-only sample files for testing). See [docs/local-cli.md](docs/local-cli.md) for flags and JSON schemas.
 
 - **Docs:** [docs/local-cli.md](docs/local-cli.md) — flags, exit codes, JSON schema (`dinky.image.compress/1.0.0`), and `serve` endpoints.
 - **Encoders** must be on disk (`DINKY_BIN`, `bin/` next to the binary, or Homebrew `cwebp` / `avifenc` / `oxipng`), matching how the app bundles them.
