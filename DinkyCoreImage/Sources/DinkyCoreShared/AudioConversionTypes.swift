@@ -31,6 +31,36 @@ public enum AudioConversionFormat: String, CaseIterable, Codable, Sendable, Iden
         case .mp3: return "MP3"
         }
     }
+
+    /// Abbreviated label for chip grids where horizontal space is tight.
+    public var chipLabel: String {
+        switch self {
+        case .aacM4A:  return "AAC"
+        case .alacM4A: return "Lossless"
+        case .wav:     return "WAV"
+        case .aiff:    return "AIFF"
+        case .flac:    return "FLAC"
+        case .mp3:     return "MP3"
+        }
+    }
+
+    /// Short helper copy shown under audio format chips.
+    public var description: String {
+        switch self {
+        case .aacM4A:
+            return "Great default: compact files and wide playback support."
+        case .alacM4A:
+            return "Lossless quality in an Apple-friendly container."
+        case .wav:
+            return "Uncompressed PCM audio; largest files, universally compatible."
+        case .aiff:
+            return "Uncompressed audio like WAV, common in Apple/pro workflows."
+        case .flac:
+            return "Lossless compression with much smaller files than WAV/AIFF."
+        case .mp3:
+            return "Legacy lossy format with broad device and browser support."
+        }
+    }
 }
 
 /// User-facing quality intent for lossy codecs (AAC / MP3). Lossless targets ignore tier bitrates.

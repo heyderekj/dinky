@@ -20,6 +20,17 @@ private struct SidebarMeasuredHeight: ViewModifier {
     }
 }
 
+/// Rounded container matching simple-mode cards so full / preset-active sidebars share the same language.
+private struct SidebarCard<Content: View>: View {
+    @ViewBuilder var content: () -> Content
+    var body: some View {
+        content()
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.primary.opacity(0.05)))
+    }
+}
+
 private enum SidebarScope: String, CaseIterable, Identifiable {
     case images, videos, audio, pdfs, output
     var id: String { rawValue }
@@ -69,12 +80,18 @@ struct SidebarView: View {
 
     private var presetActive: Bool { !prefs.activePresetID.isEmpty }
 
-    private var availableScopes: [SidebarScope] {
+    private var availableMediaScopes: [SidebarScope] {
         var list: [SidebarScope] = []
         if prefs.showImagesSection { list.append(.images) }
         if prefs.showVideosSection { list.append(.videos) }
         if prefs.showAudioSection { list.append(.audio) }
         if prefs.showPDFsSection { list.append(.pdfs) }
+        return list
+    }
+
+    /// Media tabs only; `.output` is chosen separately so the strip does not squeeze five segments into 260pt.
+    private var availableScopes: [SidebarScope] {
+        var list = availableMediaScopes
         list.append(.output)
         return list
     }
@@ -89,7 +106,7 @@ struct SidebarView: View {
 
                 if presetActive {
                     if let active = prefs.savedPresets.first(where: { $0.id.uuidString == prefs.activePresetID }) {
-                        presetSummary(active).transition(.opacity)
+                        presetSummaryWithChrome(active).transition(.opacity)
                     }
                 } else if prefs.sidebarSimpleMode {
                     simpleModeExtras
@@ -211,67 +228,64 @@ struct SidebarView: View {
 
     private var simpleModeExtras: some View {
         VStack(alignment: .leading, spacing: 8) {
-            VStack(alignment: .leading, spacing: 8) {
-                settingsSectionHeading(icon: "slider.horizontal.2.square.on.square", title: "Quick choices")
+            SidebarCard {
+                VStack(alignment: .leading, spacing: 8) {
+                    settingsSectionHeading(icon: "slider.horizontal.2.square.on.square", title: "Quick choices")
 
-                Toggle(String(localized: "Choose format and strength automatically", comment: "Sidebar simple mode: single automatic toggle; exits simple mode when turned off."), isOn: Binding(
-                    get: { true },
-                    set: { _ in
-                        prefs.smartQuality = true
-                        prefs.autoFormat = true
-                        prefs.applySidebarSimpleMode(false)
+                    Toggle(String(localized: "Choose format and strength automatically", comment: "Sidebar simple mode: single automatic toggle; exits simple mode when turned off."), isOn: Binding(
+                        get: { true },
+                        set: { _ in
+                            prefs.smartQuality = true
+                            prefs.autoFormat = true
+                            prefs.applySidebarSimpleMode(false)
+                        }
+                    ))
+                    .font(.system(size: 11))
+                    .accessibilityHint(String(localized: "Dinky picks WebP, AVIF, or another output format per image — new files, not a same-format JPEG squeeze. Turn off Quick choices to configure manually.", comment: "VoiceOver: simple mode automatic toggle."))
+
+                    simpleModeOutcomeMap
+
+                    Toggle("Open the folder when finished", isOn: Binding(
+                        get: { prefs.openFolderWhenDone }, set: { prefs.openFolderWhenDone = $0 }
+                    ))
+                    .font(.system(size: 11))
+                }
+            }
+
+            SidebarCard {
+                VStack(alignment: .leading, spacing: 6) {
+                    settingsSectionHeading(icon: "folder", title: "Where files go")
+                    Text(outputDestinationLine)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                    Text(outputFilenameLine)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                    Button(String(localized: "Change folder or naming…", comment: "Sidebar link to output settings.")) {
+                        openPreferences(.output)
                     }
-                ))
-                .font(.system(size: 11))
-                .accessibilityHint(String(localized: "Dinky picks WebP, AVIF, or another output format per image — new files, not a same-format JPEG squeeze. Turn off Quick choices to configure manually.", comment: "VoiceOver: simple mode automatic toggle."))
-
-                simpleModeOutcomeMap
-
-                Toggle("Open the folder when finished", isOn: Binding(
-                    get: { prefs.openFolderWhenDone }, set: { prefs.openFolderWhenDone = $0 }
-                ))
-                .font(.system(size: 11))
-            }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.primary.opacity(0.05)))
-
-            VStack(alignment: .leading, spacing: 6) {
-                settingsSectionHeading(icon: "folder", title: "Where files go")
-                Text(outputDestinationLine)
+                    .buttonStyle(.plain)
                     .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                Text(outputFilenameLine)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                Button(String(localized: "Change folder or naming…", comment: "Sidebar link to output settings.")) {
-                    openPreferences(.output)
+                    .foregroundStyle(Color.accentColor)
                 }
-                .buttonStyle(.plain)
-                .font(.system(size: 12))
-                .foregroundStyle(Color.accentColor)
             }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.primary.opacity(0.05)))
 
-            VStack(alignment: .leading, spacing: 4) {
-                settingsSectionHeading(icon: "arrow.up.right.square", title: "Shortcuts")
-                settingsShortcutRow(title: "Presets", systemImage: "slider.horizontal.3") {
-                    openPreferences(.presets)
-                }
-                settingsShortcutRow(title: "Watch folders", systemImage: "eye") {
-                    openPreferences(.watch)
-                }
-                settingsShortcutRow(title: "All settings", systemImage: "gearshape") {
-                    openPreferences(.general)
+            SidebarCard {
+                VStack(alignment: .leading, spacing: 4) {
+                    settingsSectionHeading(icon: "arrow.up.right.square", title: "Shortcuts")
+                    settingsShortcutRow(title: "Presets", systemImage: "slider.horizontal.3") {
+                        openPreferences(.presets)
+                    }
+                    settingsShortcutRow(title: "Watch folders", systemImage: "eye") {
+                        openPreferences(.watch)
+                    }
+                    settingsShortcutRow(title: "All settings", systemImage: "gearshape") {
+                        openPreferences(.behavior)
+                    }
                 }
             }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.primary.opacity(0.05)))
 
             Button {
                 prefs.applySidebarSimpleMode(false)
@@ -290,64 +304,16 @@ struct SidebarView: View {
         }
     }
 
-    /// Per–file-type outcomes for Quick choices — collapsible; friendly line + technical detail.
+    /// One-line teaser + ``DisclosureGroup`` so the sidebar stays light until expanded.
     private var simpleModeOutcomeMap: some View {
-        Group {
-            if expandedOutcomeMap {
-                simpleModeOutcomeMapStack
-                    .accessibilityElement(children: .contain)
-            } else {
-                simpleModeOutcomeMapStack
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(
-                        String(
-                            localized: "What to expect, collapsed. How Dinky handles photos, documents, video, optional audio tracks, and saved files. Activate the header to show friendly and technical details.",
-                            comment: "VoiceOver: collapsed What to expect block."
-                        )
-                    )
-            }
-        }
-    }
-
-    private var simpleModeOutcomeMapStack: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) { expandedOutcomeMap.toggle() }
-            } label: {
-                HStack(alignment: .center, spacing: 6) {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(.tertiary)
-                        .rotationEffect(.degrees(expandedOutcomeMap ? 90 : 0))
-                        .animation(.easeInOut(duration: 0.2), value: expandedOutcomeMap)
-                    Text(String(localized: "What to expect", comment: "Heading above simple-mode outcome rows."))
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                    Spacer(minLength: 0)
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(String(localized: "What to expect", comment: "Heading above simple-mode outcome rows."))
-            .accessibilityHint(
-                expandedOutcomeMap
-                    ? String(localized: "Collapses the list of details.", comment: "VoiceOver: What to expect header when expanded.")
-                    : String(localized: "Expands friendly and technical details for each type.", comment: "VoiceOver: What to expect header when collapsed.")
-            )
-
             if !expandedOutcomeMap {
-                Text(
-                    prefs.showAudioSection
-                        ? String(localized: "How Dinky handles photos, documents, video, audio, and saved files — expand for details.", comment: "Collapsed teaser under What to expect header (audio section on).")
-                        : String(localized: "How Dinky handles photos, documents, video, and saved files — expand for details.", comment: "Collapsed teaser under What to expect header.")
-                )
+                Text(simpleModeOutcomeSummaryLine())
                     .font(.system(size: 9))
                     .foregroundStyle(.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityHidden(true)
             }
-
-            if expandedOutcomeMap {
+            DisclosureGroup(isExpanded: $expandedOutcomeMap) {
                 VStack(alignment: .leading, spacing: 8) {
                     simpleModeOutcomeRow(
                         icon: "photo",
@@ -382,10 +348,30 @@ struct SidebarView: View {
                         technical: simpleModeOutputOutcome()
                     )
                 }
-                .transition(.opacity.combined(with: .move(edge: .top)))
+                .padding(.top, 4)
+                .accessibilityElement(children: .contain)
+            } label: {
+                Text(String(localized: "What to expect", comment: "Heading above simple-mode outcome rows."))
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.secondary)
             }
+            .accessibilityHint(
+                expandedOutcomeMap
+                    ? String(localized: "Collapses the list of details.", comment: "VoiceOver: What to expect header when expanded.")
+                    : String(localized: "Expands friendly and technical details for each type.", comment: "VoiceOver: What to expect header when collapsed.")
+            )
         }
         .padding(.top, 2)
+    }
+
+    private func simpleModeOutcomeSummaryLine() -> String {
+        if prefs.smartQuality {
+            if prefs.autoFormat {
+                return String(localized: "Dinky auto-picks modern image formats and tuning per file; same Smart Quality adjusts PDFs, video, and audio. Expand for details.", comment: "Simple sidebar outcome one-liner, smart on, auto format.")
+            }
+            return String(localized: "Smart Quality tunes each file from content; you still choose some format chips in All options. Expand for details.", comment: "Simple sidebar outcome one-liner, smart on, manual image format.")
+        }
+        return String(localized: "Fixed tiers in All options… apply until you turn Smart Quality back on. Expand for details.", comment: "Simple sidebar outcome one-liner, smart off.")
     }
 
     @ViewBuilder
@@ -527,75 +513,180 @@ struct SidebarView: View {
 
     // MARK: - Full sidebar (scoped)
 
+    /// Cross-cutting Smart Quality + compact media scope + always-visible Output entry.
+    private var smartQualityGlobalRow: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Toggle(String(localized: "Smart quality (all types)", comment: "Sidebar: global smart quality for images, PDF, video, and audio."), isOn: Binding(
+                get: { prefs.smartQuality }, set: { prefs.smartQuality = $0 }
+            ))
+            .font(.system(size: 11))
+            if prefs.smartQuality {
+                settingsHelperText(String(localized: "Picks encoder strength per image, per video clip, per audio file from content, and PDF flatten tier per document. Turn off to set fixed tiers per scope below.", comment: "Sidebar: unified smart quality helper."))
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+
+    private var mediaScopeIconRow: some View {
+        HStack(spacing: 4) {
+            ForEach(availableMediaScopes) { scope in
+                scopeIconButton(scope)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(String(localized: "Adjust scope", comment: "Accessibility: sidebar media scope icons."))
+    }
+
+    private func scopeIconButton(_ scope: SidebarScope) -> some View {
+        let selected = effectiveScope == scope
+        return Button {
+            scopeRaw = scope.rawValue
+        } label: {
+            Image(systemName: scope.icon)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(selected ? Color.white : Color.secondary)
+                .frame(maxWidth: .infinity, minHeight: 34, maxHeight: 34)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(selected ? AnyShapeStyle(dinkyGradient) : AnyShapeStyle(Color.primary.opacity(0.08)))
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(scope.title)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    private var outputScopeButton: some View {
+        let selected = effectiveScope == .output
+        return Button {
+            scopeRaw = SidebarScope.output.rawValue
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.system(size: 13, weight: .medium))
+                Text(String(localized: "Output & files", comment: "Sidebar: scope control for output options."))
+                    .font(.system(size: 11, weight: .semibold))
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(selected ? Color.white : Color.accentColor)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(selected ? AnyShapeStyle(dinkyGradient) : AnyShapeStyle(Color.accentColor.opacity(0.12)))
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(String(localized: "Output", comment: "VoiceOver: Output scope."))
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
     private var fullSidebarChrome: some View {
         VStack(alignment: .leading, spacing: 8) {
-            VStack(alignment: .leading, spacing: 6) {
+            // Format section
+            VStack(alignment: .leading, spacing: 10) {
                 settingsSectionHeading(icon: "slider.horizontal.3", title: "Adjust")
-                scopeTabBar
+                smartQualityGlobalRow
+                if !availableMediaScopes.isEmpty {
+                    mediaScopeIconRow
+                }
+                Group {
+                    switch effectiveScope {
+                    case .images: imagesPanel
+                    case .pdfs:   pdfsPanel
+                    case .videos: videosPanel
+                    case .audio:  audioPanel
+                    case .output: EmptyView()
+                    }
+                }
+                .animation(.easeInOut(duration: 0.15), value: effectiveScope)
             }
+            .padding(.vertical, 10)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.bottom, 10)
 
-            Group {
-                switch effectiveScope {
-                case .images:  imagesPanel
-                case .pdfs:    pdfsPanel
-                case .videos:  videosPanel
-                case .audio:   audioPanel
-                case .output:  outputPanel
-                }
-            }
+            // Output section
+            sidebarOutputSection
 
-            sidebarSectionsFooter
+            // Footer links + overflow
+            sidebarFooterLinks
         }
     }
 
-    /// Segmented control — clearer than ultra-small tab labels in a narrow sidebar.
-    private var scopeTabBar: some View {
-        Picker(String(localized: "Adjust scope", comment: "Accessibility: sidebar segmented scope (Images, Video, Audio, PDFs, Output)."), selection: $scopeRaw) {
-            ForEach(availableScopes) { scope in
-                Text(scope.tabShortTitle)
-                    .tag(scope.rawValue)
-                    .accessibilityLabel(scope.title)
+    private var sidebarOutputSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            settingsSectionHeading(icon: "square.and.arrow.up", title: "Output")
+
+            // Destination + filename summary
+            VStack(alignment: .leading, spacing: 3) {
+                Text(outputDestinationLine)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                Text(outputFilenameLine)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
             }
+
+            // Output toggles
+            Toggle(String(localized: "Reveal in Finder when done", comment: "Sidebar output: open folder toggle."), isOn: Binding(
+                get: { prefs.openFolderWhenDone }, set: { prefs.openFolderWhenDone = $0 }
+            )).font(.system(size: 11))
+            Toggle(String(localized: "Strip metadata", comment: "Sidebar output: strip metadata toggle."), isOn: Binding(
+                get: { prefs.stripMetadata }, set: { prefs.stripMetadata = $0 }
+            )).font(.system(size: 11))
+            Toggle(String(localized: "Sanitize filenames", comment: "Sidebar output: sanitize filenames toggle."), isOn: Binding(
+                get: { prefs.sanitizeFilenames }, set: { prefs.sanitizeFilenames = $0 }
+            )).font(.system(size: 11))
+
+            settingsShortcutRow(
+                title: String(localized: "Output preferences…", comment: "Sidebar: link to Output settings pane."),
+                systemImage: "arrow.right"
+            ) { openPreferences(.output) }
         }
-        .labelsHidden()
-        .pickerStyle(.segmented)
-        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var sidebarSectionsFooter: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button {
-                prefs.smartQuality = true
-                prefs.autoFormat = true
-                prefs.applySidebarSimpleMode(true)
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "slider.horizontal.2.square.on.square")
-                        .font(.system(size: 12, weight: .medium))
-                    Text(String(localized: "Use simple sidebar", comment: "Sidebar footer: switch back to simple mode."))
-                        .font(.system(size: 11, weight: .medium))
+    private var sidebarFooterLinks: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            settingsShortcutRow(
+                title: String(localized: "Presets", comment: "Sidebar footer: open Presets settings."),
+                systemImage: "slider.horizontal.3"
+            ) { openPreferences(.presets) }
+            settingsShortcutRow(
+                title: String(localized: "Watch folders", comment: "Sidebar footer: open Watch settings."),
+                systemImage: "eye"
+            ) { openPreferences(.watch) }
+            HStack(spacing: 0) {
+                Spacer(minLength: 0)
+                Menu {
+                    Button(String(localized: "Use simple sidebar", comment: "Sidebar footer: switch back to simple mode.")) {
+                        prefs.smartQuality = true
+                        prefs.autoFormat = true
+                        prefs.applySidebarSimpleMode(true)
+                    }
+                    Button(String(localized: "Which sections appear here…", comment: "Sidebar section picker hint.")) {
+                        openPreferences(.sidebar)
+                    }
+                    Button(String(localized: "All settings…", comment: "Sidebar menu: open settings.")) {
+                        openPreferences(.behavior)
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Color.accentColor)
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 2)
+                        .contentShape(Rectangle())
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .menuStyle(.borderlessButton)
+                .fixedSize()
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(Color.accentColor)
-
-            Button {
-                openPreferences(.appearance)
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "sidebar.left")
-                        .font(.system(size: 12, weight: .medium))
-                    Text(String(localized: "Which sections appear here…", comment: "Sidebar section picker hint."))
-                        .font(.system(size: 11, weight: .medium))
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(Color.accentColor)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func settingsShortcutRow(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
@@ -618,9 +709,9 @@ struct SidebarView: View {
     }
 
     private func syncScopeIfNeeded() {
-        let cur = SidebarScope(rawValue: scopeRaw) ?? .output
-        if !availableScopes.contains(cur), let first = availableScopes.first {
-            scopeRaw = first.rawValue
+        let cur = SidebarScope(rawValue: scopeRaw) ?? .images
+        if !availableMediaScopes.contains(cur) {
+            scopeRaw = availableMediaScopes.first?.rawValue ?? SidebarScope.images.rawValue
         }
     }
 
@@ -629,9 +720,9 @@ struct SidebarView: View {
     private var outputFilenameLine: String { prefs.outputFilenameSummaryLine() }
 
     private var effectiveScope: SidebarScope {
-        let cur = SidebarScope(rawValue: scopeRaw) ?? .output
-        if availableScopes.contains(cur) { return cur }
-        return availableScopes.first ?? .output
+        let cur = SidebarScope(rawValue: scopeRaw) ?? .images
+        if availableMediaScopes.contains(cur) { return cur }
+        return availableMediaScopes.first ?? .images
     }
 
     // MARK: - Scoped panels
@@ -655,15 +746,8 @@ struct SidebarView: View {
         SettingsSectionDivider()
 
         settingsSubHeader(icon: "wand.and.stars", "Quality")
-        Toggle(String(localized: "Smart quality (all types)", comment: "Sidebar: global smart quality for images, PDF, and video."), isOn: Binding(
-            get: { prefs.smartQuality }, set: { prefs.smartQuality = $0 }
-        )).font(.system(size: 11))
         if prefs.smartQuality {
-            settingsHelperText(String(localized: "Picks encoder strength per image from content (photo vs. graphic). The same switch tunes PDF tiers and video strength.", comment: "Sidebar Images: smart quality on helper."))
-                .transition(.asymmetric(
-                    insertion: .move(edge: .top).combined(with: .opacity.animation(.easeInOut(duration: 0.15).delay(0.1))),
-                    removal:   .move(edge: .top).combined(with: .opacity.animation(.easeIn(duration: 0.08)))
-                ))
+            settingsHelperText(String(localized: "Smart quality is on — encoder strength is picked per file automatically.", comment: "Sidebar images: smart quality active, quality section placeholder."))
         } else {
             VStack(alignment: .leading, spacing: 8) {
                 Text(String(localized: "Images", comment: "Sidebar quality subsection label."))
@@ -692,6 +776,15 @@ struct SidebarView: View {
                 QualityChipPicker(
                     options: VideoQuality.allCases.map { ($0.displayName, $0.rawValue, $0.description) },
                     selected: Binding(get: { prefs.videoQualityRaw }, set: { prefs.videoQualityRaw = $0 })
+                )
+                Text(String(localized: "Audio", comment: "Sidebar quality subsection label."))
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
+                    .padding(.top, 2)
+                QualityChipPicker(
+                    options: AudioConversionQualityTier.allCases.map { ($0.displayName, $0.rawValue, "") },
+                    selected: Binding(get: { prefs.audioQualityTierRaw }, set: { prefs.audioQualityTierRaw = $0 })
                 )
             }
             .transition(.asymmetric(
@@ -952,15 +1045,8 @@ struct SidebarView: View {
         SettingsSectionDivider()
 
         settingsSubHeader(icon: "wand.and.stars", "Quality")
-        Toggle(String(localized: "Smart quality (all types)", comment: "Sidebar: global smart quality for images, PDF, and video."), isOn: Binding(
-            get: { prefs.smartQuality }, set: { prefs.smartQuality = $0 }
-        )).font(.system(size: 11))
         if prefs.smartQuality {
-            settingsHelperText(String(localized: "Picks Balanced or High per clip from resolution, source bitrate, and content (screen recordings and animation / motion graphics get nudged up so text and edges stay crisp). HDR sources are exported with HEVC to preserve color.", comment: "Sidebar Video: smart quality on helper."))
-                .transition(.asymmetric(
-                    insertion: .move(edge: .top).combined(with: .opacity.animation(.easeInOut(duration: 0.15).delay(0.1))),
-                    removal:   .move(edge: .top).combined(with: .opacity.animation(.easeIn(duration: 0.08)))
-                ))
+            settingsHelperText(String(localized: "Smart quality is on — encoder strength is picked per clip automatically.", comment: "Sidebar video: smart quality active placeholder."))
         } else {
             QualityChipPicker(
                 options: VideoQuality.allCases.map { ($0.displayName, $0.rawValue, $0.description) },
@@ -974,7 +1060,8 @@ struct SidebarView: View {
 
         SettingsSectionDivider()
 
-        settingsSubHeader(icon: "arrow.down.right.and.arrow.up.left", "Max resolution")
+        settingsSubHeader(icon: "arrow.down.right.and.arrow.up.left", String(localized: "Output size", comment: "Sidebar Video: category for resolution + FPS."))
+        settingsControlLabel(String(localized: "Max resolution", comment: "Sidebar Video: max resolution control label."))
         Toggle("Cap output resolution", isOn: Binding(
             get: { prefs.videoMaxResolutionEnabled }, set: { prefs.videoMaxResolutionEnabled = $0 }
         )).toggleStyle(.switch).font(.system(size: 11))
@@ -995,9 +1082,7 @@ struct SidebarView: View {
             settingsHelperText("Off keeps source resolution and just re-encodes for size. Turn this on to downscale large clips.")
         }
 
-        SettingsSectionDivider()
-
-        settingsSubHeader(icon: "gauge.with.dots.needle.33percent", String(localized: "Frame rate", comment: "Sidebar Video: FPS subsection."))
+        settingsControlLabel(String(localized: "Frame rate", comment: "Sidebar Video: FPS control label."))
         Toggle(String(localized: "Cap frame rate", comment: "Sidebar: video FPS cap toggle."), isOn: Binding(
             get: { prefs.videoMaxFPSEnabled }, set: { prefs.videoMaxFPSEnabled = $0 }
         )).toggleStyle(.switch).font(.system(size: 11))
@@ -1036,13 +1121,9 @@ struct SidebarView: View {
     @ViewBuilder
     private var audioContent: some View {
         settingsSubHeader(icon: "waveform", "Format")
-        Picker(String(localized: "Output format", comment: "Sidebar Audio: format."), selection: Binding(
+        AudioFormatChipPicker(audioFormatRaw: Binding(
             get: { prefs.audioFormatRaw }, set: { prefs.audioFormatRaw = $0 }
-        )) {
-            ForEach(AudioConversionFormat.allCases, id: \.rawValue) { f in
-                Text(f.displayName).tag(f.rawValue)
-            }
-        }
+        ))
         if (AudioConversionFormat(rawValue: prefs.audioFormatRaw) ?? .aacM4A) == .mp3 {
             settingsHelperText(String(localized: "MP3 encoding uses the bundled LAME encoder (LGPL). WAV, AIFF, AAC/M4A, ALAC, and FLAC use macOS audio tools.", comment: "Sidebar Audio: LAME note."))
         }
@@ -1050,15 +1131,8 @@ struct SidebarView: View {
         SettingsSectionDivider()
 
         settingsSubHeader(icon: "wand.and.stars", "Quality")
-        Toggle(String(localized: "Smart quality (all types)", comment: "Sidebar: global smart quality for images, PDF, and video."), isOn: Binding(
-            get: { prefs.smartQuality }, set: { prefs.smartQuality = $0 }
-        )).font(.system(size: 11))
         if prefs.smartQuality {
-            settingsHelperText(String(localized: "Picks format or tier from each file’s bitrate when it helps. Your choices below are the manual fallback.", comment: "Sidebar Audio: smart quality on helper."))
-                .transition(.asymmetric(
-                    insertion: .move(edge: .top).combined(with: .opacity.animation(.easeInOut(duration: 0.15).delay(0.1))),
-                    removal:   .move(edge: .top).combined(with: .opacity.animation(.easeIn(duration: 0.08)))
-                ))
+            settingsHelperText(String(localized: "Smart quality is on — encoding strength is picked per track automatically.", comment: "Sidebar audio: smart quality active placeholder."))
         } else {
             QualityChipPicker(
                 options: AudioConversionQualityTier.allCases.map { ($0.displayName, $0.rawValue, "") },
@@ -1127,6 +1201,43 @@ struct SidebarView: View {
     // MARK: - Preset summary
 
     @ViewBuilder
+    private func presetSummaryWithChrome(_ preset: CompressionPreset) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 12) {
+                Button {
+                    UserDefaults.standard.set(preset.id.uuidString, forKey: PreferencesTab.pendingPresetUUIDKey)
+                    openPreferences(.presets)
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "pencil.line")
+                            .font(.system(size: 12, weight: .medium))
+                        Text(String(localized: "Edit preset…", comment: "Sidebar: jump to preset in Settings."))
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.accentColor)
+
+                Button {
+                    prefs.activePresetID = ""
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "xmark.circle")
+                            .font(.system(size: 12, weight: .medium))
+                        Text(String(localized: "Clear preset", comment: "Sidebar: deselect active preset."))
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.accentColor)
+
+                Spacer(minLength: 0)
+            }
+            presetSummary(preset)
+        }
+    }
+
+    @ViewBuilder
     private func presetSummary(_ preset: CompressionPreset) -> some View {
         let saveLabel: String = {
             switch preset.saveLocationRaw {
@@ -1152,7 +1263,8 @@ struct SidebarView: View {
 
         VStack(alignment: .leading, spacing: 0) {
             Divider().padding(.top, 4).padding(.bottom, 8)
-            VStack(alignment: .leading, spacing: 8) {
+            SidebarCard {
+                VStack(alignment: .leading, spacing: 8) {
                 summaryRow("photo",   preset.autoFormat ? "Auto" : preset.format.displayName)
                 if preset.smartQuality {
                     summaryRow("wand.and.stars", String(localized: "Smart quality (all types)", comment: "Preset summary line."))
@@ -1197,6 +1309,7 @@ struct SidebarView: View {
                 if preset.sanitizeFilenames  { summaryRow("textformat.abc",  "Sanitize filenames") }
                 if preset.openFolderWhenDone { summaryRow("folder.badge.plus","Open folder when done") }
                 if preset.notifyWhenDone     { summaryRow("bell",            "Notify when done") }
+                }
             }
         }
     }
@@ -1277,6 +1390,28 @@ struct SidebarView: View {
 }
 
 // MARK: - Shared chip pickers
+
+/// Output format chips for audio files (sidebar + presets can reuse).
+struct AudioFormatChipPicker: View {
+    @Binding var audioFormatRaw: String
+
+    var body: some View {
+        let activeFormat = AudioConversionFormat(rawValue: audioFormatRaw) ?? .aacM4A
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 3), spacing: 4) {
+            ForEach(AudioConversionFormat.allCases) { format in
+                let active = audioFormatRaw == format.rawValue
+                chipCell(format.chipLabel, active: active)
+                    .onTapGesture { audioFormatRaw = format.rawValue }
+                    .help(format.displayName)
+            }
+        }
+        Text(activeFormat.description)
+            .font(.system(size: 10))
+            .foregroundStyle(.tertiary)
+            .fixedSize(horizontal: false, vertical: true)
+            .animation(.easeInOut(duration: 0.15), value: activeFormat.rawValue)
+    }
+}
 
 struct FormatChipPicker: View {
     @Binding var autoFormat: Bool

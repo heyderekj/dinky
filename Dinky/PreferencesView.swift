@@ -17,30 +17,104 @@ extension EnvironmentValues {
     }
 }
 
-/// Small accent link, same spirit as ``SidebarView``’s “Change folder or naming…” / preset rows.
+/// Accent navigation target styled like a compact settings card.
 private struct PreferencesRelatedTabLink: View {
     @Environment(\.openPreferencesRelatedTab) private var openTab
     let title: String
     let tab: PreferencesTab
 
     var body: some View {
-        Button(title) { openTab(tab) }
-            .buttonStyle(.plain)
-            .font(.caption)
-            .foregroundStyle(Color.accentColor)
+        Button {
+            openTab(tab)
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.forward.circle.fill")
+                    .font(.body)
+                    .foregroundStyle(Color.accentColor)
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(Color.accentColor)
+                    .multilineTextAlignment(.leading)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.primary.opacity(0.06))
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 
 /// Tabs in the Settings window — use `openWindow(to:)` to deep-link from the main window sidebar.
-enum PreferencesTab: Int, CaseIterable, Hashable {
-    case general = 0
-    case output = 1
-    case watch = 2
-    case presets = 3
-    case shortcuts = 4
-    case appearance = 5
+enum PreferencesTab: Int, CaseIterable, Hashable, Identifiable {
+    case behavior = 0
+    case originals = 1
+    case compression = 2
+    case notifications = 3
+    case privacy = 4
+    case about = 5
+    case output = 6
+    case watch = 7
+    case presets = 8
+    case shortcuts = 9
+    case sidebar = 10
+    case accessibility = 11
+
+    var id: Int { rawValue }
 
     static let pendingTabUserDefaultsKey = "prefs.pendingTab"
+    /// Deep link: sidebar “Edit preset…” selects this preset when Presets opens.
+    static let pendingPresetUUIDKey = "prefs.pendingPresetUUID"
+
+    static var generalGroup: [PreferencesTab] {
+        [.behavior, .originals, .compression, .notifications, .privacy, .about]
+    }
+    static var workflowGroup: [PreferencesTab] {
+        [.output, .watch, .presets, .shortcuts]
+    }
+    static var interfaceGroup: [PreferencesTab] {
+        [.sidebar, .accessibility]
+    }
+
+    var sidebarLabel: String {
+        switch self {
+        case .behavior: return String(localized: "Behavior", comment: "Settings sidebar item.")
+        case .originals: return String(localized: "Original Files", comment: "Settings sidebar item.")
+        case .compression: return String(localized: "Compression", comment: "Settings sidebar item.")
+        case .notifications: return String(localized: "Notifications", comment: "Settings sidebar item.")
+        case .privacy: return String(localized: "Privacy", comment: "Settings sidebar item.")
+        case .about: return String(localized: "About & Support", comment: "Settings sidebar item.")
+        case .output: return String(localized: "Output", comment: "Settings UI.")
+        case .watch: return String(localized: "Watch", comment: "Settings UI.")
+        case .presets: return String(localized: "Presets", comment: "Settings UI.")
+        case .shortcuts: return String(localized: "Shortcuts", comment: "Settings UI.")
+        case .sidebar: return String(localized: "Sidebar", comment: "Settings sidebar item.")
+        case .accessibility: return String(localized: "Accessibility", comment: "Settings sidebar item.")
+        }
+    }
+
+    var sidebarSystemImage: String {
+        switch self {
+        case .behavior: return "slider.horizontal.3"
+        case .originals: return "doc.on.doc"
+        case .compression: return "arrow.down.circle"
+        case .notifications: return "bell"
+        case .privacy: return "hand.raised"
+        case .about: return "info.circle"
+        case .output: return "folder"
+        case .watch: return "eye"
+        case .presets: return "slider.horizontal.3"
+        case .shortcuts: return "keyboard"
+        case .sidebar: return "sidebar.left"
+        case .accessibility: return "accessibility"
+        }
+    }
 
     /// Opens Settings and selects this tab (including when the window is already open).
     static func openWindow(to tab: PreferencesTab) {
@@ -53,77 +127,170 @@ enum PreferencesTab: Int, CaseIterable, Hashable {
         guard UserDefaults.standard.object(forKey: pendingTabUserDefaultsKey) != nil else { return nil }
         let raw = UserDefaults.standard.integer(forKey: pendingTabUserDefaultsKey)
         UserDefaults.standard.removeObject(forKey: pendingTabUserDefaultsKey)
-        return PreferencesTab(rawValue: raw)
+        return migrateStoredTabIndex(raw)
+    }
+
+    /// Maps legacy TabView indices (0–5) and new split-view raw values to a pane.
+    static func migrateStoredTabIndex(_ raw: Int) -> PreferencesTab {
+        switch raw {
+        case 0: return .behavior
+        case 1: return .output
+        case 2: return .watch
+        case 3: return .presets
+        case 4: return .shortcuts
+        case 5: return .sidebar
+        default: return PreferencesTab(rawValue: raw) ?? .behavior
+        }
     }
 }
 
 struct PreferencesView: View {
     @EnvironmentObject var prefs: DinkyPreferences
     @EnvironmentObject var updater: UpdateChecker
-    @State private var selectedTab: PreferencesTab = .general
+
+    @State private var history: [PreferencesTab] = [.behavior]
+    @State private var historyIndex: Int = 0
+
+    private var selectedTab: PreferencesTab { history[historyIndex] }
+
+    private var selectedTabBinding: Binding<PreferencesTab> {
+        Binding(get: { history[historyIndex] }, set: { selectPane($0) })
+    }
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            GeneralTab()
-                .tabItem { Label(String(localized: "General", comment: "Settings UI."), systemImage: "gearshape") }
-                .tag(PreferencesTab.general)
-                .environmentObject(prefs)
-                .environmentObject(updater)
-            OutputTab()
-                .tabItem { Label(String(localized: "Output", comment: "Settings UI."), systemImage: "folder") }
-                .tag(PreferencesTab.output)
-                .environmentObject(prefs)
-            WatchFoldersTab()
-                .tabItem { Label(String(localized: "Watch", comment: "Settings UI."), systemImage: "eye") }
-                .tag(PreferencesTab.watch)
-                .environmentObject(prefs)
-            PresetsTab()
-                .tabItem { Label(String(localized: "Presets", comment: "Settings UI."), systemImage: "slider.horizontal.3") }
-                .tag(PreferencesTab.presets)
-                .environmentObject(prefs)
-            ShortcutsTab()
-                .tabItem { Label(String(localized: "Shortcuts", comment: "Settings UI."), systemImage: "keyboard") }
-                .tag(PreferencesTab.shortcuts)
-                .environmentObject(prefs)
-            AppearanceTab()
-                .tabItem { Label(String(localized: "Appearance", comment: "Settings UI."), systemImage: "sidebar.left") }
-                .tag(PreferencesTab.appearance)
-                .environmentObject(prefs)
+        NavigationSplitView {
+            List(selection: selectedTabBinding) {
+                Section(String(localized: "General", comment: "Settings sidebar section header.")) {
+                    ForEach(PreferencesTab.generalGroup, id: \.self) { tab in
+                        Label(tab.sidebarLabel, systemImage: tab.sidebarSystemImage).tag(tab)
+                    }
+                }
+                Section(String(localized: "Workflow", comment: "Settings sidebar section header.")) {
+                    ForEach(PreferencesTab.workflowGroup, id: \.self) { tab in
+                        Label(tab.sidebarLabel, systemImage: tab.sidebarSystemImage).tag(tab)
+                    }
+                }
+                Section(String(localized: "Interface", comment: "Settings sidebar section header.")) {
+                    ForEach(PreferencesTab.interfaceGroup, id: \.self) { tab in
+                        Label(tab.sidebarLabel, systemImage: tab.sidebarSystemImage).tag(tab)
+                    }
+                }
+            }
+            .listStyle(.sidebar)
+            .navigationTitle("")
+            .toolbar(removing: .sidebarToggle)
+            .toolbarBackground(.clear, for: .automatic)
+            .navigationSplitViewColumnWidth(min: 200, ideal: 230, max: 280)
+        } detail: {
+            NavigationStack {
+                preferencesDetail(for: selectedTab)
+                    .frame(minWidth: 480, maxWidth: .infinity, maxHeight: .infinity)
+                    .navigationTitle(selectedTab.sidebarLabel)
+                    .toolbar {
+                        ToolbarItem(placement: .navigation) {
+                            Button { goBack() } label: {
+                                Image(systemName: "chevron.backward")
+                            }
+                            .buttonStyle(.bordered)
+                            .help(String(localized: "Back", comment: "Preferences toolbar."))
+                            .disabled(historyIndex == 0)
+                        }
+                        ToolbarItem(placement: .navigation) {
+                            Button { goForward() } label: {
+                                Image(systemName: "chevron.forward")
+                            }
+                            .buttonStyle(.bordered)
+                            .help(String(localized: "Forward", comment: "Preferences toolbar."))
+                            .disabled(historyIndex >= history.count - 1)
+                        }
+                        if #available(macOS 26.0, *) {
+                            ToolbarSpacer(.flexible)
+                        }
+                    }
+            }
         }
-        .environment(\.openPreferencesRelatedTab, { selectedTab = $0 })
-        .frame(width: 480, height: 520)
+        .navigationSplitViewStyle(.balanced)
+        .toolbarBackground(.clear, for: .windowToolbar)
+        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+        .environment(\.openPreferencesRelatedTab) { selectPane($0) }
+        .frame(width: 760, height: 560)
         .onAppear {
             if let tab = PreferencesTab.consumePendingSelection() {
-                selectedTab = tab
+                selectPane(tab)
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .dinkySelectPreferencesTab)) { note in
-            guard let raw = note.object as? Int, let tab = PreferencesTab(rawValue: raw) else { return }
-            selectedTab = tab
+            guard let raw = note.object as? Int else { return }
+            let tab = PreferencesTab.migrateStoredTabIndex(raw)
+            selectPane(tab)
             UserDefaults.standard.removeObject(forKey: PreferencesTab.pendingTabUserDefaultsKey)
+        }
+    }
+
+    private func selectPane(_ tab: PreferencesTab) {
+        guard tab != selectedTab else { return }
+        if historyIndex < history.count - 1 {
+            history.removeSubrange((historyIndex + 1)...)
+        }
+        history.append(tab)
+        historyIndex = history.count - 1
+    }
+
+    private func goBack() {
+        guard historyIndex > 0 else { return }
+        historyIndex -= 1
+    }
+
+    private func goForward() {
+        guard historyIndex < history.count - 1 else { return }
+        historyIndex += 1
+    }
+
+    @ViewBuilder
+    private func preferencesDetail(for tab: PreferencesTab) -> some View {
+        switch tab {
+        case .behavior:
+            BehaviorPreferencesPane()
+                .environmentObject(prefs)
+        case .originals:
+            OriginalsPreferencesPane().environmentObject(prefs)
+        case .compression:
+            CompressionPreferencesPane().environmentObject(prefs)
+        case .notifications:
+            NotificationsPreferencesPane().environmentObject(prefs)
+        case .privacy:
+            PrivacyPreferencesPane().environmentObject(prefs)
+        case .about:
+            AboutPreferencesPane().environmentObject(prefs)
+        case .output:
+            OutputTab().environmentObject(prefs)
+        case .watch:
+            WatchFoldersTab().environmentObject(prefs)
+        case .presets:
+            PresetsTab().environmentObject(prefs)
+        case .shortcuts:
+            ShortcutsTab().environmentObject(prefs)
+        case .sidebar:
+            SidebarPreferencesPane().environmentObject(prefs)
+        case .accessibility:
+            AccessibilityPreferencesPane().environmentObject(prefs)
         }
     }
 }
 
-// MARK: - General
+// MARK: - General (split panes)
 
-private struct GeneralTab: View {
+private struct BehaviorPreferencesPane: View {
     @EnvironmentObject var prefs: DinkyPreferences
-    @EnvironmentObject var updater: UpdateChecker
-    @State private var confirmResetLifetime = false
-    // Mirror the live `SMAppService.mainApp` status so the toggle stays in sync if the user changes it
-    // from System Settings → General → Login Items while Dinky is open.
     @State private var launchAtLoginEnabled: Bool = LaunchAtLoginManager.isEnabled
 
     var body: some View {
         Form {
-            // 1. Drop / compress trigger behavior (distinct from what happens to originals)
             Section {
                 Toggle(String(localized: "Open Dinky at login", comment: "Settings UI."), isOn: Binding(
                     get: { launchAtLoginEnabled },
                     set: { newValue in
                         LaunchAtLoginManager.setEnabled(newValue)
-                        // Re-read so the toggle reflects what the system actually accepted.
                         launchAtLoginEnabled = LaunchAtLoginManager.isEnabled
                     }
                 ))
@@ -132,7 +299,7 @@ private struct GeneralTab: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundStyle(.yellow)
                         Text(String(localized: "Approve Dinky in System Settings → General → Login Items.", comment: "Settings UI."))
-                    .font(.caption)
+                            .font(.caption)
                             .foregroundStyle(.secondary)
                         Spacer()
                         Button(String(localized: "Open…", comment: "Settings UI.")) { LaunchAtLoginManager.openLoginItemsSettings() }
@@ -146,17 +313,11 @@ private struct GeneralTab: View {
                     get: { prefs.confirmBeforeEveryCompression },
                     set: { prefs.confirmBeforeEveryCompression = $0 }
                 ))
-                Text(String(localized: "Shows a review sheet before starting — covers drag-and-drop, Open, the Dock, Services, and Clipboard. Watch Folder is not affected.", comment: "Settings UI."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
 
                 Toggle(String(localized: "Manual mode by default", comment: "Settings UI."), isOn: Binding(
                     get: { prefs.manualMode },
                     set: { prefs.manualMode = $0 }
                 ))
-                Text(String(localized: "New files stay queued until you tap Compress Now. Turn off to compress automatically when files are added.", comment: "Settings UI."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
 
                 Toggle(String(localized: "Global Clipboard Compress", comment: "Settings UI."), isOn: Binding(
                     get: { prefs.pasteClipboardGlobalEnabled },
@@ -166,30 +327,37 @@ private struct GeneralTab: View {
                     }
                 ))
                 Text(S.behaviorPasteClipboardGlobalFootnote(currentShortcutDisplay: prefs.shortcut(for: .pasteClipboard).displayString))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
                 PreferencesRelatedTabLink(title: String(localized: "Change shortcut in Keyboard Shortcuts…", comment: "Settings UI."), tab: .shortcuts)
 
                 Toggle(String(localized: "Show batch summary when done", comment: "Settings UI."), isOn: Binding(
                     get: { prefs.showBatchSummaryDialog },
                     set: { prefs.showBatchSummaryDialog = $0 }
                 ))
-                Text(String(localized: "Shows space saved and time after each successful batch.", comment: "Settings UI."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
 
                 Toggle(String(localized: "Auto-clear queue when done", comment: "Settings UI."), isOn: Binding(
                     get: { prefs.autoClearWhenDone },
                     set: { prefs.autoClearWhenDone = $0 }
                 ))
-                Text(String(localized: "Removes finished rows shortly after a batch completes. Failed or skipped files stay so you can act on them.", comment: "Settings UI."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             } header: {
                 Text(String(localized: "Behavior", comment: "Settings UI."))
+            } footer: {
+                Text(String(localized: "Confirm covers drag-and-drop, Open, the Dock, Services, and Clipboard (not Watch Folder). Manual mode waits for Compress Now. Batch summary shows savings; auto-clear removes finished rows while failures remain.", comment: "Settings UI: Behavior section summary footer."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
+        }
+        .formStyle(.grouped)
+        .onAppear { launchAtLoginEnabled = LaunchAtLoginManager.isEnabled }
+    }
+}
 
-            // 2. What to do with source files after a successful compress
+private struct OriginalsPreferencesPane: View {
+    @EnvironmentObject var prefs: DinkyPreferences
+
+    var body: some View {
+        Form {
             Section {
                 Picker(String(localized: "After compressing, originals:", comment: "Settings UI."), selection: Binding(
                     get: { prefs.originalsAction },
@@ -208,7 +376,7 @@ private struct GeneralTab: View {
                 }
                 if prefs.originalsAction == .trash {
                     Text(String(localized: "Permanent once the trash is emptied.", comment: "Settings UI."))
-                    .font(.caption)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 if prefs.originalsAction == .backup {
@@ -231,14 +399,36 @@ private struct GeneralTab: View {
                         }
                     }
                     Text(String(localized: "Original files are moved here after a successful compress.", comment: "Settings UI."))
-                    .font(.caption)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             } header: {
                 Text(String(localized: "Original Files", comment: "Settings UI."))
             }
+        }
+        .formStyle(.grouped)
+    }
 
-            // 3. How compression works
+    private func pickOriginalsBackupFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = String(localized: "Choose", comment: "Open panel default button.")
+        if panel.runModal() == .OK, let url = panel.url {
+            prefs.originalsBackupFolderDisplayPath = url.path
+            if let bookmark = try? url.bookmarkData(options: .withSecurityScope) {
+                prefs.originalsBackupFolderBookmark = bookmark
+            }
+        }
+    }
+}
+
+private struct CompressionPreferencesPane: View {
+    @EnvironmentObject var prefs: DinkyPreferences
+
+    var body: some View {
+        Form {
             Section {
                 Picker(String(localized: "Skip if savings below", comment: "Settings UI."), selection: Binding(
                     get: { prefs.minimumSavingsPercent },
@@ -250,9 +440,6 @@ private struct GeneralTab: View {
                     Text(String(localized: "10%", comment: "Settings UI.")).tag(10)
                 }
                 .pickerStyle(.segmented)
-                Text(String(localized: "Applies to images and video only. PDFs always keep the result when it is smaller than the original (even a small %), because PDF savings are often modest on preserve mode or threshold-sized on flatten.", comment: "Settings UI: minimum savings threshold scope."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
 
                 Picker(S.concurrentCompressionPickerLabel, selection: Binding(
                     get: { DinkyPreferences.normalizedConcurrentTasks(prefs.concurrentTasks) },
@@ -265,17 +452,11 @@ private struct GeneralTab: View {
                     }
                 }
                 .pickerStyle(.menu)
-                Text(S.concurrentCompressionFootnote)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
 
                 Toggle(S.batchLargestFirstLabel, isOn: Binding(
                     get: { prefs.batchLargestFirst },
                     set: { prefs.batchLargestFirst = $0 }
                 ))
-                Text(S.batchLargestFirstFootnote)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
 
                 Toggle(String(localized: "Preserve original timestamps", comment: "Settings UI."), isOn: Binding(
                     get: { prefs.preserveTimestamps },
@@ -285,16 +466,32 @@ private struct GeneralTab: View {
                     get: { prefs.preserveFinderComments },
                     set: { prefs.preserveFinderComments = $0 }
                 ))
-                Text(String(localized: "Copies the Finder Get Info → Comments field onto the output file. Separate from Strip metadata, which removes embedded EXIF, GPS, camera info, and PDF properties.", comment: "Settings UI: Preserve Finder comments footnote."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             } header: {
                 Text(String(localized: "Compression", comment: "Settings UI."))
             } footer: {
-                PreferencesRelatedTabLink(title: String(localized: "Per-preset compression & media…", comment: "Settings UI."), tab: .presets)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(String(localized: "Skip-if-savings applies to images and video; PDFs keep smaller results regardless. Higher concurrency runs more encoders at once. Batch order affects perceived progress on large batches. Finder comments are separate from stripping embedded metadata in the sidebar.", comment: "Settings UI: Compression section footer."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(S.concurrentCompressionFootnote)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(S.batchLargestFirstFootnote)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    PreferencesRelatedTabLink(title: String(localized: "Per-preset compression & media…", comment: "Settings UI."), tab: .presets)
+                }
             }
+        }
+        .formStyle(.grouped)
+    }
+}
 
-            // 4. Alerts
+private struct NotificationsPreferencesPane: View {
+    @EnvironmentObject var prefs: DinkyPreferences
+
+    var body: some View {
+        Form {
             Section {
                 Toggle(String(localized: "Play sound when done", comment: "Settings UI."), isOn: Binding(
                     get: { prefs.playSoundEffects },
@@ -307,29 +504,50 @@ private struct GeneralTab: View {
                         if newValue { requestNotificationAuth() }
                     }
                 ))
-                Text(String(localized: "To receive notifications during Focus or Do Not Disturb, allow Dinky in System Settings → Focus.", comment: "Settings UI."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
                 Toggle(String(localized: "Open folder when done", comment: "Settings UI."), isOn: Binding(
                     get: { prefs.openFolderWhenDone },
                     set: { prefs.openFolderWhenDone = $0 }
                 ))
-                Text(String(localized: "Opens the output folder in Finder after each compression batch.", comment: "Settings UI."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             } header: {
                 Text(String(localized: "Notifications", comment: "Settings UI."))
             } footer: {
-                Button(String(localized: "Notification settings…", comment: "Settings UI.")) {
-                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.notifications")!)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(String(localized: "Notifications may be suppressed during Focus or Do Not Disturb until Dinky is allowed in System Settings → Notifications. Open Folder reveals the output directory after each batch.", comment: "Settings UI: Notifications footer."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Button(String(localized: "Notification settings…", comment: "Settings UI.")) {
+                        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.notifications")!)
+                    }
+                    .buttonStyle(.plain)
+                    .font(.caption)
+                    .foregroundStyle(Color.accentColor)
                 }
-                .buttonStyle(.plain)
-                .font(.caption)
-                .foregroundStyle(Color.accentColor)
             }
+        }
+        .formStyle(.grouped)
+    }
 
-            // 5. Privacy & diagnostics
+    private func requestNotificationAuth() {
+        Task {
+            let center = UNUserNotificationCenter.current()
+            let settings = await center.notificationSettings()
+            switch settings.authorizationStatus {
+            case .notDetermined:
+                _ = try? await center.requestAuthorization(options: [.alert, .sound])
+            case .denied:
+                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.notifications")!)
+            default:
+                break
+            }
+        }
+    }
+}
+
+private struct PrivacyPreferencesPane: View {
+    @EnvironmentObject var prefs: DinkyPreferences
+
+    var body: some View {
+        Form {
             Section {
                 Toggle(String(localized: "Share crash diagnostics with Dinky", comment: "Settings UI."), isOn: Binding(
                     get: { prefs.crashReportingEnabled },
@@ -338,31 +556,43 @@ private struct GeneralTab: View {
                         DiagnosticsReporter.shared.applyCrashReportingPreference()
                     }
                 ))
-                Text(String(localized: "When on, Apple's MetricKit can deliver anonymous crash and hang diagnostics to Dinky on your Mac. Nothing leaves your device until you choose to send a report. Requires \u{201C}Share with App Developers\u{201D} in System Settings → Privacy & Security → Analytics & Improvements.", comment: "Settings UI."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             } header: {
                 Text(String(localized: "Privacy", comment: "Settings UI."))
             } footer: {
-                Button(String(localized: "Open Analytics & Improvements settings…", comment: "Settings UI.")) {
-                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Analytics")!)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(String(localized: "When on, Apple's MetricKit can deliver anonymous crash and hang diagnostics to Dinky on your Mac. Nothing leaves your device until you choose to send a report. Requires \u{201C}Share with App Developers\u{201D} in System Settings → Privacy & Security → Analytics & Improvements.", comment: "Settings UI."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Button(String(localized: "Open Analytics & Improvements settings…", comment: "Settings UI.")) {
+                        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Analytics")!)
+                    }
+                    .buttonStyle(.plain)
+                    .font(.caption)
+                    .foregroundStyle(Color.accentColor)
                 }
-                .buttonStyle(.plain)
-                .font(.caption)
-                .foregroundStyle(Color.accentColor)
             }
+        }
+        .formStyle(.grouped)
+    }
+}
 
-            // 6. Session history (lifetime total; per-session list is in History window)
+private struct AboutPreferencesPane: View {
+    @EnvironmentObject var prefs: DinkyPreferences
+    @State private var confirmResetLifetime = false
+
+    var body: some View {
+        Form {
             Section {
                 Button(String(localized: "Reset total saved statistics…", comment: "Settings UI.")) {
                     confirmResetLifetime = true
                 }
                 .disabled(prefs.lifetimeSavedBytes == 0)
+            } header: {
+                Text(String(localized: "Session history", comment: "Settings UI."))
+            } footer: {
                 Text(String(localized: "Clears the running total shown in History. Session history is unchanged — clear that from the History window.", comment: "Settings UI."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-            } header: {
-                Text(String(localized: "Session history", comment: "Settings UI."))
             }
 
             Section {
@@ -385,7 +615,6 @@ private struct GeneralTab: View {
             }
         }
         .formStyle(.grouped)
-        .onAppear { launchAtLoginEnabled = LaunchAtLoginManager.isEnabled }
         .confirmationDialog(
             String(localized: "Reset the running total of bytes saved across all sessions?", comment: "Settings UI."),
             isPresented: $confirmResetLifetime,
@@ -402,40 +631,11 @@ private struct GeneralTab: View {
             confirmResetLifetime = false
         }
     }
-
-    private func pickOriginalsBackupFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.prompt = String(localized: "Choose", comment: "Open panel default button.")
-        if panel.runModal() == .OK, let url = panel.url {
-            prefs.originalsBackupFolderDisplayPath = url.path
-            if let bookmark = try? url.bookmarkData(options: .withSecurityScope) {
-                prefs.originalsBackupFolderBookmark = bookmark
-            }
-        }
-    }
-
-    private func requestNotificationAuth() {
-        Task {
-            let center = UNUserNotificationCenter.current()
-            let settings = await center.notificationSettings()
-            switch settings.authorizationStatus {
-            case .notDetermined:
-                _ = try? await center.requestAuthorization(options: [.alert, .sound])
-            case .denied:
-                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.notifications")!)
-            default:
-                break
-            }
-        }
-    }
 }
 
-// MARK: - Appearance
+// MARK: - Sidebar & Accessibility
 
-private struct AppearanceTab: View {
+private struct SidebarPreferencesPane: View {
     @EnvironmentObject var prefs: DinkyPreferences
 
     var body: some View {
@@ -445,9 +645,6 @@ private struct AppearanceTab: View {
                     get: { prefs.sidebarSimpleMode },
                     set: { prefs.applySidebarSimpleMode($0) }
                 ))
-                Text(String(localized: "On by default: quick choices and plain-language summaries. Turn off to show every image, video, and PDF control in the sidebar.", comment: "Settings UI."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
 
                 Toggle(String(localized: "Show Images in sidebar", comment: "Settings UI."), isOn: Binding(
                     get: { prefs.showImagesSection },
@@ -465,27 +662,39 @@ private struct AppearanceTab: View {
                     get: { prefs.showPDFsSection },
                     set: { prefs.setScopedSidebarSection(.pdfs, isOn: $0) }
                 ))
-                Text(prefs.sidebarSimpleMode
-                     ? String(localized: "Simple sidebar shows quick choices only. Turn on a section above to add its full tab to the sidebar, or turn off simple sidebar to show every section.", comment: "Settings UI.")
-                     : String(localized: "Sections you turn off stay available in Settings and in the full sidebar.", comment: "Settings UI."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             } header: {
                 Text(String(localized: "Sidebar", comment: "Settings UI."))
             } footer: {
-                PreferencesRelatedTabLink(title: String(localized: "Presets & automatic folders…", comment: "Settings UI."), tab: .presets)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(prefs.sidebarSimpleMode
+                         ? String(localized: "Simple sidebar shows quick choices only. Turn on a section above to add its full scope to the sidebar, or turn off simple sidebar to show every section.", comment: "Settings UI.")
+                         : String(localized: "Sections you turn off stay available in Settings and in the full sidebar.", comment: "Settings UI."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    PreferencesRelatedTabLink(title: String(localized: "Presets & automatic folders…", comment: "Settings UI."), tab: .presets)
+                }
             }
+        }
+        .formStyle(.grouped)
+    }
+}
 
+private struct AccessibilityPreferencesPane: View {
+    @EnvironmentObject var prefs: DinkyPreferences
+
+    var body: some View {
+        Form {
             Section {
                 Toggle(String(localized: "Reduce motion", comment: "Settings UI."), isOn: Binding(
                     get: { prefs.reduceMotion },
                     set: { prefs.reduceMotion = $0 }
                 ))
+            } header: {
+                Text(String(localized: "Accessibility", comment: "Settings UI."))
+            } footer: {
                 Text(String(localized: "Replaces the drop zone animation with a still arrangement of cards.", comment: "Settings UI."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-            } header: {
-                Text(String(localized: "Accessibility", comment: "Settings UI."))
             }
         }
         .formStyle(.grouped)
@@ -661,6 +870,33 @@ private struct PresetsTab: View {
         prefs.savedPresets.first { $0.id == selectedID }
     }
 
+    private func liveSnapshot(_ snapshot: CompressionPreset) -> CompressionPreset {
+        prefs.savedPresets.first(where: { $0.id == snapshot.id }) ?? snapshot
+    }
+
+    @ViewBuilder
+    private func presetOverrideBadgeIfNeeded(_ differs: Bool) -> some View {
+        if differs {
+            Text(String(localized: "Overrides default", comment: "Settings UI: preset differs from global preference."))
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Capsule(style: .continuous).fill(Color.primary.opacity(0.08)))
+        }
+    }
+
+    @ViewBuilder
+    private func presetUseDefaultLink(_ action: @escaping () -> Void) -> some View {
+        Button(String(localized: "Use Settings default", comment: "Settings UI: apply global preference to preset.")) {
+            action()
+        }
+        .buttonStyle(.borderless)
+        .controlSize(.small)
+        .font(.caption)
+        .foregroundStyle(Color.accentColor)
+    }
+
     /// One-line summary so presets are distinguishable in the list without expanding.
     private func presetListSecondaryLine(_ preset: CompressionPreset) -> String {
         let included = preset.includedMediaTypes
@@ -756,13 +992,21 @@ private struct PresetsTab: View {
 
     var body: some View {
         Form {
-            presetListSection
-            if let preset = selectedPreset { presetDetailSections(preset) }
+            presetChooserSection
+
+            if let preset = selectedPreset {
+                presetDetailSections(preset)
+            }
         }
         .formStyle(.grouped)
-        .animation(.easeInOut(duration: 0.2), value: selectedID)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .animation(.easeInOut(duration: 0.15), value: selectedID)
         .animation(.easeInOut(duration: 0.15), value: presetMediaSettingsTab)
         .animation(.easeInOut(duration: 0.15), value: selectedPreset?.presetMediaScopeRaw)
+        .onAppear {
+            consumePendingPresetUUIDIfNeeded()
+            if selectedID == nil { selectedID = prefs.savedPresets.first?.id }
+        }
         .onChange(of: selectedID) { _, newID in
             guard let id = newID,
                   let p = prefs.savedPresets.first(where: { $0.id == id }) else { return }
@@ -771,6 +1015,88 @@ private struct PresetsTab: View {
         .onChange(of: selectedPreset?.presetMediaScopeRaw) { _, raw in
             guard let raw else { return }
             clampPresetMediaSettingsTab(included: PresetMediaScopeRawCodec.includedTypes(from: raw))
+        }
+        .onChange(of: prefs.savedPresets.map(\.id)) { _, _ in
+            if let id = selectedID, !prefs.savedPresets.contains(where: { $0.id == id }) {
+                selectedID = prefs.savedPresets.first?.id
+            } else if selectedID == nil {
+                selectedID = prefs.savedPresets.first?.id
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var presetChooserSection: some View {
+        Section {
+            if prefs.savedPresets.isEmpty {
+                VStack(alignment: .center, spacing: 6) {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.system(size: 22, weight: .light))
+                        .foregroundStyle(.tertiary)
+                    Text(String(localized: "No presets yet", comment: "Settings UI: presets empty state title."))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    Text(String(localized: "Create one to save your favorite combinations of format and quality settings.", comment: "Settings UI: presets empty state hint."))
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity)
+            } else {
+                Picker(selection: Binding(
+                    get: { selectedID ?? prefs.savedPresets.first?.id ?? UUID() },
+                    set: { selectedID = $0 }
+                )) {
+                    ForEach(prefs.savedPresets) { preset in
+                        Text(preset.name).tag(preset.id)
+                    }
+                } label: {
+                    Text(String(localized: "Editing", comment: "Settings UI: which preset is being edited."))
+                }
+                if let preset = selectedPreset {
+                    Text(presetListSecondaryLine(preset))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+
+            HStack(spacing: 8) {
+                Button {
+                    addPreset()
+                } label: {
+                    Label(String(localized: "New Preset", comment: "Settings UI: create a new preset."),
+                          systemImage: "plus")
+                }
+                Button {
+                    duplicateSelected()
+                } label: {
+                    Label(String(localized: "Duplicate", comment: "Settings UI: duplicate selected preset."),
+                          systemImage: "doc.on.doc")
+                }
+                .disabled(selectedID == nil)
+                Spacer()
+                Button(role: .destructive) {
+                    deleteSelected()
+                } label: {
+                    Label(String(localized: "Delete", comment: "Settings UI: delete selected preset."),
+                          systemImage: "trash")
+                }
+                .disabled(selectedID == nil)
+            }
+        } header: {
+            Text(String(localized: "Presets", comment: "Settings UI."))
+        }
+    }
+
+    private func consumePendingPresetUUIDIfNeeded() {
+        guard let idStr = UserDefaults.standard.string(forKey: PreferencesTab.pendingPresetUUIDKey),
+              let u = UUID(uuidString: idStr) else { return }
+        UserDefaults.standard.removeObject(forKey: PreferencesTab.pendingPresetUUIDKey)
+        if prefs.savedPresets.contains(where: { $0.id == u }) {
+            selectedID = u
         }
     }
 
@@ -845,55 +1171,6 @@ private struct PresetsTab: View {
         }
     }
 
-    private var presetListSection: some View {
-        Section {
-            if prefs.savedPresets.isEmpty {
-                Text(String(localized: "No presets yet. Click Add to create one.", comment: "Settings UI."))
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 4)
-            } else {
-                ForEach(prefs.savedPresets) { preset in
-                    Button {
-                        withAnimation { selectedID = (selectedID == preset.id) ? nil : preset.id }
-                    } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(preset.name).foregroundStyle(.primary)
-                                Text(presetListSecondaryLine(preset))
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if selectedID == preset.id {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(Color.accentColor)
-                                    .font(.system(size: 12, weight: .semibold))
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            HStack(spacing: 12) {
-                Button { addPreset() } label: { Label(String(localized: "Add", comment: "Settings UI."), systemImage: "plus") }
-                if selectedID != nil {
-                    Button { duplicateSelected() } label: {
-                        Label(String(localized: "Duplicate", comment: "Settings UI: duplicate preset."), systemImage: "doc.on.doc")
-                    }
-                    .accessibilityLabel(String(localized: "Duplicate preset", comment: "VoiceOver: duplicate selected preset."))
-                    Button(role: .destructive) { deleteSelected() } label: {
-                        Label(String(localized: "Delete", comment: "Settings UI."), systemImage: "trash")
-                    }
-                }
-                Spacer()
-            }
-            .buttonStyle(.borderless)
-        } header: {
-                Text(String(localized: "Presets", comment: "Settings UI."))
-            }
-    }
 
     @ViewBuilder
     private func presetDetailSections(_ snapshot: CompressionPreset) -> some View {
@@ -1074,20 +1351,36 @@ private struct PresetsTab: View {
         }
         Section(String(localized: "Advanced", comment: "Settings UI.")) {
             Toggle(String(localized: "Strip metadata", comment: "Settings UI."), isOn: binding(\.stripMetadata, snapshot: snapshot))
-            Text(String(localized: "Removes embedded EXIF, GPS, camera info, PDF properties (title, subject, keywords), and color profiles when supported. Does not remove Finder’s Get Info → Comments; use Preserve Finder comments in Settings → General for that.", comment: "Settings UI: Strip metadata explanation."))
+            presetOverrideBadgeIfNeeded(liveSnapshot(snapshot).stripMetadata != prefs.stripMetadata)
+            if liveSnapshot(snapshot).stripMetadata != prefs.stripMetadata {
+                presetUseDefaultLink { set(\.stripMetadata, to: prefs.stripMetadata, for: snapshot) }
+            }
+            Text(String(localized: "Removes embedded EXIF, GPS, camera info, PDF properties (title, subject, keywords), and color profiles when supported. Does not remove Finder’s Get Info → Comments; use Preserve Finder comments in Settings → Compression for that.", comment: "Settings UI: Strip metadata explanation."))
                     .font(.caption)
                 .foregroundStyle(.secondary)
             Toggle(String(localized: "Sanitize filenames", comment: "Settings UI."), isOn: binding(\.sanitizeFilenames, snapshot: snapshot))
+            presetOverrideBadgeIfNeeded(liveSnapshot(snapshot).sanitizeFilenames != prefs.sanitizeFilenames)
+            if liveSnapshot(snapshot).sanitizeFilenames != prefs.sanitizeFilenames {
+                presetUseDefaultLink { set(\.sanitizeFilenames, to: prefs.sanitizeFilenames, for: snapshot) }
+            }
             Text(String(localized: "Replaces spaces and special characters to improve cross-platform compatibility.", comment: "Settings UI."))
                     .font(.caption)
                 .foregroundStyle(.secondary)
             Toggle(String(localized: "Open folder when done", comment: "Settings UI."), isOn: binding(\.openFolderWhenDone, snapshot: snapshot))
+            presetOverrideBadgeIfNeeded(liveSnapshot(snapshot).openFolderWhenDone != prefs.openFolderWhenDone)
+            if liveSnapshot(snapshot).openFolderWhenDone != prefs.openFolderWhenDone {
+                presetUseDefaultLink { set(\.openFolderWhenDone, to: prefs.openFolderWhenDone, for: snapshot) }
+            }
             Text(String(localized: "Opens the output folder in Finder after each compression batch.", comment: "Settings UI."))
                     .font(.caption)
                 .foregroundStyle(.secondary)
         }
         Section(String(localized: "Notifications", comment: "Settings UI.")) {
             Toggle(String(localized: "Notify when done", comment: "Settings UI."), isOn: binding(\.notifyWhenDone, snapshot: snapshot))
+            presetOverrideBadgeIfNeeded(liveSnapshot(snapshot).notifyWhenDone != prefs.notifyWhenDone)
+            if liveSnapshot(snapshot).notifyWhenDone != prefs.notifyWhenDone {
+                presetUseDefaultLink { set(\.notifyWhenDone, to: prefs.notifyWhenDone, for: snapshot) }
+            }
             Text(String(localized: "Sends a macOS notification when a compression batch finishes.", comment: "Settings UI."))
                     .font(.caption)
                 .foregroundStyle(.secondary)
@@ -1306,7 +1599,20 @@ private struct PresetsTab: View {
 
             SettingsSectionDivider()
 
-            settingsSubHeader(icon: "arrow.down.right.and.arrow.up.left", String(localized: "Max resolution", comment: "Settings UI: Media video subsection."))
+            settingsSubHeader(icon: "wand.and.stars", String(localized: "Quality", comment: "Settings UI: Media video subsection."))
+            if liveVideo.smartQuality {
+                settingsHelperText(String(localized: "Picks encoder strength per clip from resolution and bitrate. Turn off Smart quality under Compression for a fixed tier.", comment: "Settings UI."))
+            } else {
+                QualityChipPicker(
+                    options: VideoQuality.allCases.map { ($0.displayName, $0.rawValue, $0.description) },
+                    selected: binding(\.videoQualityRaw, snapshot: snapshot)
+                )
+            }
+
+            SettingsSectionDivider()
+
+            settingsSubHeader(icon: "arrow.down.right.and.arrow.up.left", String(localized: "Output size", comment: "Sidebar Video: category for resolution + FPS."))
+            settingsControlLabel(String(localized: "Max resolution", comment: "Sidebar Video: max resolution control label."))
             Toggle(String(localized: "Cap output resolution", comment: "Settings UI."), isOn: binding(\.videoMaxResolutionEnabled, snapshot: snapshot))
             if liveVideo.videoMaxResolutionEnabled {
                 settingsChipGrid(
@@ -1319,9 +1625,7 @@ private struct PresetsTab: View {
                 settingsHelperText(String(localized: "Off keeps source resolution and just re-encodes for size.", comment: "Settings UI."))
             }
 
-            SettingsSectionDivider()
-
-            settingsSubHeader(icon: "gauge.with.dots.needle.33percent", String(localized: "Frame rate", comment: "Settings UI: video FPS cap."))
+            settingsControlLabel(String(localized: "Frame rate", comment: "Sidebar Video: FPS control label."))
             Toggle(String(localized: "Cap frame rate", comment: "Settings UI: video FPS cap toggle."), isOn: binding(\.videoMaxFPSEnabled, snapshot: snapshot))
             if liveVideo.videoMaxFPSEnabled {
                 settingsChipGrid(
@@ -1350,20 +1654,19 @@ private struct PresetsTab: View {
         let liveAudio = prefs.savedPresets.first(where: { $0.id == snapshot.id }) ?? snapshot
         VStack(alignment: .leading, spacing: 10) {
             settingsSubHeader(icon: "waveform", String(localized: "Format", comment: "Settings UI: audio output."))
-            Picker(String(localized: "Output format", comment: "Settings UI."), selection: binding(\.audioFormatRaw, snapshot: snapshot)) {
-                ForEach(AudioConversionFormat.allCases, id: \.rawValue) { f in
-                    Text(f.displayName).tag(f.rawValue)
-                }
-            }
-            SettingsSectionDivider()
-            settingsSubHeader(icon: "slider.horizontal.3", String(localized: "Quality", comment: "Settings UI: audio tier."))
-            Picker(String(localized: "Encoding strength", comment: "Settings UI."), selection: binding(\.audioQualityTierRaw, snapshot: snapshot)) {
-                ForEach(AudioConversionQualityTier.allCases, id: \.rawValue) { t in
-                    Text(t.displayName).tag(t.rawValue)
-                }
-            }
+            AudioFormatChipPicker(audioFormatRaw: binding(\.audioFormatRaw, snapshot: snapshot))
             if (AudioConversionFormat(rawValue: liveAudio.audioFormatRaw) ?? .aacM4A) == .mp3 {
                 settingsHelperText(String(localized: "MP3 encoding uses the bundled LAME encoder (LGPL). WAV/AIFF/AAC/M4A/FLAC use macOS audio tools.", comment: "Settings UI: audio mp3 legal note."))
+            }
+            SettingsSectionDivider()
+            settingsSubHeader(icon: "wand.and.stars", String(localized: "Quality", comment: "Settings UI: audio tier."))
+            if liveAudio.smartQuality {
+                settingsHelperText(String(localized: "Picks encoding strength from the track. Turn off Smart quality under Compression for a fixed tier.", comment: "Settings UI."))
+            } else {
+                QualityChipPicker(
+                    options: AudioConversionQualityTier.allCases.map { ($0.displayName, $0.rawValue, "") },
+                    selected: binding(\.audioQualityTierRaw, snapshot: snapshot)
+                )
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1539,7 +1842,7 @@ private struct WatchFoldersTab: View {
                     .font(.caption)
                         .foregroundStyle(.secondary)
 
-                    PreferencesRelatedTabLink(title: String(localized: "Sidebar sections in Appearance…", comment: "Settings UI."), tab: .appearance)
+                    PreferencesRelatedTabLink(title: String(localized: "Sidebar sections…", comment: "Settings UI: link to sidebar pane."), tab: .sidebar)
                 }
             } header: {
                 Text(String(localized: "Global", comment: "Settings UI."))

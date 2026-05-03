@@ -1527,6 +1527,7 @@ struct ContentView: View {
     @EnvironmentObject var updater: UpdateChecker
     @ObservedObject private var diagnostics = DiagnosticsReporter.shared
     @Environment(\.openSettings) private var openSettings
+    @Environment(\.openWindow) private var openWindow
     @ObservedObject var vm: ContentViewModel
     @StateObject private var folderWatcher = FolderWatcher()
     @State private var sidebarVisible = false
@@ -1588,11 +1589,11 @@ struct ContentView: View {
         return vm.phase
     }
 
-    /// SwiftUI Settings scene — use this instead of `NSApp.sendAction` so the window actually opens.
+    /// macOS: preferences live in a `Window` scene (not `Settings`) for unified title bar chrome.
     private func revealPreferences(_ tab: PreferencesTab) {
         UserDefaults.standard.set(tab.rawValue, forKey: PreferencesTab.pendingTabUserDefaultsKey)
         NotificationCenter.default.post(name: .dinkySelectPreferencesTab, object: tab.rawValue)
-        openSettings()
+        openWindow(id: DinkyMacPreferencesWindow.sceneID)
     }
 
     private func handlePasteFromUser() {
@@ -1752,7 +1753,7 @@ struct ContentView: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
             Button(String(localized: "Settings…", comment: "Open Settings from banner.")) {
-                revealPreferences(.general)
+                revealPreferences(.behavior)
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
@@ -1841,6 +1842,9 @@ struct ContentView: View {
                     .help(String(localized: "Run compression on queued files (\(prefs.shortcut(for: .compressNow).displayString))", comment: "Toolbar: Compress Now help; argument is shortcut."))
                 }
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .dinkyOpenMacPreferences)) { _ in
+            openWindow(id: DinkyMacPreferencesWindow.sceneID)
         }
         .onReceive(NotificationCenter.default.publisher(for: .dinkyPrepareQuit)) { _ in prepareForQuit() }
     }

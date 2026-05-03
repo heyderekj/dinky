@@ -14,6 +14,11 @@ private final class DinkyRootModel: ObservableObject {
     }
 }
 
+/// `Window` scene id for macOS preferences (same window chrome as `WindowGroup`, unlike `Settings`).
+enum DinkyMacPreferencesWindow {
+    static let sceneID = "dinky-preferences"
+}
+
 @main
 struct DinkyApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
@@ -64,13 +69,27 @@ struct DinkyApp: App {
             CommandGroup(replacing: .help) {
                 HelpMenuCommands(updater: updater)
             }
+
+            // Preferences use a `Window` scene (not `Settings`) so the unified title bar matches
+            // the document window — `navigationTitle` lives in the title bar next to traffic
+            // lights and toolbar items instead of forming a second row. ⌘, is wired here.
+            CommandGroup(replacing: .appSettings) {
+                Button(String(localized: "Settings…", comment: "App menu: open settings.")) {
+                    NotificationCenter.default.post(name: .dinkyOpenMacPreferences, object: nil)
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            }
         }
 
-        Settings {
+        Window("Settings", id: DinkyMacPreferencesWindow.sceneID) {
             PreferencesView()
                 .environmentObject(root.prefs)
                 .environmentObject(updater)
         }
+        .windowToolbarStyle(.unified(showsTitle: true))
+        .defaultSize(width: 760, height: 560)
+        .windowResizability(.contentMinSize)
+        .commandsRemoved()
 
         // Opened via the Help menu. Single-instance; reuses the same
         // window if it's already on screen.
