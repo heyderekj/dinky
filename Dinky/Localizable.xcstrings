@@ -3486,9 +3486,6 @@
         }
       }
     },
-    "Balanced. ~120 DPI — good for most purposes." : {
-      "comment" : "PDF flatten quality tier description."
-    },
     "Balances size and readability; you choose text vs flatten in All options." : {
       "comment" : "Outcome map friendly: PDFs smart."
     },
@@ -5358,6 +5355,9 @@
           }
         }
       }
+    },
+    "CLI docs and examples…" : {
+      "comment" : "Settings UI."
     },
     "Click to see error details" : {
       "comment" : "Tooltip for error chip.",
@@ -9594,6 +9594,9 @@
           }
         }
       }
+    },
+    "Dinky includes advanced local tools for pro users: a `dinky` command-line tool and optional local HTTP mode (`dinky serve`) for automation and AI agents." : {
+      "comment" : "Settings UI."
     },
     "Dinky picks a tier from each document. The choice below is the manual fallback if analysis fails." : {
       "comment" : "Sidebar PDF: smart flatten helper."
@@ -15872,7 +15875,7 @@
       "comment" : "Settings UI: Media image subsection."
     },
     "Maximum (both)" : {
-      "comment" : "Batch summary: experimental preserve retry.\nPDF experimental preserve preset name."
+      "comment" : "Batch summary: experimental preserve retry."
     },
     "Maybe later" : {
       "comment" : "Manual update alert.",
@@ -16258,9 +16261,6 @@
           }
         }
       }
-    },
-    "Minimum size. 72 DPI — screen sharing and quick previews only." : {
-      "comment" : "PDF flatten quality tier description."
     },
     "More help" : {
       "comment" : "Settings UI.",
@@ -17765,9 +17765,6 @@
           }
         }
       }
-    },
-    "Off (default)" : {
-      "comment" : "PDF experimental preserve: disabled."
     },
     "Off keeps source resolution and just re-encodes for size." : {
       "comment" : "Settings UI.",
@@ -20355,7 +20352,7 @@
       }
     },
     "Preserve text (best-effort size)" : {
-      "comment" : "PDF output mode short label.\nSettings UI: PDF output mode."
+      "comment" : "Settings UI: PDF output mode."
     },
     "Preserve text & links" : {
       "comment" : "Settings UI.",
@@ -21146,6 +21143,9 @@
         }
       }
     },
+    "Pro tools (CLI/API)" : {
+      "comment" : "Settings UI."
+    },
     "px" : {
       "comment" : "Unit abbreviation for pixels.\nUnit: pixels.",
       "localizations" : {
@@ -21222,9 +21222,6 @@
           }
         }
       }
-    },
-    "qpdf + PDFKit when smaller; keeps text and links. Many PDFs won’t shrink." : {
-      "comment" : "PDF preserve mode description."
     },
     "qpdf + PDFKit; keeps structure only when the result is smaller. Many PDFs won’t shrink. Low / Medium / High and grayscale apply when Smallest file (flatten) is selected." : {
       "comment" : "Settings UI: PDF preserve expectations."
@@ -21312,6 +21309,9 @@
         }
       }
     },
+    "Quirky but straightforward: give Dinky file paths, get smaller files back. Everything runs on your Mac." : {
+      "comment" : "Settings UI."
+    },
     "Quit App" : {
       "comment" : "System shortcut name for conflict warning.",
       "localizations" : {
@@ -21391,9 +21391,6 @@
     },
     "Rasterize pages to JPEG (%@ tier)." : {
       "comment" : "Results row: PDF flatten tooltip; tier."
-    },
-    "Rasterizes each page to JPEG for reliable smaller files. No selectable text or links." : {
-      "comment" : "PDF flatten mode description."
     },
     "Rasterizes image-heavy pages at 144 DPI while keeping text pages selectable. Best for 300/600 DPI scans; no effect on vector or text-only PDFs." : {
       "comment" : "Settings UI: PDF downsampling helper."
@@ -22023,9 +22020,6 @@
     "Recognition uses Apple’s on-device Vision engine; pick the closest language to your documents." : {
       "comment" : "Settings UI: OCR language helper."
     },
-    "Recompresses embedded images more aggressively. Can introduce JPEG artifacts." : {
-      "comment" : "PDF experimental preserve description."
-    },
     "Redo" : {
       "comment" : "System shortcut name for conflict warning.",
       "localizations" : {
@@ -22497,9 +22491,6 @@
           }
         }
       }
-    },
-    "Removes the PDF structure tree (tagged PDF / markup). Smaller on some exports; screen readers may lose tags." : {
-      "comment" : "PDF experimental preserve description."
     },
     "Replace original" : {
       "comment" : "Settings UI.",
@@ -23846,9 +23837,6 @@
     "Saves where you chose in Settings; optionally reveals the folder when done." : {
       "comment" : "Outcome map friendly: output."
     },
-    "Saving the PDF did not reduce its size compared to the original." : {
-      "comment" : "PDF preserve: rewrite was larger or the same size."
-    },
     "Scan-like PDFs can be made searchable with OCR first." : {
       "comment" : "Outcome map friendly: PDF OCR sentence append."
     },
@@ -24470,9 +24458,6 @@
           }
         }
       }
-    },
-    "Sharper. ~160 DPI — better for print than Medium." : {
-      "comment" : "PDF flatten quality tier description."
     },
     "Shortcuts" : {
       "comment" : "Settings UI.",
@@ -25745,11 +25730,8 @@
     "Smaller output by limiting height. Source resolution is kept when below the cap. Smart quality still picks Balanced or High per clip; when this is on, output size is capped." : {
       "comment" : "Sidebar Video: max resolution + smart quality note."
     },
-    "Smallest" : {
-      "comment" : "PDF flatten quality tier."
-    },
     "Smallest file (flatten pages)" : {
-      "comment" : "PDF output mode short label.\nSidebar PDF mode title."
+      "comment" : "Sidebar PDF mode title."
     },
     "Smallest file (flatten)" : {
       "comment" : "Settings UI: PDF output mode."
@@ -25996,9 +25978,6 @@
           }
         }
       }
-    },
-    "Standard qpdf + PDFKit preserve path." : {
-      "comment" : "PDF experimental preserve description."
     },
     "Start with largest files" : {
       "comment" : "Settings: toggle to schedule big files first in a batch.",
@@ -26324,13 +26303,10 @@
       }
     },
     "Strip non-essential structure" : {
-      "comment" : "Batch summary: experimental preserve retry.\nPDF experimental preserve preset name."
+      "comment" : "Batch summary: experimental preserve retry."
     },
     "Stronger image recompression" : {
-      "comment" : "Batch summary: experimental preserve retry.\nPDF experimental preserve preset name."
-    },
-    "Structure strip + stronger JPEG. Highest chance of a smaller file; highest risk to fidelity." : {
-      "comment" : "PDF experimental preserve description."
+      "comment" : "Batch summary: experimental preserve retry."
     },
     "Suffix" : {
       "comment" : "Settings UI.",
@@ -29202,9 +29178,6 @@
           }
         }
       }
-    },
-    "Very small. ~88 DPI — fine for screen viewing." : {
-      "comment" : "PDF flatten quality tier description."
     },
     "video" : {
       "comment" : "Default filename stem for Shortcuts video output when source has no name.\nResults row: generic video chip when content type was not classified (e.g. Smart Quality off)."
