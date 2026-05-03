@@ -1,6 +1,10 @@
 #!/bin/bash
 # release.sh — build, package, and publish a new Dinky release.
 #
+# Site + compare pages: step 2 updates DMG URLs and visible version lines. If you ship a GitHub
+# release manually (gh release create) without running this script, the marketing site will stay
+# on the old version until you run `./release.sh X.Y.Z --bump-only` (then commit) or a full run.
+#
 # Usage:
 #   ./release.sh 1.2.3
 #   ./release.sh 1.2.3 --bump-only   # steps 1–2 only (no build, git, or gh)
