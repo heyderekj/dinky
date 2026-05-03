@@ -1265,43 +1265,51 @@ struct SidebarView: View {
             Divider().padding(.top, 4).padding(.bottom, 8)
             SidebarCard {
                 VStack(alignment: .leading, spacing: 8) {
-                summaryRow("photo",   preset.autoFormat ? "Auto" : preset.format.displayName)
                 if preset.smartQuality {
                     summaryRow("wand.and.stars", String(localized: "Smart quality (all types)", comment: "Preset summary line."))
                 }
-                summaryRow("arrow.left.and.right",
-                           preset.maxWidthEnabled ? "Max \(preset.maxWidth) px" : "No width limit")
-                if preset.maxFileSizeEnabled {
-                    let mb = Double(preset.maxFileSizeKB) / 1024.0
-                    summaryRow("gauge.medium", "Max \(mb < 1 ? String(format: "%.1f", mb) : String(format: "%.4g", mb)) MB")
-                } else {
-                    summaryRow("gauge.medium", "No size limit")
-                }
-                let vidCodec = VideoCodecFamily(rawValue: preset.videoCodecFamilyRaw) ?? .h264
-                let resCap = preset.videoMaxResolutionEnabled
-                    ? "\(preset.videoMaxResolutionLines)p"
-                    : "source"
-                let fpsCap = preset.videoMaxFPSEnabled
-                    ? " · max \(VideoFPSCapPreset.normalizeStored(preset.videoMaxFPS)) fps"
-                    : ""
-                summaryRow("video",
-                           "\(vidCodec.chipLabel) · \(resCap)\(fpsCap)\(preset.videoRemoveAudio ? " · no audio" : "")")
-                let audioFmt = AudioConversionFormat(rawValue: preset.audioFormatRaw) ?? .aacM4A
-                let audioTier = AudioConversionQualityTier.resolve(preset.audioQualityTierRaw)
-                let audioSummary: String = {
-                    if preset.smartQuality {
-                        return "\(audioFmt.displayName) · Smart quality"
+                if preset.applies(to: .image) {
+                    summaryRow("photo",   preset.autoFormat ? "Auto" : preset.format.displayName)
+                    summaryRow("arrow.left.and.right",
+                               preset.maxWidthEnabled ? "Max \(preset.maxWidth) px" : "No width limit")
+                    if preset.maxFileSizeEnabled {
+                        let mb = Double(preset.maxFileSizeKB) / 1024.0
+                        summaryRow("gauge.medium", "Max \(mb < 1 ? String(format: "%.1f", mb) : String(format: "%.4g", mb)) MB")
+                    } else {
+                        summaryRow("gauge.medium", "No size limit")
                     }
-                    return "\(audioFmt.displayName) · \(audioTier.displayName)"
-                }()
-                summaryRow("waveform", audioSummary)
-                let pdfMode = PDFOutputMode(rawValue: preset.pdfOutputModeRaw) ?? .flattenPages
-                if pdfMode == .flattenPages {
-                    let pdfQ = PDFQuality(rawValue: preset.pdfQualityRaw) ?? .medium
-                    summaryRow("doc.richtext",
-                               "PDF flatten · \(pdfQ.displayName)\(preset.pdfGrayscale ? " · grayscale" : "")\(preset.pdfEnableOCR ? " · OCR" : "")")
-                } else {
-                    summaryRow("doc.richtext", "PDF preserve text & links\(preset.pdfEnableOCR ? " · OCR" : "")")
+                }
+                if preset.applies(to: .video) {
+                    let vidCodec = VideoCodecFamily(rawValue: preset.videoCodecFamilyRaw) ?? .h264
+                    let resCap = preset.videoMaxResolutionEnabled
+                        ? "\(preset.videoMaxResolutionLines)p"
+                        : "source"
+                    let fpsCap = preset.videoMaxFPSEnabled
+                        ? " · max \(VideoFPSCapPreset.normalizeStored(preset.videoMaxFPS)) fps"
+                        : ""
+                    summaryRow("video",
+                               "\(vidCodec.chipLabel) · \(resCap)\(fpsCap)\(preset.videoRemoveAudio ? " · no audio" : "")")
+                }
+                if preset.applies(to: .audio) {
+                    let audioFmt = AudioConversionFormat(rawValue: preset.audioFormatRaw) ?? .aacM4A
+                    let audioTier = AudioConversionQualityTier.resolve(preset.audioQualityTierRaw)
+                    let audioSummary: String = {
+                        if preset.smartQuality {
+                            return "\(audioFmt.displayName) · Smart quality"
+                        }
+                        return "\(audioFmt.displayName) · \(audioTier.displayName)"
+                    }()
+                    summaryRow("waveform", audioSummary)
+                }
+                if preset.applies(to: .pdf) {
+                    let pdfMode = PDFOutputMode(rawValue: preset.pdfOutputModeRaw) ?? .flattenPages
+                    if pdfMode == .flattenPages {
+                        let pdfQ = PDFQuality(rawValue: preset.pdfQualityRaw) ?? .medium
+                        summaryRow("doc.richtext",
+                                   "PDF flatten · \(pdfQ.displayName)\(preset.pdfGrayscale ? " · grayscale" : "")\(preset.pdfEnableOCR ? " · OCR" : "")")
+                    } else {
+                        summaryRow("doc.richtext", "PDF preserve text & links\(preset.pdfEnableOCR ? " · OCR" : "")")
+                    }
                 }
                 summaryRow("folder", saveLabel)
                 summaryRow("doc.text", filenameLabel)
