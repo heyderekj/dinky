@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dinky vs HandBrake — quick MP4 shrink vs full video encoding</title>
-  <meta name="description" content="HandBrake is built for deep video encoding control. Dinky is drop-and-done for smaller MP4s on macOS, with images and PDFs in the same app." />
+  <meta name="description" content="HandBrake is built for deep video encoding control. Dinky is drop-and-done for smaller MP4s on macOS—with optional FPS cap—plus images, audio cross-converts, and PDFs in the same app." />
 
   <link rel="canonical" href="https://dinkyfiles.com/compare/handbrake/" />
   <link rel="dns-prefetch" href="https://binkyfiles.com" />
@@ -14,14 +14,14 @@
   <link rel="stylesheet" href="/site-tabs.css" />
 
   <meta property="og:title" content="Dinky vs HandBrake — macOS video compression compared" />
-  <meta property="og:description" content="HandBrake for production encoding; Dinky for fast smaller MP4s plus images and PDFs in one lightweight app." />
+  <meta property="og:description" content="HandBrake for production encoding; Dinky for fast smaller MP4s—with optional FPS cap—plus images, audio, and PDFs in one lightweight app." />
   <meta property="og:image" content="https://dinkyfiles.com/screenshots/og-image.png" />
   <meta property="og:url" content="https://dinkyfiles.com/compare/handbrake/" />
   <meta property="og:type" content="website" />
 
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Dinky vs HandBrake — macOS video compression compared" />
-  <meta name="twitter:description" content="HandBrake for production encoding; Dinky for fast smaller MP4s on macOS." />
+  <meta name="twitter:description" content="HandBrake for production encoding; Dinky for fast MP4 shrink, optional FPS cap, audio, stills &amp; PDFs." />
   <meta name="twitter:image" content="https://dinkyfiles.com/screenshots/og-image.png" />
   <meta property="og:site_name" content="Dinky" />
   <meta property="og:locale" content="en_US" />
@@ -69,7 +69,7 @@
             "name": "What else does Dinky do besides video?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Dinky also compresses still images (WebP, AVIF, HEIC, lossless PNG) and PDFs in the same native macOS app, with batch processing and watch folders."
+              "text": "Dinky also compresses still images (WebP, AVIF, HEIC, lossless PNG); AAC, ALAC, WAV, AIFF, FLAC, and MP3 audio via afconvert; and PDFs in the same native macOS app—with batch processing and watch folders."
             }
           }
         ]
@@ -102,7 +102,7 @@
       <header class="compare-hero">
         <h1 class="compare-hero-title">Dinky vs HandBrake</h1>
         <p class="compare-intro">
-          <a href="https://handbrake.fr/" target="_blank" rel="noopener">HandBrake</a> is for when you need every encoder knob. Dinky is for “just shrink this MP4”—and stills or PDFs in the same app when you want one pile of files handled.
+          <a href="https://handbrake.fr/" target="_blank" rel="noopener">HandBrake</a> is for when you need every encoder knob. Dinky is for “just shrink this MP4”—and stills, audio cross-converts, or PDFs in the same app when you want one pile of files handled.
         </p>
         <div class="compare-split">
           <div class="compare-split-col">
@@ -111,7 +111,7 @@
           </div>
           <div class="compare-split-col">
             <p class="compare-split-title">Choose Dinky for fast smaller MP4s and mixed media</p>
-            <p class="compare-split-desc">When HandBrake would be overkill: drag in MP4/MOV, pick H.264 or HEVC presets, and keep stills and PDFs in the same tool.</p>
+            <p class="compare-split-desc">When HandBrake would be overkill: drag in MP4/MOV, pick H.264 or HEVC presets—or cap FPS—and keep stills, audio conversions, and PDFs in the same tool.</p>
           </div>
         </div>
       </header>
@@ -128,12 +128,12 @@
           <tbody>
             <tr>
               <th scope="row">Primary focus</th>
-              <td class="col-dinky">Quick smaller MP4 + images + PDFs in one app</td>
+              <td class="col-dinky">Quick smaller MP4 + images + PDFs + audio in one app</td>
               <td>Video transcoding with broad encoder control</td>
             </tr>
             <tr>
               <th scope="row">Settings depth</th>
-              <td class="col-dinky">Presets (H.264 / HEVC, quality tiers)</td>
+              <td class="col-dinky">Presets (H.264 / HEVC, quality tiers; optional FPS cap)</td>
               <td>Extensive options (tracks, filters, advanced encoding)</td>
             </tr>
             <tr>
@@ -198,7 +198,7 @@
             </ul>
           </div>
           <div class="compare-related-col compare-related-col-suite">
-            <h3 class="compare-related-heading" title="Still images, video, and PDF in one app">All-in-one</h3>
+            <h3 class="compare-related-heading" title="Still images, video, audio, and PDF in one app">All-in-one</h3>
             <ul>
               <li><a href="/compare/clop/">Clop</a></li>
               <li><a href="/compare/picmal/">Picmal</a></li>
@@ -213,8 +213,8 @@
           </div>
           <div class="compare-cta-body">
             <p class="compare-cta-eyebrow">Speed over every knob</p>
-            <h2 id="compare-cta-title-handbrake" class="compare-cta-title">Quick MP4 presets + stills and PDF</h2>
-            <p class="compare-cta-lead">Stay in HandBrake for fine-grained encodes—open Dinky when you want simple H.264/HEVC paths, the rest of your image polish, and PDFs in the same session.</p>
+            <h2 id="compare-cta-title-handbrake" class="compare-cta-title">Quick MP4 presets + stills, audio &amp; PDF</h2>
+            <p class="compare-cta-lead">Stay in HandBrake for fine-grained encodes—open Dinky when you want simple H.264/HEVC paths, optional FPS caps, audio cross‑converts, the rest of your image polish, and PDFs in the same session.</p>
             <div class="compare-cta-actions">
               <a class="btn btn-primary" href="https://github.com/heyderekj/dinky/releases/download/v2.10.0/Dinky-2.10.0.dmg" onclick="if(window.fathom)fathom.trackEvent('Download macOS compare-cta-handbrake');">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" aria-hidden="true">

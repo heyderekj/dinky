@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dinky vs FFmpeg — image &amp; video compression compared</title>
-  <meta name="description" content="FFmpeg is the industry CLI for video and media. Dinky covers image compression with a GUI and a dinky compress CLI, plus PDFs—compare scope, interface, and scripting options." />
+  <meta name="description" content="FFmpeg is the industry CLI for video and media. Dinky covers image compression with a GUI and a dinky compress CLI, plus PDFs and audio cross-converts—compare scope, interface, and scripting options." />
 
   <link rel="canonical" href="https://dinkyfiles.com/compare/ffmpeg/" />
   <link rel="dns-prefetch" href="https://binkyfiles.com" />
@@ -14,14 +14,14 @@
   <link rel="stylesheet" href="/site-tabs.css" />
 
   <meta property="og:title" content="Dinky vs FFmpeg" />
-  <meta property="og:description" content="FFmpeg for unlimited CLI video power; Dinky for images (GUI + CLI), PDFs, and watch folders on macOS." />
+  <meta property="og:description" content="FFmpeg for unlimited CLI video power; Dinky for images (GUI + CLI), PDFs, audio conversions, FPS-capped MP4s, and watch folders on macOS." />
   <meta property="og:image" content="https://dinkyfiles.com/screenshots/og-image.png" />
   <meta property="og:url" content="https://dinkyfiles.com/compare/ffmpeg/" />
   <meta property="og:type" content="website" />
 
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Dinky vs FFmpeg" />
-  <meta name="twitter:description" content="FFmpeg for video CLI encoding; Dinky for images (GUI + CLI), PDFs, and watch folders." />
+  <meta name="twitter:description" content="FFmpeg for video CLI encoding; Dinky for images (GUI + CLI), PDFs, audio conversions, FPS-capped presets, watch folders." />
   <meta name="twitter:image" content="https://dinkyfiles.com/screenshots/og-image.png" />
   <meta property="og:site_name" content="Dinky" />
   <meta property="og:locale" content="en_US" />
@@ -110,7 +110,7 @@
       <header class="compare-hero">
         <h1 class="compare-hero-title">Dinky vs FFmpeg</h1>
         <p class="compare-intro">
-          <a href="https://ffmpeg.org/" target="_blank" rel="noopener">FFmpeg</a> is infinite control in the terminal—especially for video. Dinky covers image compression with both a GUI and a <code>dinky compress</code> CLI, plus PDFs and watch folders, without you having to build ffmpeg invocations.
+          <a href="https://ffmpeg.org/" target="_blank" rel="noopener">FFmpeg</a> is infinite control in the terminal—especially for video. Dinky covers image compression with both a GUI and a <code>dinky compress</code> CLI, plus PDF and audio conversions, FPS‑capped MP4 presets, and watch folders—without you having to build ffmpeg invocations.
         </p>
         <div class="compare-split">
           <div class="compare-split-col">
@@ -118,8 +118,8 @@
             <p class="compare-split-desc">When you need arbitrary video filters, piping, server automation, or encoder settings that only a full CLI can express—FFmpeg is the right tool.</p>
           </div>
           <div class="compare-split-col">
-            <p class="compare-split-title">Choose Dinky for images, PDFs, and GUI batch work</p>
-            <p class="compare-split-desc">When you want <code>dinky compress</code> for CI pipelines or shell scripts, the GUI for drag-and-drop, Finder Quick Actions, watch folders, and PDF compression without maintaining ffmpeg invocations.</p>
+            <p class="compare-split-title">Choose Dinky for images, PDFs, audio conversions, and GUI batch work</p>
+            <p class="compare-split-desc">When you want <code>dinky compress</code> for CI pipelines or shell scripts, the GUI for drag-and-drop, Finder Quick Actions, watch folders, and PDF/audio compression without maintaining ffmpeg invocations.</p>
           </div>
         </div>
       </header>
@@ -146,8 +146,13 @@
             </tr>
             <tr>
               <th scope="row">Video encoding</th>
-              <td class="col-dinky">GUI presets (H.264/HEVC via AVFoundation)</td>
+              <td class="col-dinky">GUI presets (H.264/HEVC via AVFoundation; optional FPS cap)</td>
               <td>Full encoder surface—any codec, any flag</td>
+            </tr>
+            <tr>
+              <th scope="row">Audio</th>
+              <td class="col-dinky">Yes — AAC, ALAC, WAV, AIFF, FLAC, MP3 (afconvert + LAME)</td>
+              <td>Anything FFmpeg can encode</td>
             </tr>
             <tr>
               <th scope="row">PDF</th>
@@ -211,7 +216,7 @@
             </ul>
           </div>
           <div class="compare-related-col compare-related-col-suite">
-            <h3 class="compare-related-heading" title="Still images, video, and PDF in one app">All-in-one</h3>
+            <h3 class="compare-related-heading" title="Still images, video, audio, and PDF in one app">All-in-one</h3>
             <ul>
               <li><a href="/compare/clop/">Clop</a></li>
               <li><a href="/compare/picmal/">Picmal</a></li>
@@ -227,7 +232,7 @@
           <div class="compare-cta-body">
             <p class="compare-cta-eyebrow">GUI and CLI — your choice</p>
             <h2 id="compare-cta-title-ffmpeg" class="compare-cta-title">Images from the terminal, PDFs from the app</h2>
-            <p class="compare-cta-lead">Run <code>dinky compress *.jpg --format avif</code> in CI, or drop a folder in the GUI. Watch folders, presets, and PDF compression all stay alongside your ffmpeg video workflows.</p>
+            <p class="compare-cta-lead">Run <code>dinky compress *.jpg --format avif</code> in CI, or drop a folder in the GUI. Watch folders, presets, audio cross‑converts, and PDF compression stay alongside dedicated ffmpeg workflows.</p>
             <div class="compare-cta-actions">
               <a class="btn btn-primary" href="https://github.com/heyderekj/dinky/releases/download/v2.10.0/Dinky-2.10.0.dmg" onclick="if(window.fathom)fathom.trackEvent('Download macOS compare-cta-ffmpeg');">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" aria-hidden="true">

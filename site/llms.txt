@@ -1,14 +1,15 @@
 # Dinky
 
-> A tiny macOS compression app for images, videos, and PDFs. Converts stills to WebP, AVIF, lossless PNG, or HEIC; exports video to smaller MP4 (H.264 or HEVC); shrinks PDFs. Drag and drop, get smaller files back. Free, open source, and entirely local — files never leave your machine.
+> A tiny macOS compression app for images, videos, audio, and PDFs. Converts stills to WebP, AVIF, lossless PNG, or HEIC; exports video to smaller MP4 (H.264 or HEVC) with optional FPS cap; cross-converts AAC, ALAC, WAV, AIFF, FLAC, and MP3; shrinks PDFs. Drag and drop, get smaller files back. Free, open source, and entirely local — files never leave your machine.
 
 ## What it does
 
 - **Images** — JPG, PNG, WebP, AVIF, HEIC/HEIF, TIFF, BMP → WebP, AVIF, lossless PNG, or HEIC
-- **Videos** — common formats (e.g. MP4, MOV) → MP4 with H.264 or HEVC and quality presets
+- **Videos** — common formats (e.g. MP4, MOV) → MP4 with H.264 or HEVC and quality presets; optional FPS cap (lower output frame rate when the source is higher)
+- **Audio** — AAC (M4A), ALAC, WAV, AIFF, FLAC, MP3 cross-convert via macOS `afconvert`; MP3 encode via bundled **lame**
 - **PDFs** — **Flatten (default)** rasterizes pages (PDFKit + JPEG) for reliable size wins; **Preserve (best-effort)** uses bundled **qpdf** (with lossless stream coalescing + resource cleanup) then PDFKit — only keeps output when smaller. **Scan OCR (optional)**: Vision text layer on scan-like PDFs before flatten/preserve. **Target file size**: set a ceiling (e.g. 10 MB) and Dinky steps down quality tiers until the output fits. **Image downsampling**: opt-in mixed-mode rasterizes image-heavy pages at 144 DPI while keeping text/link pages selectable — high-impact on 300 DPI scan PDFs
 - Drag and drop or file picker; batch compression with live results
-- **URL drop** — drag or paste a direct `http(s)` link to an image, video, or PDF; Dinky downloads (max 500 MB), compresses, and cleans up the temp file
+- **URL drop** — drag or paste a direct `http(s)` link to an image, video, audio file, or PDF; Dinky downloads (max 500 MB), compresses, and cleans up the temp file
 - **Clipboard Compress** — system-wide hotkey (default ⌘⇧V) works even when Dinky isn't focused; pastes file URLs, raw image bytes, or media URLs from the clipboard
 - **Custom keyboard shortcuts** — rebind Open Files, Clipboard Compress, Compress Now, Clear, and Delete in Settings → Shortcuts
 - **Launch at login** — opt-in via SMAppService so Dinky and any watch folders are ready at login
@@ -26,7 +27,7 @@
 
 ## Version line
 
-- **1.x** (from 1.0): images only. **2.0+**: images, videos, and PDFs. Older 1.x binaries remain on GitHub Releases for archival use.
+- **1.x** (from 1.0): images only. **2.0+**: images, videos, and PDFs. **2.10+**: adds audio conversion and video FPS cap. Older 1.x binaries remain on GitHub Releases for archival use.
 
 ## Technical details
 
@@ -34,6 +35,7 @@
 - SwiftUI + AppKit; the app uses an in-tree Swift package for shared image code + optional `dinky` CLI (not a remote SPM dependency)
 - 33 MB installed
 - Image engines bundled: cwebp (Google), avifenc (AOM), oxipng (Rust/MIT)
+- Audio: cross-convert via macOS **`afconvert`**; MP3 encode via bundled **`lame`**
 - PDF: flatten via PDFKit + ImageIO; preserve path via bundled **qpdf** + PDFKit; video via AVFoundation export
 - No cloud, no accounts, no telemetry (site uses Fathom analytics, app has none)
 - Open source: MIT license
@@ -44,17 +46,17 @@
 - vs **TinyPNG**: TinyPNG uploads images to their servers. Dinky is 100% local.
 - vs **Squoosh**: Browser-based, one image at a time. Dinky is native, batch, offline.
 - vs **Optimage**: Similar feature set but Optimage costs $15 and weighs 62 MB. Dinky is free and 33 MB.
-- vs **HandBrake**: HandBrake is built for deep video encoding (tracks, chapters, many settings). Dinky is drop-and-done for smaller MP4s and lives beside images and PDFs in one app.
-- vs **QuickTime**: QuickTime ships with macOS for playback and simple one-file export. Dinky adds named H.264/HEVC presets, batch folders, watch folders, and still-image plus PDF compression in the same app.
-- vs **Apple Compressor**: Compressor is for Final Cut and pro encoding batches. Dinky is a lightweight drop zone when you only need a smaller MP4 plus images/PDFs in the same MIT app.
-- vs **Permute**: Permute is a broad Mac media converter. Dinky is compression-first with open source PDF and still-image pipelines alongside video.
-- vs **FFmpeg**: FFmpeg is CLI-first with unlimited flexibility. Dinky wraps common shrink tasks in a native GUI and adds PDFs and stills—no shell flags.
+- vs **HandBrake**: HandBrake is built for deep video encoding (tracks, chapters, many settings). Dinky is drop-and-done for smaller MP4s and lives beside images, audio, and PDFs in one app.
+- vs **QuickTime**: QuickTime ships with macOS for playback and simple one-file export. Dinky adds named H.264/HEVC presets, FPS cap, batch folders, watch folders, audio cross-converts, still-image plus PDF compression in the same app.
+- vs **Apple Compressor**: Compressor is for Final Cut and pro encoding batches. Dinky is a lightweight drop zone when you only need a smaller MP4 plus images, audio, and PDFs in the same MIT app.
+- vs **Permute**: Permute is a broad Mac media converter. Dinky is compression-first with open source PDF and still-image pipelines alongside video and audio.
+- vs **FFmpeg**: FFmpeg is CLI-first with unlimited flexibility. Dinky wraps common shrink tasks in a native GUI and adds PDFs, audio, and stills—no shell flags.
 - vs **Adobe Acrobat**: Acrobat is a full subscription PDF suite and a large install. Dinky targets straight compression—flatten, preserve, target size, optional scan OCR—in a ~33 MB free app.
 - vs **Preview**: Preview handles still exports and smaller PDFs via Quartz filters for one-off saves. Dinky adds batch, watch folders, target size, WebP/AVIF/HEIC conversion for images, flatten/preserve PDF modes, and mixed media in one workflow.
-- vs **PDF Squeezer**: Both are Mac-native PDF compressors; Dinky is MIT-licensed and bundles image + MP4 compression in the same app.
-- vs **Smallpdf**: Smallpdf is browser-first with uploads. Dinky keeps PDF, image, and video compression on disk.
+- vs **PDF Squeezer**: Both are Mac-native PDF compressors; Dinky is MIT-licensed and bundles image + MP4 + audio compression in the same app.
+- vs **Smallpdf**: Smallpdf is browser-first with uploads. Dinky keeps PDF, image, video, and audio compression on disk.
 - vs **Clop**: Clop is menu-bar and clipboard–first with a Pro tier for some automation. Dinky is a free MIT window–first drop zone with watch folders included and deeper PDF tooling in a smaller install.
-- vs **Picmal**: Picmal is a paid Mac app for images, video, PDFs, and audio with a large footprint. Dinky is free, open source, ~33 MB, and covers images, video, and PDFs without an audio pipeline.
+- vs **Picmal**: Picmal is a paid Mac app for images, video, PDFs, and audio with a large footprint. Dinky is free, open source, ~33 MB, and covers images, video, PDFs, and audio—with a vastly smaller bundle.
 
 ## Links
 
