@@ -14,7 +14,8 @@
 #   2. Updates version + download URLs in site/index.html, site/llms.txt, site/homepage.md, site/compare/*/index.html
 #   3. Builds the Release scheme
 #   4. Creates the DMG (+ zip for in-app updater), then updates Casks/dinky.rb (version + sha256 of the zip) for Homebrew
-#   5. Commits, tags, pushes, and publishes the GitHub release
+#   5. Runs preflight tests (same targets as CI) before any push/tag/release
+#   6. Commits, tags, pushes, and publishes the GitHub release
 #
 # Release notes are built from `git log $PREV_GIT_TAG..HEAD` (subjects only, chronological),
 # excluding the “Bump to v$VERSION” commit, so what ships on GitHub matches the repo. Edit the
@@ -129,7 +130,26 @@ echo "→ Building Release…"
 xcodebuild -scheme Dinky -configuration Release -derivedDataPath build clean build \
   | grep -E "error:|BUILD (SUCCEEDED|FAILED)"
 
-# ── 4. Create DMG ─────────────────────────────────────────────────────────────
+# ── 4. Preflight tests (match CI targets) ─────────────────────────────────────
+
+echo "→ Running preflight tests (Xcode + SwiftPM)…"
+xcodebuild \
+  -project Dinky.xcodeproj \
+  -scheme Dinky \
+  -configuration Debug \
+  -destination 'platform=macOS' \
+  CODE_SIGN_IDENTITY=- \
+  CODE_SIGNING_REQUIRED=NO \
+  test \
+  | grep -E "error:|TEST (SUCCEEDED|FAILED)|BUILD (SUCCEEDED|FAILED)"
+
+(
+  cd DinkyCoreImage
+  swift build -c debug
+  swift test
+)
+
+# ── 5. Create DMG ─────────────────────────────────────────────────────────────
 
 echo "→ Creating Dinky-$VERSION.dmg…"
 rm -f "Dinky-$VERSION.dmg"
@@ -157,7 +177,7 @@ echo "→ Updating Casks/dinky.rb (version $VERSION, sha256)…"
 sed -i '' "s/version \".*\"/version \"$VERSION\"/" Casks/dinky.rb
 sed -i '' "s/sha256 \".*\"/sha256 \"$CASK_SHASUM\"/" Casks/dinky.rb
 
-# ── 5. Optional bump commit, push, tag, release ─────────────────────────────
+# ── 6. Optional bump commit, push, tag, release ─────────────────────────────
 
 echo "→ Committing version files (if changed by this run)…"
 git add Casks/dinky.rb Dinky.xcodeproj/project.pbxproj site/index.html site/llms.txt README.md

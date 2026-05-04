@@ -1,5 +1,5 @@
 import XCTest
-import DinkyPDFSignals
+import DinkyCoreShared
 
 final class PDFScanDetectionTests: XCTestCase {
 
