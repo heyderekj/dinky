@@ -469,7 +469,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Re-sign all bundled CLI binaries and dylibs with ad-hoc signatures.\n# Required because install_name_tool invalidates Homebrew-supplied signatures.\nRESOURCES=\"$BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/Resources\"\nfor f in \"$RESOURCES/avifenc\" \"$RESOURCES/cwebp\" \"$RESOURCES/oxipng\" \"$RESOURCES/qpdf\" \"$RESOURCES/lame\" \"$RESOURCES\"/lib/*.dylib; do\n  [ -f \"$f\" ] && codesign -s - --force \"$f\"\ndone\n";
+			shellScript = "# Re-sign all bundled CLI binaries and dylibs with ad-hoc signatures.\n# Required because install_name_tool invalidates Homebrew-supplied signatures.\nAPP_BUNDLE=\"$BUILT_PRODUCTS_DIR/$WRAPPER_NAME\"\nRESOURCES=\"$BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/Resources\"\n\n# Synced folders can add Finder/FileProvider metadata that final codesign rejects.\nxattr -cr \"$APP_BUNDLE\" 2>/dev/null || true\nfor attr in com.apple.FinderInfo 'com.apple.fileprovider.fpfs#P'; do\n  xattr -d \"$attr\" \"$APP_BUNDLE\" 2>/dev/null || true\ndone\n\nfor f in \"$RESOURCES/avifenc\" \"$RESOURCES/cwebp\" \"$RESOURCES/oxipng\" \"$RESOURCES/qpdf\" \"$RESOURCES/lame\" \"$RESOURCES\"/lib/*.dylib; do\n  [ -f \"$f\" ] && codesign -s - --force \"$f\"\ndone\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

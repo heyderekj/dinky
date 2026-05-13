@@ -1,6 +1,6 @@
 # Compression Binaries
 
-Place arm64 macOS CLI binaries here. Dinky expects them at:
+Place universal macOS CLI binaries here. Dinky expects them at:
 
 ```
 Dinky.app/Contents/Resources/bin/
@@ -10,6 +10,11 @@ Dinky.app/Contents/Resources/bin/
 ├── avifenc    ← libavif
 └── qpdf       ← QPDF (preserve-mode structural optimize; needs `lib/*.dylib` — see below)
 ```
+
+The Xcode project copies these executables into `Dinky.app/Contents/Resources/`
+and copies `Dinky/Resources/lib/` to `Dinky.app/Contents/Resources/lib/`.
+Release builds should therefore keep both the executables and every bundled
+dylib as universal `arm64 x86_64` Mach-O files.
 
 After placing binaries, make them executable:
 ```bash
@@ -23,7 +28,30 @@ xattr -d com.apple.quarantine bin/cjpeg bin/cwebp bin/oxipng bin/avifenc
 
 ---
 
-## Download links (arm64 / Apple Silicon)
+## Universal helper refresh
+
+Run this from the repo root to rebuild the checked-in helper payload from the
+current arm64 slices plus Intel Homebrew bottles:
+
+```bash
+tools/vendor_universal_binaries.sh
+```
+
+The script downloads public Homebrew bottle blobs into `build/`, extracts the
+x86_64 slices, patches their install names/rpaths to Dinky's bundle layout, and
+combines them with the checked-in arm64 slices via `lipo`.
+
+To inspect the result:
+
+```bash
+for f in Dinky/Resources/bin/{cwebp,avifenc,oxipng,qpdf,lame} Dinky/Resources/lib/*.dylib; do
+  echo "$f: $(lipo -archs "$f")"
+done
+```
+
+---
+
+## Download links
 
 ### cjpeg (MozJPEG)
 Build from source or grab a prebuilt binary from:

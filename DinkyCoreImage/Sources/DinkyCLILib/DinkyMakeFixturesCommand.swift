@@ -544,7 +544,15 @@ private enum MakeFixtures {
         p.arguments = args
         var env = ProcessInfo.processInfo.environment
         let existing = env["DYLD_LIBRARY_PATH"].flatMap { $0.isEmpty ? nil : $0 }
-        env["DYLD_LIBRARY_PATH"] = ["/opt/homebrew/lib", existing].compactMap { $0 }.joined(separator: ":")
+        let bundledLib = bin.appendingPathComponent("lib", isDirectory: true)
+        var parts: [String] = []
+        if FileManager.default.fileExists(atPath: bundledLib.path) {
+            parts.append(bundledLib.path)
+        }
+        parts.append("/opt/homebrew/lib")
+        parts.append("/usr/local/lib")
+        if let existing { parts.append(existing) }
+        env["DYLD_LIBRARY_PATH"] = parts.joined(separator: ":")
         p.environment = env
         let errPipe = Pipe()
         p.standardError = errPipe
@@ -715,4 +723,3 @@ private enum MakeFixtures {
         _ = batch
     }
 }
-
