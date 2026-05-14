@@ -129,7 +129,13 @@ fi
 # ── 3. Build ──────────────────────────────────────────────────────────────────
 
 echo "→ Building Release…"
-xcodebuild -scheme Dinky -configuration Release -derivedDataPath build clean build \
+xcodebuild \
+  -project Dinky.xcodeproj \
+  -scheme Dinky \
+  -configuration Release \
+  -destination 'generic/platform=macOS' \
+  -derivedDataPath build \
+  clean build \
   | grep -E "error:|BUILD (SUCCEEDED|FAILED)"
 
 # ── 4. Preflight tests (match CI targets) ─────────────────────────────────────
