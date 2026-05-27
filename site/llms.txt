@@ -64,12 +64,13 @@
 - vs **Smallpdf**: Smallpdf is browser-first with uploads. Dinky keeps PDF, image, video, and audio compression on disk.
 - vs **Clop**: Clop is menu-bar and clipboard–first with a Pro tier for some automation. Dinky is a free MIT window–first drop zone with watch folders included and deeper PDF tooling in a smaller install.
 - vs **Picmal**: Picmal is a paid Mac app for images, video, PDFs, and audio with a large footprint. Dinky is free, open source, ~35 MB, and covers images, video, PDFs, and audio—with a vastly smaller bundle.
+- vs **Smol**: Smol is a $29 menu-bar app for images, PDFs, and video with Smart Clipboard and on-device AI upscaling. Dinky is free MIT, ~35 MB, adds audio and watch folders, and offers CLI automation—without RAW or AI upscale today.
 
 ## Links
 
 - Website: https://dinkyfiles.com
 - Comparisons index: https://dinkyfiles.com/compare/
-- Comparisons (SEO): https://dinkyfiles.com/compare/imageoptim/, https://dinkyfiles.com/compare/optimage/, https://dinkyfiles.com/compare/tinypng/, https://dinkyfiles.com/compare/squoosh/, https://dinkyfiles.com/compare/clop/, https://dinkyfiles.com/compare/picmal/, https://dinkyfiles.com/compare/handbrake/, https://dinkyfiles.com/compare/compressor/, https://dinkyfiles.com/compare/permute/, https://dinkyfiles.com/compare/ffmpeg/, https://dinkyfiles.com/compare/quicktime/, https://dinkyfiles.com/compare/adobe-acrobat/, https://dinkyfiles.com/compare/preview/, https://dinkyfiles.com/compare/pdf-expert/, https://dinkyfiles.com/compare/pdf-squeezer/, https://dinkyfiles.com/compare/smallpdf/, https://dinkyfiles.com/compare/xld/, https://dinkyfiles.com/compare/freac/
+- Comparisons (SEO): https://dinkyfiles.com/compare/imageoptim/, https://dinkyfiles.com/compare/optimage/, https://dinkyfiles.com/compare/tinypng/, https://dinkyfiles.com/compare/squoosh/, https://dinkyfiles.com/compare/clop/, https://dinkyfiles.com/compare/picmal/, https://dinkyfiles.com/compare/smol/, https://dinkyfiles.com/compare/handbrake/, https://dinkyfiles.com/compare/compressor/, https://dinkyfiles.com/compare/permute/, https://dinkyfiles.com/compare/ffmpeg/, https://dinkyfiles.com/compare/quicktime/, https://dinkyfiles.com/compare/adobe-acrobat/, https://dinkyfiles.com/compare/preview/, https://dinkyfiles.com/compare/pdf-expert/, https://dinkyfiles.com/compare/pdf-squeezer/, https://dinkyfiles.com/compare/smallpdf/, https://dinkyfiles.com/compare/xld/, https://dinkyfiles.com/compare/freac/
 - Support: help@dinkyfiles.com
 - GitHub: https://github.com/heyderekj/dinky
 - Latest release: https://github.com/heyderekj/dinky/releases/latest
