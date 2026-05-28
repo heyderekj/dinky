@@ -64,7 +64,7 @@
 - vs **Smallpdf**: Smallpdf is browser-first with uploads. Dinky keeps PDF, image, video, and audio compression on disk.
 - vs **Clop**: Clop is menu-bar and clipboard–first with a Pro tier for some automation. Dinky is a free MIT window–first drop zone with watch folders included and deeper PDF tooling in a smaller install.
 - vs **Picmal**: Picmal is a paid Mac app for images, video, PDFs, and audio with a large footprint. Dinky is free, open source, ~35 MB, and covers images, video, PDFs, and audio—with a vastly smaller bundle.
-- vs **Smol**: Smol is a $29 menu-bar app for images, PDFs, and video with Smart Clipboard and on-device AI upscaling. Dinky is free MIT, ~35 MB, adds audio and watch folders, and offers CLI automation—without RAW or AI upscale today.
+- vs **Smol**: Smol is a $29 menu-bar app (macOS 13+, Apple Silicon only) for images, PDFs, and video—Smart Clipboard, batch folder drops, no watch-folder automation, no audio. Dinky is free MIT, ~35 MB, adds audio and watch folders, and offers CLI automation—without RAW or AI upscale today.
 
 ## Links
 
