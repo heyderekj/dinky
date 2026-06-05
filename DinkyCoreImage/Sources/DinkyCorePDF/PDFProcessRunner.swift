@@ -28,6 +28,7 @@ public enum PDFProcessRunner: Sendable {
                 parts.append(bundledLib.path)
             }
             parts.append("/opt/homebrew/lib")
+            parts.append("/usr/local/lib")
             if let existing = env["DYLD_LIBRARY_PATH"], !existing.isEmpty { parts.append(existing) }
             env["DYLD_LIBRARY_PATH"] = parts.joined(separator: ":")
             process.environment = env

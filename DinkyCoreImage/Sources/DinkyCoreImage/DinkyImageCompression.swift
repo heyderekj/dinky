@@ -722,11 +722,21 @@ public actor DinkyImageCompression {
             process.executableURL = binary
             process.arguments     = args
 
-            // Homebrew binaries use @rpath dylibs that live in /opt/homebrew/lib.
-            // Inject that path so dyld can find them when running inside the app bundle.
+            // Prefer bundled dylibs when running from Dinky.app, then fall back to
+            // Homebrew on Apple Silicon and Intel.
             var env = ProcessInfo.processInfo.environment
             let existing = env["DYLD_LIBRARY_PATH"].flatMap { $0.isEmpty ? nil : $0 }
-            env["DYLD_LIBRARY_PATH"] = ["/opt/homebrew/lib", existing].compactMap { $0 }.joined(separator: ":")
+            let bundledLib = binary
+                .deletingLastPathComponent()
+                .appendingPathComponent("lib", isDirectory: true)
+            var parts: [String] = []
+            if FileManager.default.fileExists(atPath: bundledLib.path) {
+                parts.append(bundledLib.path)
+            }
+            parts.append("/opt/homebrew/lib")
+            parts.append("/usr/local/lib")
+            if let existing { parts.append(existing) }
+            env["DYLD_LIBRARY_PATH"] = parts.joined(separator: ":")
             process.environment = env
 
             let errPipe = Pipe()
