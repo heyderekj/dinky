@@ -7,7 +7,7 @@ cask "dinky" do
   desc "Image, video, audio, and PDF compression utility"
   homepage "https://github.com/heyderekj/dinky"
 
-  depends_on macos: ">= :sequoia"
+  depends_on macos: :sequoia
 
   app "Dinky.app"
 end
