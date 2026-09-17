@@ -100,40 +100,52 @@ private func imageSourceHasMultipleFrames(url: URL) -> Bool {
     return CGImageSourceGetCount(src) > 1
 }
 
-/// HEIC/HEIF → PNG when bundled CLI encoders need a readable path; skip when output is HEIC (ImageIO reads HEIC directly).
+/// Decode non-PNG sources when needed; skip when output is HEIC (ImageIO reads HEIC directly).
 private func encoderInputURLForImageCompression(source: URL, outputFormat: CompressionFormat) throws -> URL {
     let ext = source.pathExtension.lowercased()
     if outputFormat == .heic, ext == "heic" || ext == "heif" {
         return source
     }
+    if outputFormat == .png {
+        guard ext != "png" else { return source }
+        return try decodeImageToPNG(source: source)
+    }
     return try heicTranscodeToPNGIfNeeded(source: source)
 }
 
-/// Lossless pixel decode to PNG so `cwebp` / `avifenc` / `oxipng` can read the file.
-private func heicTranscodeToPNGIfNeeded(source: URL) throws -> URL {
-    let ext = source.pathExtension.lowercased()
-    guard ext == "heic" || ext == "heif" else { return source }
-
+/// Lossless pixel decode to PNG so `oxipng` can read the file.
+private func decodeImageToPNG(source: URL) throws -> URL {
     let cgImage: CGImage
     do {
         cgImage = try cgImageDecodedOrientedFullSize(url: source)
     } catch {
-        throw DinkyImageCompressionError.heicTranscodeFailed
+        throw DinkyImageCompressionError.imageReadFailed
     }
 
     let tmpURL = FileManager.default.temporaryDirectory
-        .appendingPathComponent("dinky_heic_\(UUID().uuidString)")
+        .appendingPathComponent("dinky_decode_\(UUID().uuidString)")
         .appendingPathExtension("png")
 
     guard let dest = CGImageDestinationCreateWithURL(tmpURL as CFURL, UTType.png.identifier as CFString, 1, nil) else {
-        throw DinkyImageCompressionError.heicTranscodeFailed
+        throw DinkyImageCompressionError.imageWriteFailed
     }
     CGImageDestinationAddImage(dest, cgImage, nil)
     guard CGImageDestinationFinalize(dest) else {
         try? FileManager.default.removeItem(at: tmpURL)
-        throw DinkyImageCompressionError.heicTranscodeFailed
+        throw DinkyImageCompressionError.imageWriteFailed
     }
     return tmpURL
+}
+
+/// HEIC/HEIF → PNG when bundled CLI encoders need a readable path.
+private func heicTranscodeToPNGIfNeeded(source: URL) throws -> URL {
+    let ext = source.pathExtension.lowercased()
+    guard ext == "heic" || ext == "heif" else { return source }
+    do {
+        return try decodeImageToPNG(source: source)
+    } catch {
+        throw DinkyImageCompressionError.heicTranscodeFailed
+    }
 }
 
 /// Downscale so display pixel width is `maxWidth` (same semantics as former `sips --resampleWidth`).
@@ -317,9 +329,15 @@ public actor DinkyImageCompression {
         collisionCustomPattern: String = "",
         /// When set, use this 0...100 for lossy formats instead of Smart Quality / defaults (near-lossless heuristics for graphics are skipped).
         qualityOverride: Int? = nil,
+        chromaSubsampling: ChromaSubsampling = .auto,
+        webpLossless: Bool = false,
+        pngOutputMode: PNGOutputMode = .lossless,
         progressHandler: (@Sendable (Float) -> Void)? = nil
     ) async throws -> DinkyImageCompressionResult {
         let tTotal = CFAbsoluteTimeGetCurrent()
+        let chroma = smartQuality ? ChromaSubsampling.auto : chromaSubsampling
+        let webpLL = smartQuality ? false : webpLossless
+        let pngMode = smartQuality ? PNGOutputMode.lossless : pngOutputMode
         let originalSize = fileSize(source)
         let sourceHasMultipleFrames = imageSourceHasMultipleFrames(url: source)
         let avifJobs = Self.avifEncoderJobCount(parallelLimit: parallelCompressionLimit)
@@ -415,7 +433,10 @@ public actor DinkyImageCompression {
                 outputSize: fileSize(outputURL),
                 originalRecoveryURL: recovery,
                 detectedContentType: detected,
-                usedFirstFrameOnly: false
+                usedFirstFrameOnly: false,
+                appliedChromaSubsampling: nil,
+                appliedWebpLossless: webpLL,
+                appliedPngOutputMode: nil
             )
         }
 
@@ -443,11 +464,15 @@ public actor DinkyImageCompression {
             customPattern: collisionCustomPattern
         )
         let tEncode = CFAbsoluteTimeGetCurrent()
+        var appliedChroma: String?
+        var appliedPngMode: String?
         if format == .png {
             report(0.38)
-            try await compressAtQuality(source: workURL, quality: 0,
-                                        format: format, strip: stripMetadata, output: outputURL,
-                                        content: detected, avifJobs: avifJobs)
+            appliedPngMode = pngMode.rawValue
+            try await encodePNG(
+                source: workURL, strip: stripMetadata, output: outputURL,
+                mode: pngMode
+            )
             report(1)
         } else if let targetKB = goals.maxFileSizeKB {
             let floor = detected.flatMap { targetSizeFloor[$0] } ?? 10
@@ -456,11 +481,16 @@ public actor DinkyImageCompression {
                 source: workURL, targetBytes: Int64(targetKB) * 1024,
                 format: format, strip: stripMetadata, output: &outputURL,
                 qualityFloor: floor, content: detected, avifJobs: avifJobs,
+                chromaSubsampling: chroma,
+                webpLossless: webpLL,
                 sourceURLForUniqueness: source,
                 collisionNamingStyle: collisionNamingStyle,
                 collisionCustomPattern: collisionCustomPattern,
                 progressHandler: progressHandler
             )
+            if format == .avif {
+                appliedChroma = resolvedAvifYUV(chromaSubsampling: chroma, content: detected)
+            }
         } else {
             let q: Int = {
                 if let o = qualityOverride { return max(0, min(100, o)) }
@@ -468,12 +498,18 @@ public actor DinkyImageCompression {
             }()
             // For graphics in WebP, near-lossless preserves edges that even
             // q=92 lossy softens. AVIF graphics handle crispness via 4:4:4 +
-            // slower speed.
-            let nl: Int? = (qualityOverride == nil && format == .webp && detected == .graphic) ? 60 : nil
+            // slower speed. Skipped when lossless WebP is requested.
+            let nl: Int? = (qualityOverride == nil && !webpLL && format == .webp && detected == .graphic) ? 60 : nil
             report(0.38)
-            try await compressAtQuality(source: workURL, quality: q,
-                                        format: format, strip: stripMetadata, output: outputURL,
-                                        content: detected, nearLossless: nl, avifJobs: avifJobs)
+            try await compressAtQuality(
+                source: workURL, quality: q,
+                format: format, strip: stripMetadata, output: outputURL,
+                content: detected, nearLossless: nl, avifJobs: avifJobs,
+                chromaSubsampling: chroma, webpLossless: webpLL
+            )
+            if format == .avif {
+                appliedChroma = resolvedAvifYUV(chromaSubsampling: chroma, content: detected)
+            }
             report(1)
         }
         DinkyImageCorePhaseLog.logPhase("image.encode", startedAt: tEncode)
@@ -504,8 +540,22 @@ public actor DinkyImageCompression {
             outputSize: fileSize(outputURL),
             originalRecoveryURL: recovery,
             detectedContentType: detected,
-            usedFirstFrameOnly: sourceHasMultipleFrames
+            usedFirstFrameOnly: sourceHasMultipleFrames,
+            appliedChromaSubsampling: appliedChroma,
+            appliedWebpLossless: format == .webp && webpLL,
+            appliedPngOutputMode: appliedPngMode
         )
+    }
+
+    /// Resolve the `--yuv` flag that will be (or was) passed to avifenc.
+    private func resolvedAvifYUV(chromaSubsampling: ChromaSubsampling, content: ContentType?) -> String {
+        if let flag = chromaSubsampling.avifYUVFlag { return flag }
+        switch content {
+        case .photo:   return "420"
+        case .graphic: return "444"
+        case .mixed:   return "422"
+        case .none:    return "420"
+        }
     }
 
     /// Resolve quality based on Smart Quality classification (if available).
@@ -540,6 +590,8 @@ public actor DinkyImageCompression {
         qualityFloor: Int = 10,
         content: ContentType?,
         avifJobs: Int,
+        chromaSubsampling: ChromaSubsampling,
+        webpLossless: Bool,
         sourceURLForUniqueness: URL,
         collisionNamingStyle: CollisionNamingStyle,
         collisionCustomPattern: String,
@@ -552,9 +604,25 @@ public actor DinkyImageCompression {
             progressHandler?(min(0.97, 0.34 + Float(encodeSteps) * 0.048))
         }
 
-        // Graphic + WebP: binary-search `-near_lossless` (40…100) before lossy `-q`.
+        if format == .webp, webpLossless {
+            bumpEncode()
+            output = OutputPathUniqueness.refreshUniqueOutput(
+                currentCandidate: output,
+                sourceURL: sourceURLForUniqueness,
+                style: collisionNamingStyle,
+                customPattern: collisionCustomPattern
+            )
+            try await runCwebp(
+                source: source, quality: 100, strip: strip, output: output,
+                content: content, nearLossless: nil, webpLossless: true
+            )
+            progressHandler?(1)
+            return
+        }
+
+        // Graphic + WebP (lossy): binary-search `-near_lossless` (40…100) before lossy `-q`.
         // Higher values = closer to lossless = larger files; we maximize nl that still fits the cap.
-        if format == .webp, content == .graphic {
+        if format == .webp, !webpLossless, content == .graphic {
             var nlLo = 40, nlHi = 100
             var bestURL: URL?
             while nlLo <= nlHi {
@@ -565,7 +633,7 @@ public actor DinkyImageCompression {
                     .appendingPathExtension(format.outputExtension)
                 try await runCwebp(
                     source: source, quality: 100, strip: strip, output: tmp,
-                    content: content, nearLossless: mid
+                    content: content, nearLossless: mid, webpLossless: false
                 )
                 if fileSize(tmp) <= targetBytes {
                     if let prev = bestURL { try? fm.removeItem(at: prev) }
@@ -600,7 +668,11 @@ public actor DinkyImageCompression {
                 .appendingPathComponent("dinky_q\(mid)_\(UUID().uuidString)")
                 .appendingPathExtension(format.outputExtension)
 
-            try await compressAtQuality(source: source, quality: mid, format: format, strip: strip, output: tmp, content: content, avifJobs: avifJobs)
+            try await compressAtQuality(
+                source: source, quality: mid, format: format, strip: strip, output: tmp,
+                content: content, avifJobs: avifJobs,
+                chromaSubsampling: chromaSubsampling, webpLossless: webpLossless
+            )
 
             if fileSize(tmp) <= targetBytes {
                 if let prev = bestURL { try? fm.removeItem(at: prev) }
@@ -631,9 +703,12 @@ public actor DinkyImageCompression {
                 style: collisionNamingStyle,
                 customPattern: collisionCustomPattern
             )
-            try await compressAtQuality(source: source, quality: qualityFloor,
-                                        format: format, strip: strip, output: output,
-                                        content: content, avifJobs: avifJobs)
+            try await compressAtQuality(
+                source: source, quality: qualityFloor,
+                format: format, strip: strip, output: output,
+                content: content, avifJobs: avifJobs,
+                chromaSubsampling: chromaSubsampling, webpLossless: webpLossless
+            )
             progressHandler?(1)
         }
     }
@@ -645,22 +720,38 @@ public actor DinkyImageCompression {
         format: CompressionFormat, strip: Bool, output: URL,
         content: ContentType?,
         nearLossless: Int? = nil,
-        avifJobs: Int
+        avifJobs: Int,
+        chromaSubsampling: ChromaSubsampling = .auto,
+        webpLossless: Bool = false
     ) async throws {
         switch format {
-        case .webp: try await runCwebp(source: source, quality: quality, strip: strip, output: output, content: content, nearLossless: nearLossless)
-        case .avif: try await runAvifenc(source: source, quality: quality, strip: strip, output: output, content: content, avifJobs: avifJobs)
-        case .png:  try await runOxipng(source: source, strip: strip, output: output)
+        case .webp:
+            try await runCwebp(
+                source: source, quality: quality, strip: strip, output: output,
+                content: content, nearLossless: nearLossless, webpLossless: webpLossless
+            )
+        case .avif:
+            try await runAvifenc(
+                source: source, quality: quality, strip: strip, output: output,
+                content: content, avifJobs: avifJobs, chromaSubsampling: chromaSubsampling
+            )
+        case .png:
+            try await runOxipng(source: source, strip: strip, output: output)
         case .heic:
             try runHeicEncode(source: source, quality: quality, output: output)
         }
     }
 
-    private func runCwebp(source: URL, quality: Int, strip: Bool, output: URL, content: ContentType?, nearLossless: Int? = nil) async throws {
+    private func runCwebp(
+        source: URL, quality: Int, strip: Bool, output: URL,
+        content: ContentType?, nearLossless: Int? = nil, webpLossless: Bool = false
+    ) async throws {
         let binary = try binaryURL("cwebp")
         let q = String(quality)
         var args: [String]
-        if let nl = nearLossless {
+        if webpLossless {
+            args = ["-lossless", "-z", "6", "-exact", "-m", "4"]
+        } else if let nl = nearLossless {
             // Near-lossless: preprocesses pixel values for better compression
             // while keeping edges pixel-perfect. Best for graphics — UI,
             // illustrations, logos, anything with hard edges.
@@ -682,22 +773,26 @@ public actor DinkyImageCompression {
         try await run(binary, args: args)
     }
 
-    private func runAvifenc(source: URL, quality: Int, strip: Bool, output: URL, content: ContentType?, avifJobs: Int) async throws {
+    private func runAvifenc(
+        source: URL, quality: Int, strip: Bool, output: URL,
+        content: ContentType?, avifJobs: Int,
+        chromaSubsampling: ChromaSubsampling = .auto
+    ) async throws {
         let binary = try binaryURL("avifenc")
         let qColor = String(quality)
         let qAlpha = String(min(quality + 10, 100))
         let jobsArg = String(avifJobs)
+        let yuv = chromaSubsampling.avifYUVFlag ?? resolvedAvifYUV(chromaSubsampling: .auto, content: content)
         var args: [String]
-        switch content {
-        // Photo: speed 5 matches graphic — photos have the most perceptually sensitive detail
-        // (gradients, skin tones) and deserve the same encode-time budget.
-        case .photo:    args = ["--speed", "5", "--yuv", "420", "--depth", "10", "--jobs", jobsArg, "--qcolor", qColor, "--qalpha", qAlpha]
-        // Graphic: 4:4:4 keeps color edges sharp (no chroma subsampling).
-        // Speed 5 balances edge quality with encode time (444 is already heavier than 420).
-        case .graphic:  args = ["--speed", "5", "--yuv", "444", "--jobs", jobsArg, "--qcolor", qColor, "--qalpha", qAlpha]
-        case .mixed:    args = ["--speed", "5", "--yuv", "422", "--depth", "10", "--jobs", jobsArg, "--qcolor", qColor, "--qalpha", qAlpha]
-        // --depth 10 prevents posterization in gradients; unclassified files are most likely photos.
-        case .none:     args = ["--speed", "6", "--yuv", "420", "--depth", "10", "--jobs", jobsArg, "--qcolor", qColor, "--qalpha", qAlpha]
+        switch yuv {
+        case "420":
+            args = ["--speed", "5", "--yuv", "420", "--depth", "10", "--jobs", jobsArg, "--qcolor", qColor, "--qalpha", qAlpha]
+        case "422":
+            args = ["--speed", "5", "--yuv", "422", "--depth", "10", "--jobs", jobsArg, "--qcolor", qColor, "--qalpha", qAlpha]
+        case "444":
+            args = ["--speed", "5", "--yuv", "444", "--jobs", jobsArg, "--qcolor", qColor, "--qalpha", qAlpha]
+        default:
+            args = ["--speed", "6", "--yuv", "420", "--depth", "10", "--jobs", jobsArg, "--qcolor", qColor, "--qalpha", qAlpha]
         }
         if strip { args += ["--ignore-exif", "--ignore-xmp"] }
         args += [source.path, output.path]
@@ -712,6 +807,150 @@ public actor DinkyImageCompression {
         if strip { args += ["--strip", "safe"] }
         args += ["--out", output.path, output.path]
         try await run(binary, args: args)
+    }
+
+    // MARK: - PNG (lossless + optional palette)
+
+    private func encodePNG(source: URL, strip: Bool, output: URL, mode: PNGOutputMode) async throws {
+        let fm = FileManager.default
+        if mode == .optimized,
+           let cgImage = try? cgImageDecodedOrientedFullSize(url: source),
+           let paletteURL = try? writePalettePNGIfApplicable(cgImage: cgImage) {
+            defer { try? fm.removeItem(at: paletteURL) }
+            let paletteOxipng = fm.temporaryDirectory
+                .appendingPathComponent("dinky_png_pal_\(UUID().uuidString).png")
+            defer { try? fm.removeItem(at: paletteOxipng) }
+            try await runOxipng(source: paletteURL, strip: strip, output: paletteOxipng)
+
+            let fullOxipng = fm.temporaryDirectory
+                .appendingPathComponent("dinky_png_full_\(UUID().uuidString).png")
+            defer { try? fm.removeItem(at: fullOxipng) }
+            try await runOxipng(source: source, strip: strip, output: fullOxipng)
+
+            if fileSize(paletteOxipng) < fileSize(fullOxipng) {
+                try fm.copyItem(at: paletteOxipng, to: output)
+                return
+            }
+        }
+        try await runOxipng(source: source, strip: strip, output: output)
+    }
+
+    /// Writes PNG-8 when the image is fully opaque and has ≤256 unique RGB colors.
+    private func writePalettePNGIfApplicable(cgImage: CGImage) throws -> URL {
+        guard let rgba = readOpaqueRGBA(cgImage: cgImage) else {
+            throw DinkyImageCompressionError.imageWriteFailed
+        }
+        var colorToIndex: [RGBTriple: UInt8] = [:]
+        colorToIndex.reserveCapacity(min(256, rgba.count))
+        var palette: [RGBTriple] = []
+        palette.reserveCapacity(256)
+        var indices = [UInt8]()
+        indices.reserveCapacity(rgba.count)
+        for px in rgba {
+            if let idx = colorToIndex[px] {
+                indices.append(idx)
+            } else {
+                guard palette.count < 256 else {
+                    throw DinkyImageCompressionError.imageWriteFailed
+                }
+                let idx = UInt8(palette.count)
+                palette.append(px)
+                colorToIndex[px] = idx
+                indices.append(idx)
+            }
+        }
+        guard !palette.isEmpty else { throw DinkyImageCompressionError.imageWriteFailed }
+
+        var paletteBytes = [UInt8]()
+        paletteBytes.reserveCapacity(palette.count * 3)
+        for c in palette {
+            paletteBytes.append(c.r)
+            paletteBytes.append(c.g)
+            paletteBytes.append(c.b)
+        }
+        let base = CGColorSpaceCreateDeviceRGB()
+        guard let indexedSpace = CGColorSpace(
+            indexedBaseSpace: base,
+            last: palette.count - 1,
+            colorTable: paletteBytes
+        ) else {
+            throw DinkyImageCompressionError.imageWriteFailed
+        }
+
+        let width = cgImage.width
+        let height = cgImage.height
+        let indexData = Data(indices)
+        guard let provider = CGDataProvider(data: indexData as CFData),
+              let indexedImage = CGImage(
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bitsPerPixel: 8,
+                bytesPerRow: width,
+                space: indexedSpace,
+                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue),
+                provider: provider,
+                decode: nil,
+                shouldInterpolate: false,
+                intent: .defaultIntent
+              ) else {
+            throw DinkyImageCompressionError.imageWriteFailed
+        }
+
+        let tmpURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("dinky_palette_\(UUID().uuidString).png")
+        guard let dest = CGImageDestinationCreateWithURL(tmpURL as CFURL, UTType.png.identifier as CFString, 1, nil) else {
+            throw DinkyImageCompressionError.imageWriteFailed
+        }
+        CGImageDestinationAddImage(dest, indexedImage, nil)
+        guard CGImageDestinationFinalize(dest) else {
+            try? FileManager.default.removeItem(at: tmpURL)
+            throw DinkyImageCompressionError.imageWriteFailed
+        }
+        return tmpURL
+    }
+
+    private struct RGBTriple: Hashable {
+        let r, g, b: UInt8
+    }
+
+    /// Returns nil when any pixel has alpha &lt; 255.
+    private func readOpaqueRGBA(cgImage: CGImage) -> [RGBTriple]? {
+        let width = cgImage.width
+        let height = cgImage.height
+        guard width > 0, height > 0 else { return nil }
+
+        let bytesPerPixel = 4
+        let bytesPerRow = width * bytesPerPixel
+        var buffer = [UInt8](repeating: 0, count: height * bytesPerRow)
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
+            | CGBitmapInfo.byteOrder32Big.rawValue
+
+        guard let ctx = buffer.withUnsafeMutableBytes({ rawPtr -> CGContext? in
+            guard let base = rawPtr.baseAddress else { return nil }
+            return CGContext(
+                data: base,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: bytesPerRow,
+                space: colorSpace,
+                bitmapInfo: bitmapInfo
+            )
+        }) else { return nil }
+
+        ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        var pixels = [RGBTriple]()
+        pixels.reserveCapacity(width * height)
+        for i in 0..<(width * height) {
+            let off = i * 4
+            let a = buffer[off + 3]
+            if a != 255 { return nil }
+            pixels.append(RGBTriple(r: buffer[off], g: buffer[off + 1], b: buffer[off + 2]))
+        }
+        return pixels
     }
 
     // MARK: - Process runner

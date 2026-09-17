@@ -1,5 +1,6 @@
 import Foundation
 
+
 final class FolderWatcher: ObservableObject {
     var onNewFiles: (([URL]) -> Void)?
     private var stream: FSEventStreamRef?

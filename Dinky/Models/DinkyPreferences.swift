@@ -84,6 +84,8 @@ final class DinkyPreferences: ObservableObject {
         get { FilenameHandling(rawValue: filenameHandlingRaw) ?? .appendSuffix }
         set { filenameHandlingRaw = newValue.rawValue }
     }
+    /// Optional folder created inside the destination for results, e.g. `compressed`.
+    @AppStorage("outputSubfolder")      var outputSubfolder: String = ""
     @AppStorage("customSuffix")         var customSuffix: String = "-dinky"
     @AppStorage("collisionNamingStyle") var collisionNamingStyleRaw: String = CollisionNamingStyle.finderDuplicate.rawValue
     var collisionNamingStyle: CollisionNamingStyle {
@@ -142,6 +144,8 @@ final class DinkyPreferences: ObservableObject {
     @AppStorage("manualMode")           var manualMode: Bool = false
     /// When true (default), show the pre-compression confirmation for user-initiated adds. User can turn off in the sheet or Settings. Watch folder is unaffected.
     @AppStorage("confirmBeforeEveryCompression") var confirmBeforeEveryCompression: Bool = true
+    /// When true, Dinky uses `.accessory` activation policy — no Dock icon or App Switcher entry.
+    @AppStorage(DockPresenceManager.userDefaultsKey) var hideFromDockAndAppSwitcher: Bool = false
     /// Empties finished rows from the queue after a short delay when a batch completes.
     /// Failed/skipped rows are kept so the user can act on them.
     @AppStorage("autoClearWhenDone")    var autoClearWhenDone: Bool = false
@@ -149,11 +153,29 @@ final class DinkyPreferences: ObservableObject {
     @AppStorage("folderWatchEnabled")   var folderWatchEnabled: Bool = false
     @AppStorage("watchedFolderPath")    var watchedFolderPath: String = ""
     @AppStorage("watchedFolderBookmark") var watchedFolderBookmark: Data = Data()
+    /// Reference time for the catch-up scan: files newer than this arrived while Dinky was not
+    /// watching. 0 means "never scanned" — the first run records the time and compresses nothing,
+    /// so enabling a watch folder never bulk-compresses files that were already sitting in it.
+    @AppStorage("lastWatchCatchUpScan") var lastWatchCatchUpScan: Double = 0
+    /// Paths Dinky itself wrote, persisted so the catch-up scan doesn't treat last session's
+    /// output as a new arrival and recompress it into `name-dinky-dinky`.
+    @AppStorage("selfWrittenOutputs")   var selfWrittenOutputsData: Data = Data()
 
     // MARK: Smart quality
     @AppStorage("smartQuality")         var smartQuality: Bool = true
     @AppStorage("autoFormat")           var autoFormat: Bool = true
     @AppStorage("contentTypeHint")      var contentTypeHintRaw: String = "auto"
+    @AppStorage("chromaSubsampling")    var chromaSubsamplingRaw: String = ChromaSubsampling.auto.rawValue
+    var chromaSubsampling: ChromaSubsampling {
+        get { ChromaSubsampling(rawValue: chromaSubsamplingRaw) ?? .auto }
+        set { chromaSubsamplingRaw = newValue.rawValue }
+    }
+    @AppStorage("webpLossless")         var webpLossless: Bool = false
+    @AppStorage("pngOutputMode")        var pngOutputModeRaw: String = PNGOutputMode.lossless.rawValue
+    var pngOutputMode: PNGOutputMode {
+        get { PNGOutputMode(rawValue: pngOutputModeRaw) ?? .lossless }
+        set { pngOutputModeRaw = newValue.rawValue }
+    }
 
     // MARK: Sidebar visibility
     @AppStorage("sidebar.showImages") var showImagesSection: Bool = true
@@ -531,6 +553,12 @@ final class DinkyPreferences: ObservableObject {
     /// Where compressed output should land. When `isFromURLDownload` is true and `sameFolder` is selected,
     /// `sameFolder` is meaningless (source is in temp) — fall back to Downloads.
     func destinationDirectory(for source: URL, isFromURLDownload: Bool = false) -> URL {
+        let base = baseDestinationDirectory(for: source, isFromURLDownload: isFromURLDownload)
+        guard let subfolder = CompressionPreset.sanitizedOutputSubfolder(outputSubfolder) else { return base }
+        return base.appendingPathComponent(subfolder, isDirectory: true)
+    }
+
+    private func baseDestinationDirectory(for source: URL, isFromURLDownload: Bool = false) -> URL {
         if isFromURLDownload, saveLocation == .sameFolder {
             return FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
                 ?? source.deletingLastPathComponent()
@@ -628,7 +656,10 @@ final class DinkyPreferences: ObservableObject {
         smartQuality: Bool,
         contentTypeHint: String,
         goals: CompressionGoals,
-        parallelCompressionLimit: Int
+        parallelCompressionLimit: Int,
+        chromaSubsampling: ChromaSubsampling,
+        webpLossless: Bool,
+        pngOutputMode: PNGOutputMode
     ) {
         let d = UserDefaults.standard
         let strip = d.object(forKey: "stripMetadata") as? Bool ?? false
@@ -640,7 +671,12 @@ final class DinkyPreferences: ObservableObject {
         let maxFS = maxFSOn ? (d.object(forKey: "maxFileSizeKB") as? Int ?? 2048) : nil
         let concurrentRaw = d.object(forKey: "concurrentTasks") as? Int ?? 3
         let parallelLimit = normalizedConcurrentTasks(concurrentRaw)
-        return (strip, smart, hint, CompressionGoals(maxWidth: maxW, maxFileSizeKB: maxFS), parallelLimit)
+        let chromaRaw = d.string(forKey: "chromaSubsampling") ?? ChromaSubsampling.auto.rawValue
+        let chroma = ChromaSubsampling(rawValue: chromaRaw) ?? .auto
+        let webpLL = d.object(forKey: "webpLossless") as? Bool ?? false
+        let pngRaw = d.string(forKey: "pngOutputMode") ?? PNGOutputMode.lossless.rawValue
+        let pngMode = PNGOutputMode(rawValue: pngRaw) ?? .lossless
+        return (strip, smart, hint, CompressionGoals(maxWidth: maxW, maxFileSizeKB: maxFS), parallelLimit, chroma, webpLL, pngMode)
     }
 
     /// PDF compression defaults for Shortcuts — same keys as `@AppStorage` on this type.

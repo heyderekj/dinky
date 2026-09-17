@@ -4,11 +4,17 @@ import UserNotifications
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var globalPasteHotkeyObserver: NSObjectProtocol?
+    private var dockPresenceObserver: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         migratePDFMaxFileSizeIfNeeded()
+        // Builds preferences + the content model now, so watch folders start on a headless
+        // launch too — SwiftUI would otherwise not create them until a window is shown.
+        _ = DinkyRootModel.shared
         DiagnosticsReporter.shared.startMonitoring()
         UNUserNotificationCenter.current().delegate = self
+        DockPresenceManager.applyFromDefaults()
+        DockPresenceManager.scheduleSuppressInitialWindowIfNeeded()
         GlobalHotkeyManager.shared.syncFromDefaults()
         globalPasteHotkeyObserver = NotificationCenter.default.addObserver(
             forName: .dinkyGlobalPasteHotkeyChanged,
@@ -17,6 +23,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ) { _ in
             GlobalHotkeyManager.shared.syncFromDefaults()
         }
+        dockPresenceObserver = NotificationCenter.default.addObserver(
+            forName: .dinkyDockPresenceChanged,
+            object: nil,
+            queue: .main
+        ) { _ in
+            DockPresenceManager.applyFromDefaults()
+        }
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        DockPresenceManager.showMainWindow()
+        return true
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -50,7 +68,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func application(_ application: NSApplication, open urls: [URL]) {
         let accepted = acceptedURLs(from: urls)
         guard !accepted.isEmpty else { return }
-        NSApp.activate(ignoringOtherApps: true)
+        DockPresenceManager.cancelInitialWindowSuppression()
+        DockPresenceManager.showMainWindow()
         NotificationCenter.default.post(name: .dinkyOpenFiles, object: accepted)
     }
 
@@ -73,7 +92,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ]
         guard let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: opts) as? [URL],
               !urls.isEmpty else { return }
-        NSApp.activate(ignoringOtherApps: true)
+        DockPresenceManager.cancelInitialWindowSuppression()
+        DockPresenceManager.showMainWindow()
         NotificationCenter.default.post(name: .dinkyOpenFiles, object: urls)
     }
 

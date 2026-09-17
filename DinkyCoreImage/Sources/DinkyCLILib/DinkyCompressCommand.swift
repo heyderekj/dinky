@@ -177,6 +177,8 @@ public enum DinkyCompressCommand {
                 maxWidth: opts.maxWidth,
                 maxFileSizeKB: opts.maxFileSizeKB
             )
+            let chroma = ChromaSubsampling(rawValue: opts.chromaSubsamplingRaw) ?? .auto
+            let pngMode = PNGOutputMode(rawValue: opts.pngOutputModeRaw) ?? .lossless
             do {
                 let r = try await engine.compress(
                     source: inURL,
@@ -194,6 +196,9 @@ public enum DinkyCompressCommand {
                     collisionNamingStyle: opts.collisionStyle,
                     collisionCustomPattern: opts.collisionCustomPattern,
                     qualityOverride: opts.quality,
+                    chromaSubsampling: chroma,
+                    webpLossless: opts.webpLossless,
+                    pngOutputMode: pngMode,
                     progressHandler: nil
                 )
                 let out = r.outputSize
@@ -208,6 +213,9 @@ public enum DinkyCompressCommand {
                         outputBytes: out,
                         savingsPercent: pct,
                         detectedContent: r.detectedContentType?.rawValue,
+                        appliedChromaSubsampling: r.appliedChromaSubsampling,
+                        appliedWebpLossless: format == .webp ? r.appliedWebpLossless : nil,
+                        appliedPngOutputMode: r.appliedPngOutputMode,
                         error: nil
                     )
                 )

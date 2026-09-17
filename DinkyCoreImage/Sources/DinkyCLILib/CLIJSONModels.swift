@@ -1,7 +1,7 @@
 import Foundation
 
 /// JSON contract version for agent/terminal consumers (see `docs/local-cli.md` and site `llms.txt`).
-public let dinkyImageCompressResultSchema = "dinky.image.compress/1.0.0"
+public let dinkyImageCompressResultSchema = "dinky.image.compress/1.1.0"
 public let dinkyImageServeInfoSchema = "dinky.image.serve/1.0.0"
 public let dinkyVideoCompressResultSchema = "dinky.video.compress/1.0.0"
 public let dinkyPdfCompressResultSchema = "dinky.pdf.compress/1.0.0"
@@ -25,6 +25,9 @@ public struct DinkyImageCompressFileResult: Codable, Sendable, Equatable {
     public var outputBytes: Int64?
     public var savingsPercent: Double?
     public var detectedContent: String?
+    public var appliedChromaSubsampling: String?
+    public var appliedWebpLossless: Bool?
+    public var appliedPngOutputMode: String?
     public var error: String?
 
     public init(
@@ -34,6 +37,9 @@ public struct DinkyImageCompressFileResult: Codable, Sendable, Equatable {
         outputBytes: Int64?,
         savingsPercent: Double?,
         detectedContent: String?,
+        appliedChromaSubsampling: String? = nil,
+        appliedWebpLossless: Bool? = nil,
+        appliedPngOutputMode: String? = nil,
         error: String?
     ) {
         self.input = input
@@ -42,6 +48,9 @@ public struct DinkyImageCompressFileResult: Codable, Sendable, Equatable {
         self.outputBytes = outputBytes
         self.savingsPercent = savingsPercent
         self.detectedContent = detectedContent
+        self.appliedChromaSubsampling = appliedChromaSubsampling
+        self.appliedWebpLossless = appliedWebpLossless
+        self.appliedPngOutputMode = appliedPngOutputMode
         self.error = error
     }
 }

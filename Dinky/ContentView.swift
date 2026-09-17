@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import DinkyCoreShared
 import UniformTypeIdentifiers
 import UserNotifications
@@ -49,9 +50,169 @@ final class ContentViewModel: ObservableObject {
     var selectedFormat: CompressionFormat
     var prefs: DinkyPreferences
 
+    /// Owned here (not by `ContentView`) so watching survives the main window being hidden or
+    /// never shown at all — e.g. "Hide from Dock" + "Open at Login" headless launches.
+    private let folderWatcher = FolderWatcher()
+    private var lastWatchedPaths: [String] = []
+    private var lastWatchSettings: WatchSettingsSignature?
+    private var prefsObservation: AnyCancellable?
+
+    /// Destinations Dinky is about to write, so the watcher can ignore its own results. A watch
+    /// folder is usually also the output folder, and without this the result is re-ingested and
+    /// recompressed, appending a suffix every pass (`shot-dinky-dinky-dinky.webp`).
+    private var selfWrittenOutputs: [String: Date] = [:]
+    /// Long enough that a catch-up scan on the next launch still recognises last session's output.
+    private static let selfWrittenTTL: TimeInterval = 60 * 60 * 24 * 7
+
+    func noteSelfWrittenOutput(_ url: URL) {
+        selfWrittenOutputs[Self.outputKey(url)] = Date()
+        pruneSelfWrittenOutputs()
+        persistSelfWrittenOutputs()
+    }
+
+    private func isSelfWrittenOutput(_ url: URL) -> Bool {
+        guard let writtenAt = selfWrittenOutputs[Self.outputKey(url)] else { return false }
+        return Date().timeIntervalSince(writtenAt) < Self.selfWrittenTTL
+    }
+
+    private func pruneSelfWrittenOutputs() {
+        let now = Date()
+        selfWrittenOutputs = selfWrittenOutputs.filter { now.timeIntervalSince($0.value) < Self.selfWrittenTTL }
+        if selfWrittenOutputs.count > 500 {
+            let newest = selfWrittenOutputs.sorted { $0.value > $1.value }.prefix(500)
+            selfWrittenOutputs = Dictionary(uniqueKeysWithValues: newest.map { ($0.key, $0.value) })
+        }
+    }
+
+    private func persistSelfWrittenOutputs() {
+        let raw = selfWrittenOutputs.mapValues { $0.timeIntervalSinceReferenceDate }
+        prefs.selfWrittenOutputsData = (try? JSONEncoder().encode(raw)) ?? Data()
+    }
+
+    private func loadSelfWrittenOutputs() {
+        guard let raw = try? JSONDecoder().decode([String: Double].self, from: prefs.selfWrittenOutputsData) else { return }
+        selfWrittenOutputs = raw.mapValues { Date(timeIntervalSinceReferenceDate: $0) }
+        pruneSelfWrittenOutputs()
+    }
+
+    private static func outputKey(_ url: URL) -> String {
+        url.resolvingSymlinksInPath().standardizedFileURL.path
+    }
+
+    /// Queues media that landed in a watched folder while Dinky wasn't running — FSEvents only
+    /// reports changes from the moment the stream starts, so those files would otherwise sit
+    /// there forever.
+    private func catchUpScanWatchedFolders(_ roots: [String], registry: WatchPipelineRegistry) {
+        let previousScan = prefs.lastWatchCatchUpScan
+        prefs.lastWatchCatchUpScan = Date().timeIntervalSinceReferenceDate
+        guard previousScan > 0 else { return }
+        let cutoff = Date(timeIntervalSinceReferenceDate: previousScan)
+
+        var pending: [URL] = []
+        for root in roots {
+            let rootURL = URL(fileURLWithPath: root)
+            guard let entries = try? FileManager.default.contentsOfDirectory(
+                at: rootURL,
+                includingPropertiesForKeys: [.creationDateKey, .contentModificationDateKey, .isRegularFileKey],
+                options: [.skipsHiddenFiles, .skipsSubdirectoryDescendants]
+            ) else { continue }
+            for url in entries {
+                guard MediaTypeDetector.detect(url) != nil, !isSelfWrittenOutput(url) else { continue }
+                guard let values = try? url.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey, .isRegularFileKey]),
+                      values.isRegularFile == true,
+                      let created = values.creationDate else { continue }
+                let modified = values.contentModificationDate ?? created
+                guard max(created, modified) > cutoff else { continue }
+                pending.append(url)
+            }
+        }
+        guard !pending.isEmpty else { return }
+        for url in pending {
+            route(url, through: registry)
+        }
+    }
+
+    private func route(_ url: URL, through registry: WatchPipelineRegistry) {
+        switch registry.pipeline(for: url) {
+        case .global:
+            addAndCompress([url], presetID: nil)
+        case .preset(let id):
+            let preset = prefs.savedPresets.first(where: { $0.id == id })
+            let media = MediaTypeDetector.detect(url)
+            if let p = preset, let m = media, p.applies(to: m) {
+                addAndCompress([url], presetID: id)
+            } else {
+                addAndCompress([url], presetID: nil)
+            }
+        }
+    }
+
+    /// The only preferences the watcher cares about. Compared before touching the registry so
+    /// unrelated preference edits don't re-resolve every security-scoped bookmark.
+    private struct WatchSettingsSignature: Equatable {
+        let globalEnabled: Bool
+        let globalPath: String
+        let globalBookmark: Data
+        let presets: [String]
+
+        init(prefs: DinkyPreferences) {
+            globalEnabled = prefs.folderWatchEnabled
+            globalPath = prefs.watchedFolderPath
+            globalBookmark = prefs.watchedFolderBookmark
+            presets = prefs.savedPresets.map {
+                "\($0.id)|\($0.watchFolderEnabled)|\($0.watchFolderModeRaw)|\($0.watchFolderPath)"
+            }
+        }
+    }
+
     init(prefs: DinkyPreferences) {
         self.prefs = prefs
         self.selectedFormat = prefs.defaultFormat
+        loadSelfWrittenOutputs()
+        reconcileBookmarksAndUpdateFolderWatcher()
+        prefsObservation = prefs.objectWillChange.sink { [weak self] _ in
+            // `objectWillChange` fires before the new value is written; defer a tick so
+            // `updateFolderWatcher()` reads the post-change preferences.
+            DispatchQueue.main.async { self?.updateFolderWatcher() }
+        }
+    }
+
+    /// Re-anchors moved/renamed watch folders, then syncs the watcher. Kept out of
+    /// `updateFolderWatcher()` because reconciling *writes* to preferences, and the
+    /// preferences observer would feed those writes straight back in as another update.
+    func reconcileBookmarksAndUpdateFolderWatcher() {
+        prefs.reconcileFolderBookmarksIfNeeded()
+        updateFolderWatcher()
+    }
+
+    /// Rebuilds the watch-folder routing table from current preferences and (re)starts FSEvents
+    /// monitoring only when the resolved set of watched directories actually changed.
+    func updateFolderWatcher() {
+        let signature = WatchSettingsSignature(prefs: prefs)
+        guard signature != lastWatchSettings else { return }
+        lastWatchSettings = signature
+        let reg = WatchPipelineRegistry(prefs: prefs)
+        let paths = reg.watchedRootPaths
+        guard !paths.isEmpty else {
+            if !lastWatchedPaths.isEmpty {
+                folderWatcher.stop()
+                lastWatchedPaths = []
+            }
+            return
+        }
+        guard paths != lastWatchedPaths else { return }
+        lastWatchedPaths = paths
+        folderWatcher.onNewFiles = { [weak self] urls in
+            guard let self else { return }
+            // Move the catch-up marker forward for anything handled live, otherwise the next
+            // launch sees this session's own arrivals as new and compresses them a second time.
+            self.prefs.lastWatchCatchUpScan = Date().timeIntervalSinceReferenceDate
+            for url in urls where !self.isSelfWrittenOutput(url) {
+                self.route(url, through: reg)
+            }
+        }
+        folderWatcher.start(paths: paths)
+        catchUpScanWatchedFolders(paths, registry: reg)
     }
 
     /// Hardware video encoders are limited; parallel `AVAssetExportSession`s usually hurt throughput.
@@ -649,6 +810,9 @@ final class ContentViewModel: ObservableObject {
         let smartQ = preset?.smartQuality ?? prefs.smartQuality
         let hint = preset?.contentTypeHintRaw ?? prefs.contentTypeHintRaw
         let strip = preset?.stripMetadata ?? prefs.stripMetadata
+        let chroma = ChromaSubsampling(rawValue: preset?.chromaSubsamplingRaw ?? prefs.chromaSubsamplingRaw) ?? .auto
+        let webpLL = preset?.webpLossless ?? prefs.webpLossless
+        let pngMode = PNGOutputMode(rawValue: preset?.pngOutputModeRaw ?? prefs.pngOutputModeRaw) ?? .lossless
 
         var classifiedForResolver: ContentType? = nil
         var preclassifiedForSmartQ: ContentType? = nil
@@ -673,13 +837,6 @@ final class ContentViewModel: ObservableObject {
             classifiedContent: classifiedForResolver
         )
 
-        let srcExt = item.sourceURL.pathExtension.lowercased()
-        let pngSourceOK = srcExt == "png" || srcExt == "heic" || srcExt == "heif"
-        if format == .png && !pngSourceOK {
-            await MainActor.run { item.status = .failed(PNGInputError()) }
-            return
-        }
-
         await MainActor.run {
             item.usedFirstFrameOnly = false
             item.status = .processing
@@ -691,6 +848,7 @@ final class ContentViewModel: ObservableObject {
             if let pr = preset { return pr.outputURL(for: item.sourceURL, format: format, globalPrefs: prefs, isFromURLDownload: urlDL) }
             return prefs.outputURL(for: item.sourceURL, format: format, isFromURLDownload: urlDL)
         }()
+        noteSelfWrittenOutput(outputURL)
         let replaceOrigin = (preset.map { FilenameHandling(rawValue: $0.filenameHandlingRaw) } ?? prefs.filenameHandling) == .replaceOrigin
         let backupURL = prefs.originalsAction == .backup ? prefs.originalsBackupDestinationURL() : nil
         CompressionTiming.logReproContext(
@@ -719,6 +877,9 @@ final class ContentViewModel: ObservableObject {
                 parallelCompressionLimit: prefs.concurrentCompressionLimit,
                 collisionNamingStyle: collisionNamingStyle(for: item),
                 collisionCustomPattern: collisionCustomPattern(for: item),
+                chromaSubsampling: chroma,
+                webpLossless: webpLL,
+                pngOutputMode: pngMode,
                 progressHandler: progressHandler
             )
             let savings = result.originalSize > 0
@@ -800,6 +961,7 @@ final class ContentViewModel: ObservableObject {
             if let pr = preset { return pr.outputURL(for: item.sourceURL, mediaType: .pdf, globalPrefs: prefs, isFromURLDownload: urlDL) }
             return prefs.outputURL(for: item.sourceURL, mediaType: .pdf, isFromURLDownload: urlDL)
         }()
+        noteSelfWrittenOutput(intendedOutput)
         let pdfFallback = preset.map { PDFQuality(rawValue: $0.pdfQualityRaw) ?? .medium } ?? prefs.pdfQuality
         let sourceURL = item.sourceURL
         let outputMode = pdfModeOverride ?? preset.map { PDFOutputMode(rawValue: $0.pdfOutputModeRaw) ?? .flattenPages } ?? prefs.pdfOutputMode
@@ -1039,6 +1201,7 @@ final class ContentViewModel: ObservableObject {
                         style: collisionStyle,
                         customPattern: collisionCustomPattern(for: item)
                     )
+                    noteSelfWrittenOutput(producedURL)
                 } catch {
                     try? FileManager.default.removeItem(at: workURL)
                     await MainActor.run { item.status = .failed(error) }
@@ -1046,6 +1209,7 @@ final class ContentViewModel: ObservableObject {
                 }
             } else {
                 producedURL = result.outputURL
+                noteSelfWrittenOutput(producedURL)
                 if replaceOrigin {
                     if urlDL {
                         try? FileManager.default.removeItem(at: item.sourceURL)
@@ -1119,6 +1283,7 @@ final class ContentViewModel: ObservableObject {
             if let pr = preset { return pr.outputURL(for: item.sourceURL, mediaType: .video, globalPrefs: prefs, isFromURLDownload: urlDL) }
             return prefs.outputURL(for: item.sourceURL, mediaType: .video, isFromURLDownload: urlDL)
         }()
+        noteSelfWrittenOutput(intendedOutput)
         let videoFallback = preset.map { VideoQuality.resolve($0.videoQualityRaw) } ?? prefs.videoQuality
         let sourceURL = item.sourceURL
         let asset = VideoCompressor.makeURLAsset(url: sourceURL)
@@ -1232,6 +1397,7 @@ final class ContentViewModel: ObservableObject {
                         style: collisionStyle,
                         customPattern: collisionCustomPattern(for: item)
                     )
+                    noteSelfWrittenOutput(producedURL)
                 } catch {
                     try? FileManager.default.removeItem(at: workURL)
                     await MainActor.run { item.status = .failed(error) }
@@ -1239,6 +1405,7 @@ final class ContentViewModel: ObservableObject {
                 }
             } else {
                 producedURL = result.outputURL
+                noteSelfWrittenOutput(producedURL)
                 if replaceOrigin {
                     if urlDL {
                         try? FileManager.default.removeItem(at: item.sourceURL)
@@ -1332,6 +1499,7 @@ final class ContentViewModel: ObservableObject {
             }
             return prefs.outputURL(for: item.sourceURL, mediaType: .audio, isFromURLDownload: urlDL)
         }()
+        noteSelfWrittenOutput(intendedOutput)
         // Smart Quality may pick a different container than the preset’s stored `audioFormatRaw`.
         let outDir = intendedOutput.deletingLastPathComponent()
         let outStem = intendedOutput.deletingPathExtension().lastPathComponent
@@ -1390,6 +1558,7 @@ final class ContentViewModel: ObservableObject {
                         style: collisionStyle,
                         customPattern: collisionCustomPattern(for: item)
                     )
+                    noteSelfWrittenOutput(producedURL)
                 } catch {
                     try? FileManager.default.removeItem(at: workURL)
                     await MainActor.run { item.status = .failed(error) }
@@ -1397,6 +1566,7 @@ final class ContentViewModel: ObservableObject {
                 }
             } else {
                 producedURL = result.outputURL
+                noteSelfWrittenOutput(producedURL)
                 if replaceOrigin {
                     if urlDL {
                         try? FileManager.default.removeItem(at: item.sourceURL)
@@ -1514,12 +1684,6 @@ final class ContentViewModel: ObservableObject {
     }
 }
 
-struct PNGInputError: LocalizedError {
-    var errorDescription: String? {
-        String(localized: "PNG lossless only works on PNG, HEIC, or HEIF files. Try WebP or AVIF for other images.", comment: "Error when PNG output selected for unsupported input.")
-    }
-}
-
 // MARK: - Root view
 
 struct ContentView: View {
@@ -1529,7 +1693,6 @@ struct ContentView: View {
     @Environment(\.openSettings) private var openSettings
     @Environment(\.openWindow) private var openWindow
     @ObservedObject var vm: ContentViewModel
-    @StateObject private var folderWatcher = FolderWatcher()
     @State private var sidebarVisible = false
     @State private var isDropTargeted  = false
     @State private var idleLoop        = 0
@@ -1970,18 +2133,14 @@ struct ContentView: View {
         .onAppear {
             URLDownloader.sweepOldDownloads()
             prefs.reconcileSidebarSectionsForSimpleModeIfNeeded()
-            updateFolderWatcher()
+            vm.reconcileBookmarksAndUpdateFolderWatcher()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            updateFolderWatcher()
+            vm.reconcileBookmarksAndUpdateFolderWatcher()
         }
         .task {
             await updater.check()
         }
-        .onChange(of: prefs.folderWatchEnabled) { _, _ in updateFolderWatcher() }
-        .onChange(of: prefs.watchedFolderPath) { _, _ in updateFolderWatcher() }
-        .onChange(of: prefs.watchedFolderBookmark) { _, _ in updateFolderWatcher() }
-        .onChange(of: prefs.savedPresetsData) { _, _ in updateFolderWatcher() }
         .sheet(item: $diagnostics.pendingCrashReport) { report in
             PostCrashReportSheet(report: report, diagnostics: diagnostics)
         }
@@ -2287,35 +2446,6 @@ struct ContentView: View {
                 .compactMap { $0 as? URL } ?? [])
             : [url]
         return urls.filter { MediaTypeDetector.detect($0) != nil }
-    }
-
-    // MARK: - Folder watcher
-
-    private func updateFolderWatcher() {
-        prefs.reconcileFolderBookmarksIfNeeded()
-        let reg = WatchPipelineRegistry(prefs: prefs)
-        let paths = reg.watchedRootPaths
-        guard !paths.isEmpty else {
-            folderWatcher.stop()
-            return
-        }
-        folderWatcher.onNewFiles = { urls in
-            for url in urls {
-                switch reg.pipeline(for: url) {
-                case .global:
-                    vm.addAndCompress([url], presetID: nil)
-                case .preset(let id):
-                    let preset = prefs.savedPresets.first(where: { $0.id == id })
-                    let media = MediaTypeDetector.detect(url)
-                    if let p = preset, let m = media, p.applies(to: m) {
-                        vm.addAndCompress([url], presetID: id)
-                    } else {
-                        vm.addAndCompress([url], presetID: nil)
-                    }
-                }
-            }
-        }
-        folderWatcher.start(paths: paths)
     }
 
     // MARK: - Open panel

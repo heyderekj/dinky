@@ -34,6 +34,9 @@ public enum DinkyCLIHelp {
           -q, --quality <0-100>    (disables smart quality)
           --smart-quality | --no-smart-quality
           --content-hint auto|photo|graphic|mixed
+          --chroma auto|420|422|444   (AVIF chroma subsampling)
+          --webp-lossless             (lossless WebP)
+          --png-mode lossless|optimized
           --strip-metadata | --no-strip-metadata
           -j, --parallel <n>       (default 3)
           --collision-style …     --collision-pattern …

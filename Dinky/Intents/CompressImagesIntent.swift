@@ -74,7 +74,10 @@ struct CompressImagesIntent: AppIntent {
                 contentTypeHint: settings.contentTypeHint,
                 parallelCompressionLimit: settings.parallelCompressionLimit,
                 collisionNamingStyle: collisionStyle,
-                collisionCustomPattern: collisionPattern
+                collisionCustomPattern: collisionPattern,
+                chromaSubsampling: settings.chromaSubsampling,
+                webpLossless: settings.webpLossless,
+                pngOutputMode: settings.pngOutputMode
             )
             defer { try? FileManager.default.removeItem(at: result.outputURL) }
 

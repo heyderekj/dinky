@@ -2,8 +2,15 @@ import SwiftUI
 import AppKit
 
 /// Shares one `DinkyPreferences` instance between `ContentViewModel` and the environment.
+///
+/// Deliberately a singleton rather than SwiftUI-owned state: `@StateObject` is created lazily,
+/// when a scene's body is first evaluated. A headless launch ("Hide from Dock" + "Open at Login")
+/// never shows the main window, so nothing would ever build this — taking watch folders with it.
+/// `AppDelegate` touches `shared` on launch so background work runs with or without a window.
 @MainActor
-private final class DinkyRootModel: ObservableObject {
+final class DinkyRootModel: ObservableObject {
+    static let shared = DinkyRootModel()
+
     let prefs: DinkyPreferences
     let contentVM: ContentViewModel
 
@@ -22,7 +29,7 @@ enum DinkyMacPreferencesWindow {
 @main
 struct DinkyApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @StateObject private var root = DinkyRootModel()
+    @StateObject private var root = DinkyRootModel.shared
     @StateObject private var updater = UpdateChecker()
 
     var body: some Scene {

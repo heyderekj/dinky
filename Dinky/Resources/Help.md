@@ -23,6 +23,7 @@ That's it. The defaults are good. Read on if you want to bend them to your will.
 You don't have to open the app first. Pick whichever fits how you work.
 
 - **Drag & drop** onto the Dinky window or the Dock icon.
+- **Hide from Dock** — Settings → General → Behavior (requires **Open at login**) keeps Dinky running without a Dock icon or App Switcher entry (Dock-icon drops need this off).
 - **Open Files…** — `{{SK_OPEN_FILES}}` to pick from a sheet.
 - **Clipboard Compress** — `{{SK_PASTE}}` pastes a supported **file** copied in Finder (images, videos, PDFs) or **raw image** data (PNG/TIFF from screenshots or browsers).
 - **Right-click in Finder → Services → Compress with Dinky** — works on selections of any size.
@@ -61,7 +62,7 @@ Three plain-language choices: **Image**, **Video**, **PDF**. Pick one per catego
 
 Toggle **Settings → General → Use simple sidebar** off (or flip individual sections on) to expose every control:
 
-- **Images** — format (Auto, WebP, AVIF, lossless PNG, or HEIC), content hint (photo / illustration / screenshot), max width, max file size.
+- **Images** — format (Auto, WebP, AVIF, lossless PNG, or HEIC), content hint (photo / illustration / screenshot), max width, max file size. With **Smart quality** off and a fixed format, you also get AVIF chroma, lossless WebP, or optimized PNG options in the sidebar.
 - **Videos** — codec family (H.264 / HEVC / AV1), quality tier, strip audio.
 - **PDFs** — **Smallest file (flatten pages)** is the default for real size savings; **Preserve text (best-effort size)** keeps structure when qpdf/PDFKit can actually shrink the file.
 
@@ -71,7 +72,7 @@ Toggle **Settings → General → Use simple sidebar** off (or flip individual s
 
 When **Smart quality** is on (default for new presets), Dinky inspects each file and picks settings for it:
 
-- Images get an encoder tuned to their content (busy photo vs. graphic — UI, illustration, logo, screenshot).
+- Images get an encoder tuned to their content (busy photo vs. graphic — UI, illustration, logo, screenshot), including AVIF chroma subsampling and WebP near-lossless when appropriate.
 - Videos get a tier based on resolution and source bitrate, then nudged for content type — screen recordings and animation / motion graphics move up a tier so text and edges stay readable. Camera footage is identified from EXIF make/model so it isn't over-protected. HDR sources (Dolby Vision, HDR10, HLG) are exported with HEVC to preserve color and highlight detail; H.264 would silently flatten them to SDR.
 - PDFs get a tier based on document complexity and whether they're text-first or image-heavy. **Preserve text** uses Smart quality to try several **qpdf** passes when Experimental preserve is off, then PDFKit if needed. **Smallest file (flatten)** can turn on **Auto-grayscale monochrome scans** (in the preset) so black-and-white scans use grayscale without enabling **Grayscale PDF** for everything.
 

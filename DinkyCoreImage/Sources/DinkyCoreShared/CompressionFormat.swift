@@ -31,7 +31,7 @@ public enum CompressionFormat: String, CaseIterable, Identifiable, Codable, Send
         switch self {
         case .webp: return [.jpeg, .png, .webP, .tiff, .heic, .heif, .gif]
         case .avif: return [.jpeg, .png, .tiff, .heic, .heif]
-        case .png: return [.png, .heic, .heif]
+        case .png: return [.jpeg, .png, .webP, .tiff, .heic, .heif, .gif]
         case .heic: return [.jpeg, .png, .webP, .tiff, .heic, .heif]
         }
     }

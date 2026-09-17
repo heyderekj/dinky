@@ -27,6 +27,8 @@ extension Notification.Name {
     static let dinkyStartCompression    = Notification.Name("dinkyStartCompression")
     /// Re-register the system-wide “Clipboard Compress” hotkey (toggle or shortcut changed).
     static let dinkyGlobalPasteHotkeyChanged = Notification.Name("dinkyGlobalPasteHotkeyChanged")
+    /// Re-apply Dock / App Switcher visibility when the Behavior toggle changes.
+    static let dinkyDockPresenceChanged = Notification.Name("dinkyDockPresenceChanged")
     /// Posted before quit so SwiftUI can dismiss sheets; used with `applicationShouldTerminate` / `terminateLater`.
     static let dinkyPrepareQuit = Notification.Name("dinkyPrepareQuit")
 }
@@ -80,6 +82,18 @@ enum S {
     /// Settings › General › Behavior — global clipboard shortcut explainer (combo comes from `CustomShortcut.displayString`).
     static func behaviorPasteClipboardGlobalFootnote(currentShortcutDisplay: String) -> String {
         String(localized: "Triggers Clipboard Compress from any app while Dinky is running (currently \(currentShortcutDisplay)).", comment: "Settings footnote; argument is the shortcut key combo.")
+    }
+
+    static var behaviorHideFromDockFootnote: String {
+        String(localized: "Requires Open at login. Dinky won’t appear in the Dock or App Switcher, and starts without showing the window. Drag-and-drop onto the Dock icon won’t work — use the global Clipboard Compress shortcut, Finder, or Services instead.", comment: "Settings › General › Behavior footnote for hide-from-Dock toggle.")
+    }
+
+    static var watchFolderBackgroundModeCaption: String {
+        String(localized: "Optional. Turn on Open at login and Hide from Dock and App Switcher in Behavior to keep watching in the background without a Dock icon or ⌘Tab entry.", comment: "Settings › Watch: points users to background-mode toggles.")
+    }
+
+    static var watchFolderBackgroundModeLinkTitle: String {
+        String(localized: "Hide from Dock and App Switcher at login…", comment: "Settings › Watch: link to General › Behavior.")
     }
 
     /// Settings › General › Compression — parallel job cap (three tiers: 1, 3, or 8).

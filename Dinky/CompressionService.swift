@@ -94,8 +94,15 @@ actor CompressionService {
         parallelCompressionLimit: Int = 3,
         collisionNamingStyle: CollisionNamingStyle = .finderDuplicate,
         collisionCustomPattern: String = "",
+        chromaSubsampling: ChromaSubsampling = .auto,
+        webpLossless: Bool = false,
+        pngOutputMode: PNGOutputMode = .lossless,
         progressHandler: (@Sendable (Float) -> Void)? = nil
     ) async throws -> CompressionResult {
+        try FileManager.default.createDirectory(
+            at: outputURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
         do {
             let r = try await imagePipeline.compress(
                 source: source,
@@ -113,6 +120,9 @@ actor CompressionService {
                 collisionNamingStyle: collisionNamingStyle,
                 collisionCustomPattern: collisionCustomPattern,
                 qualityOverride: nil,
+                chromaSubsampling: chromaSubsampling,
+                webpLossless: webpLossless,
+                pngOutputMode: pngOutputMode,
                 progressHandler: progressHandler
             )
             return CompressionResult(
@@ -142,8 +152,15 @@ actor CompressionService {
         resolutionDownsampling: Bool = false,
         collisionNamingStyle: CollisionNamingStyle = .finderDuplicate,
         collisionCustomPattern: String = "",
+        chromaSubsampling: ChromaSubsampling = .auto,
+        webpLossless: Bool = false,
+        pngOutputMode: PNGOutputMode = .lossless,
         progressHandler: (@Sendable (Float) -> Void)? = nil
     ) async throws -> CompressionResult {
+        try FileManager.default.createDirectory(
+            at: outputURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
         let qpdf = DinkyEncoderPath.qpdfExecutable(inBinDirectory: binDir)
         let pdfResult = try await DinkyPDFPipeline.compress(
             source: source,

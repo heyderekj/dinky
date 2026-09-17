@@ -60,6 +60,7 @@
 		LB000001000000000000001 /* lib in Resources */ = {isa = PBXBuildFile; fileRef = LB100001000000000000001 /* lib */; };
 		LCAT00000100000000000001 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = LCATREF0000000000000001 /* Localizable.xcstrings */; };
 		LL000001000000000000001 /* LaunchAtLoginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = LL100001000000000000001 /* LaunchAtLoginManager.swift */; };
+		DP000001000000000000001 /* DockPresenceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DP100001000000000000001 /* DockPresenceManager.swift */; };
 		LM000001000000000000001 /* lame in Resources */ = {isa = PBXBuildFile; fileRef = LM100001000000000000001 /* lame */; };
 		MTAAPP001000000000000001 /* MediaType+App.swift in Sources */ = {isa = PBXBuildFile; fileRef = MTAAPP101000000000000001 /* MediaType+App.swift */; };
 		QP000001000000000000001 /* qpdf in Resources */ = {isa = PBXBuildFile; fileRef = QP100001000000000000001 /* qpdf */; };
@@ -140,6 +141,7 @@
 		LB100001000000000000001 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; path = lib; sourceTree = "<group>"; };
 		LCATREF0000000000000001 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		LL100001000000000000001 /* LaunchAtLoginManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginManager.swift; sourceTree = "<group>"; };
+		DP100001000000000000001 /* DockPresenceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockPresenceManager.swift; sourceTree = "<group>"; };
 		LM100001000000000000001 /* lame */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = lame; sourceTree = "<group>"; };
 		MTAAPP101000000000000001 /* MediaType+App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MediaType+App.swift"; sourceTree = "<group>"; };
 		QP100001000000000000001 /* qpdf */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = qpdf; sourceTree = "<group>"; };
@@ -312,6 +314,7 @@
 				CU100001000000000000001 /* CompressionUndo.swift */,
 				UD100001000000000000001 /* URLDownloader.swift */,
 				LL100001000000000000001 /* LaunchAtLoginManager.swift */,
+				DP100001000000000000001 /* DockPresenceManager.swift */,
 				ICFR1000010000000000001 /* ImageCompressionFormatResolver.swift */,
 				CI100001000000000000001 /* ClipboardImporter.swift */,
 				FW100001000000000000001 /* FolderWatcher.swift */,
@@ -506,6 +509,7 @@
 				CU000001000000000000001 /* CompressionUndo.swift in Sources */,
 				UD000001000000000000001 /* URLDownloader.swift in Sources */,
 				LL000001000000000000001 /* LaunchAtLoginManager.swift in Sources */,
+				DP000001000000000000001 /* DockPresenceManager.swift in Sources */,
 				FW000001000000000000001 /* FolderWatcher.swift in Sources */,
 				IPS00001000000000000001 /* ImagePreviewSheet.swift in Sources */,
 				HS000001000000000000001 /* HistorySheet.swift in Sources */,

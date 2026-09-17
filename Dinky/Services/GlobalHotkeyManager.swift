@@ -71,27 +71,9 @@ final class GlobalHotkeyManager {
 
     private func handleHotKeyPressed() {
         DispatchQueue.main.async {
-            NSApp.activate(ignoringOtherApps: true)
-            Self.bringMainWindowForward()
+            DockPresenceManager.showMainWindow()
             NotificationCenter.default.post(name: .dinkyPasteClipboard, object: nil)
         }
-    }
-
-    private static func bringMainWindowForward() {
-        if let w = NSApp.windows.first(where: { $0.frameAutosaveName == "DinkyMainWindow" && $0.isVisible }) {
-            w.makeKeyAndOrderFront(nil)
-            return
-        }
-        if let w = NSApp.windows.first(where: { w in
-            w.isVisible
-                && w.canBecomeKey
-                && w.title != "Dinky Help"
-                && w.frameAutosaveName != "help"
-        }) {
-            w.makeKeyAndOrderFront(nil)
-            return
-        }
-        NSApp.sendAction(Selector(("newWindow:")), to: nil, from: nil)
     }
 
     // MARK: - Carbon event handler

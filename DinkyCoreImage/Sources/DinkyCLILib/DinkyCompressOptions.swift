@@ -15,6 +15,9 @@ public struct DinkyCompressOptions: Sendable {
     public var collisionStyle: CollisionNamingStyle
     public var collisionCustomPattern: String
     public var json: Bool
+    public var chromaSubsamplingRaw: String
+    public var webpLossless: Bool
+    public var pngOutputModeRaw: String
 
     public init(
         format: String = "auto",
@@ -28,7 +31,10 @@ public struct DinkyCompressOptions: Sendable {
         parallelLimit: Int = 3,
         collisionStyle: CollisionNamingStyle = .finderDuplicate,
         collisionCustomPattern: String = "",
-        json: Bool = false
+        json: Bool = false,
+        chromaSubsamplingRaw: String = ChromaSubsampling.auto.rawValue,
+        webpLossless: Bool = false,
+        pngOutputModeRaw: String = PNGOutputMode.lossless.rawValue
     ) {
         self.format = format
         self.quality = quality
@@ -42,5 +48,8 @@ public struct DinkyCompressOptions: Sendable {
         self.collisionStyle = collisionStyle
         self.collisionCustomPattern = collisionCustomPattern
         self.json = json
+        self.chromaSubsamplingRaw = chromaSubsamplingRaw
+        self.webpLossless = webpLossless
+        self.pngOutputModeRaw = pngOutputModeRaw
     }
 }

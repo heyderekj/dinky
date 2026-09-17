@@ -48,17 +48,20 @@ dinky compress-image <file>... [options]
 - `-q, --quality` `0...100` — disables smart quality when set
 - `--smart-quality` / `--no-smart-quality`
 - `--content-hint` `auto|photo|graphic|mixed`
+- `--chroma` `auto|420|422|444` — AVIF chroma subsampling override (default: `auto`)
+- `--webp-lossless` — lossless WebP via `cwebp -lossless`
+- `--png-mode` `lossless|optimized` — PNG palette optimization when beneficial
 - `--strip-metadata` / `--no-strip-metadata`
 - `-j, --parallel` — concurrency (default: 3)
 - `--collision-style` / `--collision-pattern` — collision naming
 - `--json` — machine-readable output
 - **Presets:** `--preset "Name"`, `--preset-id <UUID>`, `--preset-file <path>` — same resolution order as below; CLI flags override preset fields; preset **scope** must include **images**.
 
-### JSON schema — `dinky.image.compress/1.0.0`
+### JSON schema — `dinky.image.compress/1.1.0`
 
 Root: `schema`, `success`, `results[]`.
 
-Each result: `input`, `output`, `originalBytes`, `outputBytes`, `savingsPercent`, `detectedContent`, `error`.
+Each result: `input`, `output`, `originalBytes`, `outputBytes`, `savingsPercent`, `detectedContent`, `appliedChromaSubsampling`, `appliedWebpLossless`, `appliedPngOutputMode`, `error`.
 
 ---
 
@@ -148,7 +151,7 @@ Default port **17381**. Prefer **`127.0.0.1`** in clients.
 | Method | Path | Notes |
 |--------|------|--------|
 | `GET` | `/v1/health` | `{"ok":true,"schema":"dinky.image.serve/1.0.0"}` |
-| `POST` | `/v1/compress` | Image body (existing); response `dinky.image.compress/1.0.0` |
+| `POST` | `/v1/compress` | Image body (existing); response `dinky.image.compress/1.1.0` |
 | `POST` | `/v1/video/compress` | Video options JSON; response `dinky.video.compress/1.0.0` |
 | `POST` | `/v1/pdf/compress` | PDF options JSON; response `dinky.pdf.compress/1.0.0` |
 

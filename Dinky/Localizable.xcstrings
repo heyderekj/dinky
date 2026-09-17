@@ -3332,7 +3332,7 @@
       "comment" : "Results row: generic audio type chip."
     },
     "Audio" : {
-      "comment" : "Compression confirm: media section.\nOutcome map row title.\nPreset list: applies to audio files.\nSettings UI: Media video subsection.\nSettings UI: media type segment.\nSidebar quality subsection label."
+      "comment" : "Compression confirm: media section.\nOutcome map row title.\nPreset list: applies to audio files.\nSettings UI: Media video subsection.\nSettings UI: media type segment."
     },
     "Audio → %@" : {
       "comment" : "Compression confirm: audio row; format name."
@@ -3523,8 +3523,28 @@
         }
       }
     },
+    "AVIF chroma" : {
+      "comment" : "Settings UI: AVIF chroma control label.\nSidebar: AVIF chroma subsampling control label."
+    },
+    "AVIF chroma subsampling" : {
+      "comment" : "Accessibility: AVIF chroma picker group."
+    },
     "Back" : {
       "comment" : "Preferences toolbar."
+    },
+    "Background" : {
+      "comment" : "Settings UI: watch folder background running section.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Background"
+          }
+        }
+      }
+    },
+    "Balanced chroma — half the vertical color detail of 4:4:4. Good when you want smaller files without full 4:2:0 softness." : {
+      "comment" : "Chroma chip picker: 4:2:2 detail."
     },
     "Balances size and readability; you choose text vs flatten in All options." : {
       "comment" : "Outcome map friendly: PDFs smart."
@@ -4152,6 +4172,9 @@
           }
         }
       }
+    },
+    "Builds a ≤256-color palette for flat, opaque graphics, then oxipng. Falls back to lossless if palette isn’t smaller." : {
+      "comment" : "PNG mode chip picker: optimized detail."
     },
     "Call stack tree (JSON, truncated):\n%@" : {
       "comment" : "MetricKit crash export header plus JSON; keep newline.",
@@ -12026,6 +12049,12 @@
         }
       }
     },
+    "Full 24-bit color preserved, then oxipng re-packs the file. Safest when you need true lossless PNG." : {
+      "comment" : "PNG mode chip picker: lossless detail."
+    },
+    "Full color on every pixel — no chroma subsampling. Best for screenshots, logos, and product shots with colored type." : {
+      "comment" : "Chroma chip picker: 4:4:4 detail."
+    },
     "Full crash details copied to your clipboard — paste here.\n\n" : {
       "comment" : "Email body fallback when crash text is too long for a URL.\nGitHub issue body fallback when crash text is too long for a URL."
     },
@@ -13737,6 +13766,28 @@
     "Hide format, quality, and output options" : {
       "comment" : "Toolbar tooltip."
     },
+    "Hide from Dock and App Switcher" : {
+      "comment" : "Settings UI.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Hide from Dock and App Switcher"
+          }
+        }
+      }
+    },
+    "Hide from Dock and App Switcher at login…" : {
+      "comment" : "Settings › Watch: link to General › Behavior.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Hide from Dock and App Switcher at login…"
+          }
+        }
+      }
+    },
     "Hide the format sidebar" : {
       "comment" : "Toolbar tooltip.",
       "extractionState" : "stale",
@@ -14443,7 +14494,7 @@
       "comment" : "Settings UI: PDF image downsampling.\nSidebar PDF: image downsampling subsection."
     },
     "Images" : {
-      "comment" : "Compression confirm: media section.\nOutcome map row title.\nPreset list: applies to image files.\nShortcuts app: intent category.\nShortcuts: images parameter title.\nSidebar quality subsection label.",
+      "comment" : "Compression confirm: media section.\nOutcome map row title.\nPreset list: applies to image files.\nShortcuts app: intent category.\nShortcuts: images parameter title.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15242,6 +15293,9 @@
     "Links: output follows your Settings for each file after download." : {
       "comment" : "Compression confirm: remote-only queue."
     },
+    "Lossless WebP" : {
+      "comment" : "Settings UI.\nSidebar: lossless WebP toggle."
+    },
     "Loving Dinky? Leave a review" : {
       "comment" : "Review prompt banner: link to GitHub Discussions reviews.",
       "localizations" : {
@@ -15475,9 +15529,6 @@
         }
       }
     },
-    "Low / Medium / High apply when Smallest file (flatten) is selected under Media." : {
-      "comment" : "Settings UI."
-    },
     "Lowers output FPS when the source runs faster than the cap (great for screen recordings). Source timing is unchanged when it is already at or below this rate." : {
       "comment" : "Settings UI: video FPS cap helper."
     },
@@ -15489,6 +15540,7 @@
     },
     "Manual compression" : {
       "comment" : "Settings UI.",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15566,6 +15618,7 @@
     },
     "Manual compression by media type" : {
       "comment" : "VoiceOver label for segmented media picker.",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -18858,6 +18911,17 @@
     "Optional extra qpdf steps when normal preserve isn’t enough. Can affect tagged PDF structure or image sharpness. Use Off unless you need more shrink while keeping text and links." : {
       "comment" : "Sidebar PDF: experimental preserve risk copy."
     },
+    "Optional. Turn on Open at login and Hide from Dock and App Switcher in Behavior to keep watching in the background without a Dock icon or ⌘Tab entry." : {
+      "comment" : "Settings › Watch: points users to background-mode toggles.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Optional. Turn on Open at login and Hide from Dock and App Switcher in Behavior to keep watching in the background without a Dock icon or ⌘Tab entry."
+          }
+        }
+      }
+    },
     "or click to browse" : {
       "comment" : "Drop zone idle hint.",
       "localizations" : {
@@ -19408,6 +19472,7 @@
     },
     "Output resolution and codec live under Media." : {
       "comment" : "Settings UI.",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -19661,7 +19726,7 @@
       "comment" : "Results row: generic PDF chip until page count is known."
     },
     "PDF" : {
-      "comment" : "Compression confirm: media section.\nSettings UI: media type segment.\nShortcuts app: PDF intent category.\nSidebar quality subsection label.",
+      "comment" : "Compression confirm: media section.\nSettings UI: media type segment.\nShortcuts app: PDF intent category.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -20099,19 +20164,22 @@
         }
       }
     },
+    "Photo → 4:2:0, graphic → 4:4:4, mixed → 4:2:2. Follows Smart Quality content type." : {
+      "comment" : "Chroma chip picker: Auto detail."
+    },
     "Pick the language closest to your scans (on-device Vision)." : {
       "comment" : "Sidebar PDF OCR language helper."
     },
     "Picks encoder strength per clip from resolution and bitrate. Turn off Smart quality under Compression for a fixed tier." : {
       "comment" : "Settings UI."
     },
-    "Picks encoder strength per image from content (photo vs. graphic). Turn off Smart quality under Compression to choose Photo, Graphic, or Mixed." : {
-      "comment" : "Settings UI."
-    },
     "Picks encoder strength per image, per video clip, per audio file from content, and PDF flatten tier per document. Turn off to set fixed tiers per scope below." : {
       "comment" : "Sidebar: unified smart quality helper."
     },
     "Picks encoding strength from the track. Turn off Smart quality under Compression for a fixed tier." : {
+      "comment" : "Settings UI."
+    },
+    "Picks format, AVIF chroma, and encoder strength per image from content. Turn off Smart quality under Compression for manual Photo, Graphic, or Mixed tiers and advanced encoder options." : {
       "comment" : "Settings UI."
     },
     "Play sound when done" : {
@@ -20268,86 +20336,11 @@
         }
       }
     },
-    "PNG lossless only works on PNG files. Try WebP or AVIF for this one." : {
-      "comment" : "Error when PNG output selected for non-PNG input.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PNG Lossless funktioniert nur bei PNG-Dateien. Versuchen Sie es hierfür mit WebP oder AVIF."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PNG sin pérdidas solo funciona en archivos PNG. Pruebe WebP o AVIF para este."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PNG sans perte ne fonctionne que sur les fichiers PNG. Essayez WebP ou AVIF pour celui-ci."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PNG lossless funziona solo su file PNG. Prova WebP o AVIF per questo."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PNG ロスレスは PNG ファイルでのみ機能します。これについては、WebP または AVIF を試してください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PNG 무손실은 PNG 파일에서만 작동합니다. WebP나 AVIF를 사용해 보세요."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PNG lossless werkt alleen op PNG-bestanden. Probeer hiervoor WebP of AVIF."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PNG sem perdas funciona apenas em arquivos PNG. Experimente WebP ou AVIF para este."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PNG без потерь работает только с файлами PNG. Попробуйте для этого WebP или AVIF."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PNG kayıpsız yalnızca PNG dosyalarında çalışır. Bunun için WebP veya AVIF'yi deneyin."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PNG 无损仅适用于 PNG 文件。尝试使用 WebP 或 AVIF。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PNG 無損僅適用於 PNG 檔案。嘗試使用 WebP 或 AVIF。"
-          }
-        }
-      }
+    "PNG mode" : {
+      "comment" : "Settings UI: PNG output mode control label.\nSidebar: PNG output mode control label."
     },
-    "PNG lossless only works on PNG, HEIC, or HEIF files. Try WebP or AVIF for other images." : {
-      "comment" : "Error when PNG output selected for unsupported input."
+    "PNG output mode" : {
+      "comment" : "Accessibility: PNG mode picker group."
     },
     "Português (Brasil)" : {
 
@@ -22965,6 +22958,17 @@
         }
       }
     },
+    "Requires Open at login. Dinky won’t appear in the Dock or App Switcher, and starts without showing the window. Drag-and-drop onto the Dock icon won’t work — use the global Clipboard Compress shortcut, Finder, or Services instead." : {
+      "comment" : "Settings › General › Behavior footnote for hide-from-Dock toggle.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Requires Open at login. Dinky won’t appear in the Dock or App Switcher, and starts without showing the window. Drag-and-drop onto the Dock icon won’t work — use the global Clipboard Compress shortcut, Finder, or Services instead."
+          }
+        }
+      }
+    },
     "Reset" : {
       "comment" : "Button to reset one shortcut row.\nSettings UI.",
       "localizations" : {
@@ -24392,6 +24396,9 @@
           }
         }
       }
+    },
+    "Set fixed quality tiers and encoder options per media type in Media below." : {
+      "comment" : "Settings UI: manual compression pointer."
     },
     "Settings" : {
       "comment" : "Menu: open app settings.",
@@ -25903,11 +25910,17 @@
     "Smaller output by limiting height. Source resolution is kept when below the cap. Smart quality still picks Balanced or High per clip; when this is on, output size is capped." : {
       "comment" : "Sidebar Video: max resolution + smart quality note."
     },
+    "Smallest AVIF files. Color is sampled at quarter resolution — fine for photos, risky for colored text or UI on gradients." : {
+      "comment" : "Chroma chip picker: 4:2:0 detail."
+    },
     "Smallest file (flatten pages)" : {
       "comment" : "Sidebar PDF mode title."
     },
     "Smallest file (flatten)" : {
       "comment" : "Settings UI: PDF output mode."
+    },
+    "Smallest lossless file for graphics with sharp edges." : {
+      "comment" : "Sidebar: lossless WebP helper."
     },
     "Smart" : {
       "comment" : "Compression confirm: smart quality short label.\nResults row: smart quality short label on chip."
@@ -25995,11 +26008,11 @@
     "Smart quality is on — encoder strength is picked per clip automatically." : {
       "comment" : "Sidebar video: smart quality active placeholder."
     },
-    "Smart quality is on — encoder strength is picked per file automatically." : {
-      "comment" : "Sidebar images: smart quality active, quality section placeholder."
-    },
     "Smart quality is on — encoding strength is picked per track automatically." : {
       "comment" : "Sidebar audio: smart quality active placeholder."
+    },
+    "Smart quality is on — format, AVIF chroma, and encoder strength are picked per file automatically." : {
+      "comment" : "Sidebar images: smart quality active, quality section placeholder."
     },
     "Smart Quality tunes each file from content; you still choose some format chips in All options. Expand for details." : {
       "comment" : "Simple sidebar outcome one-liner, smart on, manual image format."
@@ -28102,6 +28115,17 @@
         }
       }
     },
+    "Turn on Open at login first." : {
+      "comment" : "VoiceOver: hide-from-Dock toggle disabled reason.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Turn on Open at login first."
+          }
+        }
+      }
+    },
     "Type unknown — will detect when compressing" : {
       "comment" : "Compression confirm: unknown media."
     },
@@ -28973,6 +28997,9 @@
         }
       }
     },
+    "Uses cwebp lossless mode instead of lossy quality tiers." : {
+      "comment" : "Settings UI."
+    },
     "Uses the folder set in Settings → Watch → Global, with the main window’s current settings. Add a unique folder below only if you want this preset’s options applied automatically somewhere else." : {
       "comment" : "Settings UI.",
       "localizations" : {
@@ -29387,7 +29414,7 @@
       "comment" : "Default filename stem for Shortcuts video output when source has no name.\nResults row: generic video chip when content type was not classified (e.g. Smart Quality off)."
     },
     "Video" : {
-      "comment" : "Compression confirm: media section.\nSettings UI: media type segment.\nShortcuts app: video intent category.\nSidebar quality subsection label.",
+      "comment" : "Compression confirm: media section.\nSettings UI: media type segment.\nShortcuts app: video intent category.",
       "localizations" : {
         "de" : {
           "stringUnit" : {

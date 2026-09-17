@@ -117,6 +117,34 @@ public enum DinkyCompressArgParser {
                     guard i < n else { throw DinkyCLIParseError(message: "missing --collision-pattern") }
                     o.collisionCustomPattern = args[i]
                     explicit.insert("collisionCustom")
+                case "--chroma":
+                    i += 1
+                    guard i < n else { throw DinkyCLIParseError(message: "missing --chroma") }
+                    let raw = args[i].lowercased()
+                    switch raw {
+                    case "auto":
+                        o.chromaSubsamplingRaw = ChromaSubsampling.auto.rawValue
+                    case "420", "yuv420":
+                        o.chromaSubsamplingRaw = ChromaSubsampling.yuv420.rawValue
+                    case "422", "yuv422":
+                        o.chromaSubsamplingRaw = ChromaSubsampling.yuv422.rawValue
+                    case "444", "yuv444":
+                        o.chromaSubsamplingRaw = ChromaSubsampling.yuv444.rawValue
+                    default:
+                        throw DinkyCLIParseError(message: "unknown --chroma (use auto|420|422|444)")
+                    }
+                    explicit.insert("chromaSubsampling")
+                case "--webp-lossless":
+                    o.webpLossless = true
+                    explicit.insert("webpLossless")
+                case "--png-mode":
+                    i += 1
+                    guard i < n else { throw DinkyCLIParseError(message: "missing --png-mode") }
+                    guard PNGOutputMode(rawValue: args[i].lowercased()) != nil else {
+                        throw DinkyCLIParseError(message: "unknown --png-mode (use lossless|optimized)")
+                    }
+                    o.pngOutputModeRaw = args[i].lowercased()
+                    explicit.insert("pngOutputMode")
                 default:
                     throw DinkyCLIParseError(message: "unknown option: \(a)")
                 }
