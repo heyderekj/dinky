@@ -20,7 +20,6 @@ extension Notification.Name {
     /// `object` is `PreferencesTab.rawValue` (Int)
     static let dinkySelectPreferencesTab = Notification.Name("dinkySelectPreferencesTab")
     /// macOS: posted from `DinkyApp` commands so `ContentView` can `openWindow(id:)`.
-    static let dinkyOpenMacPreferences = Notification.Name("dinkyOpenMacPreferences")
     static let dinkyClearAll            = Notification.Name("dinkyClearAll")
     static let dinkyToggleSidebar       = Notification.Name("dinkyToggleSidebar")
     static let dinkyDeleteSelectedRows  = Notification.Name("dinkyDeleteSelectedRows")

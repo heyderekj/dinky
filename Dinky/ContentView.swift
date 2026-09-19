@@ -113,16 +113,14 @@ final class ContentViewModel: ObservableObject {
             let rootURL = URL(fileURLWithPath: root)
             guard let entries = try? FileManager.default.contentsOfDirectory(
                 at: rootURL,
-                includingPropertiesForKeys: [.creationDateKey, .contentModificationDateKey, .isRegularFileKey],
+                includingPropertiesForKeys: [.creationDateKey, .contentModificationDateKey, .addedToDirectoryDateKey, .isRegularFileKey],
                 options: [.skipsHiddenFiles, .skipsSubdirectoryDescendants]
             ) else { continue }
             for url in entries {
                 guard MediaTypeDetector.detect(url) != nil, !isSelfWrittenOutput(url) else { continue }
-                guard let values = try? url.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey, .isRegularFileKey]),
-                      values.isRegularFile == true,
-                      let created = values.creationDate else { continue }
-                let modified = values.contentModificationDate ?? created
-                guard max(created, modified) > cutoff else { continue }
+                guard (try? url.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true,
+                      let arrived = FolderWatcher.arrivalDate(of: url),
+                      arrived > cutoff else { continue }
                 pending.append(url)
             }
         }
@@ -2006,9 +2004,6 @@ struct ContentView: View {
                 }
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .dinkyOpenMacPreferences)) { _ in
-            openWindow(id: DinkyMacPreferencesWindow.sceneID)
-        }
         .onReceive(NotificationCenter.default.publisher(for: .dinkyPrepareQuit)) { _ in prepareForQuit() }
     }
 
@@ -2134,6 +2129,9 @@ struct ContentView: View {
             URLDownloader.sweepOldDownloads()
             prefs.reconcileSidebarSectionsForSimpleModeIfNeeded()
             vm.reconcileBookmarksAndUpdateFolderWatcher()
+            // Next turn, so this view's notification observers are attached before queued
+            // open-files / paste work posts to them.
+            DispatchQueue.main.async { DockPresenceManager.mainWindowDidAppear() }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             vm.reconcileBookmarksAndUpdateFolderWatcher()

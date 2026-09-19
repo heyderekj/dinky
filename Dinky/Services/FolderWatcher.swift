@@ -1,10 +1,21 @@
 import Foundation
 
-
 final class FolderWatcher: ObservableObject {
     var onNewFiles: (([URL]) -> Void)?
     private var stream: FSEventStreamRef?
     private var retainedSelf: UnsafeMutableRawPointer?
+
+    /// When a file effectively landed in its folder. Moving or Finder-copying a file in keeps its
+    /// original creation and modification dates, so a download dragged in just now can look days
+    /// old; the date it was added to the directory is the one that actually changes.
+    static func arrivalDate(of url: URL) -> Date? {
+        guard let values = try? url.resourceValues(
+            forKeys: [.creationDateKey, .contentModificationDateKey, .addedToDirectoryDateKey]
+        ) else { return nil }
+        return [values.creationDate, values.contentModificationDate, values.addedToDirectoryDate]
+            .compactMap { $0 }
+            .max()
+    }
 
     /// Subscribes to filesystem changes under one or more directories (`paths` must be non-empty).
     func start(paths: [String]) {
@@ -28,11 +39,8 @@ final class FolderWatcher: ObservableObject {
                 .map { URL(fileURLWithPath: $0) }
                 .filter { MediaTypeDetector.detect($0) != nil }
                 .filter { url in
-                    guard let rv = try? url.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey]),
-                          let created = rv.creationDate else { return false }
-                    let modified = rv.contentModificationDate ?? created
-                    let ref = modified > created ? modified : created
-                    return now.timeIntervalSince(ref) < 30
+                    guard let arrived = FolderWatcher.arrivalDate(of: url) else { return false }
+                    return now.timeIntervalSince(arrived) < 30
                 }
             guard !urls.isEmpty else { return }
             DispatchQueue.main.async { watcher.onNewFiles?(urls) }
