@@ -47,11 +47,14 @@ final class DiagnosticsReporter: NSObject, ObservableObject {
 
         try? FileManager.default.createDirectory(at: appSupportDinkyURL, withIntermediateDirectories: true)
 
-        let hadSentinel = FileManager.default.fileExists(atPath: sentinelURL.path)
-        if hadSentinel {
+        // Stopping a run in Xcode kills the app without a clean quit, so in debug builds every
+        // relaunch would otherwise be reported as a crash.
+        #if !DEBUG
+        if FileManager.default.fileExists(atPath: sentinelURL.path) {
             let subtitle = String(localized: "The previous session ended unexpectedly. Nothing is uploaded automatically — choose an option below if you’d like to share details.", comment: "Post-crash prompt subtitle after unclean quit.")
             pendingCrashReport = CrashReport(subtitle: subtitle, metricKitSummary: nil)
         }
+        #endif
 
         FileManager.default.createFile(atPath: sentinelURL.path, contents: Data(), attributes: nil)
 

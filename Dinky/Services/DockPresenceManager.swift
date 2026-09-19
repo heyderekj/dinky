@@ -1,11 +1,18 @@
 import AppKit
 import Foundation
 
-/// Hides Dinky from the Dock and App Switcher when the user enables background mode.
+/// Hides Dinky from the Dock and App Switcher when the user enables background mode, and gets
+/// Dinky's windows back on screen from AppKit entry points (menu bar item, reopen, Services,
+/// global hotkey).
+@MainActor
 enum DockPresenceManager {
-    static let userDefaultsKey = "hideFromDockAndAppSwitcher"
+    nonisolated static let userDefaultsKey = "hideFromDockAndAppSwitcher"
 
     private static var suppressInitialWindowPending = false
+
+    /// Work that needs the main window's `ContentView` — the only observer of the open-files and
+    /// paste notifications — held until a freshly opened window has appeared.
+    private static var actionsAwaitingMainWindow: [() -> Void] = []
 
     static var hidePreference: Bool {
         UserDefaults.standard.bool(forKey: userDefaultsKey)
@@ -17,8 +24,38 @@ enum DockPresenceManager {
     }
 
     static func applyFromDefaults() {
-        NSApp.setActivationPolicy(isEffectivelyHidden ? .accessory : .regular)
+        updateActivationPolicy()
         updateStatusItem()
+    }
+
+    // MARK: - Dock icon
+
+    /// Hidden mode still shows the Dock icon — and with it Dinky's menu bar and a ⌘Tab entry —
+    /// while a Dinky window is open, so the window behaves like any other app window. Once the
+    /// last one closes, Dinky goes back to living in the menu bar only.
+    private static func updateActivationPolicy(opening: Bool = false) {
+        let showsDockIcon = !isEffectivelyHidden || opening || hasOpenWindow
+        let policy: NSApplication.ActivationPolicy = showsDockIcon ? .regular : .accessory
+        if NSApp.activationPolicy() != policy {
+            NSApp.setActivationPolicy(policy)
+        }
+    }
+
+    /// Minimized windows count: in hidden mode the Dock is the only way to get them back.
+    private static var hasOpenWindow: Bool {
+        // The main window exists briefly at launch before it's ordered out; counting it would
+        // flash the Dock icon on every hidden login.
+        guard !suppressInitialWindowPending else { return false }
+        return NSApp.windows.contains { $0.canBecomeMain && ($0.isVisible || $0.isMiniaturized) }
+    }
+
+    static func startTrackingWindows() {
+        _ = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification, object: nil, queue: .main
+        ) { _ in
+            // The closing window still reports itself visible here; look again once it's gone.
+            DispatchQueue.main.async { updateActivationPolicy() }
+        }
     }
 
     // MARK: - Menu bar item
@@ -69,22 +106,22 @@ enum DockPresenceManager {
         return item
     }
 
+    @MainActor
     private final class StatusMenuTarget: NSObject {
         @objc func openDinky() {
             DockPresenceManager.showMainWindow()
         }
 
         @objc func openSettings() {
-            // Show the main window first: the preferences scene is opened by `ContentView`, so it
-            // has to be on screen to receive this.
-            DockPresenceManager.showMainWindow()
-            NotificationCenter.default.post(name: .dinkyOpenMacPreferences, object: nil)
+            DockPresenceManager.showSettings()
         }
 
         @objc func quitDinky() {
             NSApp.terminate(nil)
         }
     }
+
+    // MARK: - Windows
 
     static func shouldSuppressInitialWindow() -> Bool {
         isEffectivelyHidden
@@ -99,6 +136,7 @@ enum DockPresenceManager {
                 guard suppressInitialWindowPending else { return }
                 suppressInitialWindowPending = false
                 mainContentWindow()?.orderOut(nil)
+                updateActivationPolicy()
             }
         }
     }
@@ -107,32 +145,56 @@ enum DockPresenceManager {
         suppressInitialWindowPending = false
     }
 
-    static func showMainWindow() {
-        // Opening a running accessory app from Finder/Spotlight puts it back to .regular, which
-        // would restore the Dock icon for the rest of the session. Re-assert the user's choice
-        // before activating, so the window returns under the policy they actually asked for.
-        applyFromDefaults()
-        NSApp.activate(ignoringOtherApps: true)
-        bringMainWindowForward()
-    }
-
-    static func mainContentWindow() -> NSWindow? {
-        if let window = NSApp.windows.first(where: { $0.frameAutosaveName == "DinkyMainWindow" }) {
-            return window
-        }
-        return NSApp.windows.first(where: { window in
-            window.canBecomeKey
-                && window.title != "Dinky Help"
-                && window.title != "Settings"
-                && window.frameAutosaveName != "help"
-        })
-    }
-
-    static func bringMainWindowForward() {
+    /// Brings the main window forward, creating it when there isn't one — a hidden-mode launch can
+    /// be restored with no windows at all. `action` runs once the window's content is live:
+    /// straight away if the window already exists, otherwise when it first appears.
+    static func showMainWindow(then action: (() -> Void)? = nil) {
+        updateActivationPolicy(opening: true)
+        activateForUserRequest()
         if let window = mainContentWindow() {
             window.makeKeyAndOrderFront(nil)
-            return
+            // Activation is only a request (macOS can decline it for an app with no Dock icon);
+            // without this the window can come up behind whatever app is in front.
+            window.orderFrontRegardless()
+            action?()
+        } else {
+            if let action { actionsAwaitingMainWindow.append(action) }
+            SceneOpener.open(id: DinkyMainWindow.sceneID)
         }
-        NSApp.sendAction(Selector(("newWindow:")), to: nil, from: nil)
+    }
+
+    /// Called by `ContentView` once it's on screen, to run work queued by `showMainWindow(then:)`.
+    static func mainWindowDidAppear() {
+        let pending = actionsAwaitingMainWindow
+        actionsAwaitingMainWindow.removeAll()
+        pending.forEach { $0() }
+    }
+
+    static func showSettings() {
+        updateActivationPolicy(opening: true)
+        activateForUserRequest()
+        SceneOpener.open(id: DinkyMacPreferencesWindow.sceneID)
+    }
+
+    /// For explicit "show me Dinky" requests — the menu bar item, reopen, hotkey, Services. Since
+    /// macOS 14 `NSApp.activate()` is only a request, and it's routinely declined here: the window
+    /// appears, but the other app keeps focus and the menu bar. Taking activation from the
+    /// frontmost app is the non-deprecated way to do what the user just asked for.
+    private static func activateForUserRequest() {
+        let me = ProcessInfo.processInfo.processIdentifier
+        if let frontmost = NSWorkspace.shared.frontmostApplication, frontmost.processIdentifier != me {
+            _ = NSRunningApplication.current.activate(from: frontmost, options: [])
+        } else {
+            NSApp.activate()
+        }
+    }
+
+    /// The main window only. SwiftUI stamps its scene id on the window as soon as it exists; the
+    /// frame-autosave name `TransparentWindow` sets lands a run-loop turn later.
+    static func mainContentWindow() -> NSWindow? {
+        NSApp.windows.first { window in
+            window.frameAutosaveName == "DinkyMainWindow"
+                || window.identifier?.rawValue.hasPrefix("\(DinkyMainWindow.sceneID)-") == true
+        }
     }
 }

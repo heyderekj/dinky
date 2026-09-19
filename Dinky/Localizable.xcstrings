@@ -7203,6 +7203,9 @@
         }
       }
     },
+    "Compressed files go into a folder with this name inside the save location. Leave empty to save alongside the originals." : {
+      "comment" : "Settings UI: explains the output subfolder field."
+    },
     "Compressed version was %.2f MB larger. Original kept. Click for details." : {
       "comment" : "Zero-gain tooltip.",
       "localizations" : {
@@ -9217,6 +9220,9 @@
     },
     "Did not open the output folder automatically." : {
       "comment" : "Batch summary: folder was not opened."
+    },
+    "Dinky" : {
+      "comment" : "Menu bar item accessibility label."
     },
     "Dinky " : {
       "comment" : "Update banner before version number.",
@@ -17548,7 +17554,7 @@
       "comment" : "Batch summary when saved bytes zero."
     },
     "None" : {
-      "comment" : "Compression confirm: no preset."
+      "comment" : "Compression confirm: no preset.\nSettings UI: placeholder when no output subfolder is set."
     },
     "Nothing to paste" : {
       "comment" : "Alert title when clipboard has no compressible item.",
@@ -18272,6 +18278,9 @@
           }
         }
       }
+    },
+    "Open Dinky" : {
+      "comment" : "Menu bar item: show the main window."
     },
     "Open Dinky at login" : {
       "comment" : "Settings UI.",
@@ -21543,6 +21552,9 @@
         }
       }
     },
+    "Quit Dinky" : {
+      "comment" : "Menu bar item: quit the app."
+    },
     "Rasterize pages to JPEG (%@ tier)." : {
       "comment" : "Results row: PDF flatten tooltip; tier."
     },
@@ -24478,7 +24490,7 @@
       }
     },
     "Settings…" : {
-      "comment" : "App menu: open settings.\nOpen Settings from banner.",
+      "comment" : "App menu: open settings.\nMenu bar item: open settings.\nOpen Settings from banner.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -26506,6 +26518,9 @@
     "Stronger image recompression" : {
       "comment" : "Batch summary: experimental preserve retry."
     },
+    "Subfolder" : {
+      "comment" : "Settings UI."
+    },
     "Suffix" : {
       "comment" : "Settings UI.",
       "localizations" : {
@@ -27303,6 +27318,7 @@
     },
     "The previous session ended unexpectedly. Nothing is uploaded automatically — choose an option below if you’d like to share details." : {
       "comment" : "Post-crash prompt subtitle after unclean quit.",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

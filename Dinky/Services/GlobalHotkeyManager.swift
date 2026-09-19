@@ -71,8 +71,9 @@ final class GlobalHotkeyManager {
 
     private func handleHotKeyPressed() {
         DispatchQueue.main.async {
-            DockPresenceManager.showMainWindow()
-            NotificationCenter.default.post(name: .dinkyPasteClipboard, object: nil)
+            DockPresenceManager.showMainWindow {
+                NotificationCenter.default.post(name: .dinkyPasteClipboard, object: nil)
+            }
         }
     }
 

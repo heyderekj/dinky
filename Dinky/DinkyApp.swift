@@ -26,6 +26,30 @@ enum DinkyMacPreferencesWindow {
     static let sceneID = "dinky-preferences"
 }
 
+enum DinkyMainWindow {
+    static let sceneID = "main"
+}
+
+/// Lets AppKit code — the menu bar item, reopen, Services, the global hotkey — open SwiftUI
+/// windows. `openWindow` is only reachable from inside a SwiftUI view, and when Dinky runs hidden
+/// there may be no window (and so no view) at all; macOS can restore a hidden-mode launch with
+/// zero windows. Menu commands are always built, so the action is captured from there.
+@MainActor
+enum SceneOpener {
+    private static var openWindow: OpenWindowAction?
+
+    static func register(_ action: OpenWindowAction) {
+        openWindow = action
+    }
+
+    @discardableResult
+    static func open(id: String) -> Bool {
+        guard let openWindow else { return false }
+        openWindow(id: id)
+        return true
+    }
+}
+
 @main
 struct DinkyApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
@@ -33,7 +57,7 @@ struct DinkyApp: App {
     @StateObject private var updater = UpdateChecker()
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: DinkyMainWindow.sceneID) {
             ContentView(prefs: root.prefs, vm: root.contentVM)
                 .environmentObject(root.prefs)
                 .environmentObject(updater)
@@ -63,10 +87,14 @@ struct DinkyApp: App {
             }
             CommandGroup(after: .appInfo) {
                 Button(String(localized: "Check for Updates…", comment: "Application menu: check for updates.")) {
-                    NotificationCenter.default.post(name: .dinkyCheckUpdates, object: nil)
+                    DockPresenceManager.showMainWindow {
+                        NotificationCenter.default.post(name: .dinkyCheckUpdates, object: nil)
+                    }
                 }
                 Button(String(localized: "History…", comment: "Application menu: open compression history.")) {
-                    NotificationCenter.default.post(name: .dinkyShowHistory, object: nil)
+                    DockPresenceManager.showMainWindow {
+                        NotificationCenter.default.post(name: .dinkyShowHistory, object: nil)
+                    }
                 }
                 LastBatchSummaryCommands(vm: root.contentVM)
             }
@@ -82,7 +110,7 @@ struct DinkyApp: App {
             // lights and toolbar items instead of forming a second row. ⌘, is wired here.
             CommandGroup(replacing: .appSettings) {
                 Button(String(localized: "Settings…", comment: "App menu: open settings.")) {
-                    NotificationCenter.default.post(name: .dinkyOpenMacPreferences, object: nil)
+                    DockPresenceManager.showSettings()
                 }
                 .keyboardShortcut(",", modifiers: .command)
             }
@@ -116,7 +144,9 @@ private struct LastBatchSummaryCommands: View {
 
     var body: some View {
         Button(String(localized: "Last Batch Summary…", comment: "Application menu: reopen the last batch completion dialog.")) {
-            NotificationCenter.default.post(name: .dinkyShowLastBatchSummary, object: nil)
+            DockPresenceManager.showMainWindow {
+                NotificationCenter.default.post(name: .dinkyShowLastBatchSummary, object: nil)
+            }
         }
         .disabled(vm.lastBatchSummary == nil)
         .keyboardShortcut(DinkyFixedShortcut.showLastBatchSummary.shortcut.swiftUIKeyboardShortcut)
@@ -130,7 +160,9 @@ private struct DinkyShortcutCommands: View {
 
     var body: some View {
         Button(String(localized: "Open Files…", comment: "File menu: open file picker.")) {
-            NotificationCenter.default.post(name: .dinkyOpenPanel, object: nil)
+            DockPresenceManager.showMainWindow {
+                NotificationCenter.default.post(name: .dinkyOpenPanel, object: nil)
+            }
         }
         .keyboardShortcut(prefs.shortcut(for: .openFiles).swiftUIKeyboardShortcut)
 
@@ -196,6 +228,7 @@ private struct HelpMenuCommands: View {
     }
 
     var body: some View {
+        let _ = SceneOpener.register(openWindow)
         // `?` requires shift; SwiftUI only fires when the modifier set matches the actual keystroke,
         // so we must declare both. (Bare `.command` shows ⌘? in the menu but never triggers.)
         Button(String(localized: "Dinky Help", comment: "Help menu: open help window.")) { openWindow(id: "help") }

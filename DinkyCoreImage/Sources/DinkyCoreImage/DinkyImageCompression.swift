@@ -464,6 +464,15 @@ public actor DinkyImageCompression {
             customPattern: collisionCustomPattern
         )
         let tEncode = CFAbsoluteTimeGetCurrent()
+        let unlimitedQuality: Int = {
+            if let o = qualityOverride { return max(0, min(100, o)) }
+            return quality(for: format, content: detected)
+        }()
+        // For graphics in WebP, near-lossless preserves edges that even
+        // q=92 lossy softens. AVIF graphics handle crispness via 4:4:4 +
+        // slower speed. Skipped when lossless WebP is requested.
+        let unlimitedNearLossless: Int? =
+            (qualityOverride == nil && !webpLL && format == .webp && detected == .graphic) ? 60 : nil
         var appliedChroma: String?
         var appliedPngMode: String?
         if format == .png {
@@ -480,6 +489,7 @@ public actor DinkyImageCompression {
             try await compressToTargetSize(
                 source: workURL, targetBytes: Int64(targetKB) * 1024,
                 format: format, strip: stripMetadata, output: &outputURL,
+                unlimitedQuality: unlimitedQuality, unlimitedNearLossless: unlimitedNearLossless,
                 qualityFloor: floor, content: detected, avifJobs: avifJobs,
                 chromaSubsampling: chroma,
                 webpLossless: webpLL,
@@ -492,19 +502,11 @@ public actor DinkyImageCompression {
                 appliedChroma = resolvedAvifYUV(chromaSubsampling: chroma, content: detected)
             }
         } else {
-            let q: Int = {
-                if let o = qualityOverride { return max(0, min(100, o)) }
-                return quality(for: format, content: detected)
-            }()
-            // For graphics in WebP, near-lossless preserves edges that even
-            // q=92 lossy softens. AVIF graphics handle crispness via 4:4:4 +
-            // slower speed. Skipped when lossless WebP is requested.
-            let nl: Int? = (qualityOverride == nil && !webpLL && format == .webp && detected == .graphic) ? 60 : nil
             report(0.38)
             try await compressAtQuality(
-                source: workURL, quality: q,
+                source: workURL, quality: unlimitedQuality,
                 format: format, strip: stripMetadata, output: outputURL,
-                content: detected, nearLossless: nl, avifJobs: avifJobs,
+                content: detected, nearLossless: unlimitedNearLossless, avifJobs: avifJobs,
                 chromaSubsampling: chroma, webpLossless: webpLL
             )
             if format == .avif {
@@ -584,9 +586,13 @@ public actor DinkyImageCompression {
 
     // MARK: - Quality binary search for file-size target
 
+    /// A size limit is a ceiling, not a target: encode exactly as with no limit first and only
+    /// give up quality when that doesn't fit. Searching for the *highest* quality under the limit
+    /// made roomy limits produce files bigger than no limit — often bigger than the original.
     private func compressToTargetSize(
         source: URL, targetBytes: Int64,
         format: CompressionFormat, strip: Bool, output: inout URL,
+        unlimitedQuality: Int, unlimitedNearLossless: Int?,
         qualityFloor: Int = 10,
         content: ContentType?,
         avifJobs: Int,
@@ -604,113 +610,100 @@ public actor DinkyImageCompression {
             progressHandler?(min(0.97, 0.34 + Float(encodeSteps) * 0.048))
         }
 
-        if format == .webp, webpLossless {
-            bumpEncode()
-            output = OutputPathUniqueness.refreshUniqueOutput(
-                currentCandidate: output,
-                sourceURL: sourceURLForUniqueness,
-                style: collisionNamingStyle,
-                customPattern: collisionCustomPattern
-            )
-            try await runCwebp(
-                source: source, quality: 100, strip: strip, output: output,
-                content: content, nearLossless: nil, webpLossless: true
-            )
-            progressHandler?(1)
-            return
+        // Largest-quality attempt that fits, and the smallest attempt that didn't. When nothing
+        // fits, the smallest miss is kept instead of re-encoding at the floor: lossy WebP at low
+        // quality can be several times larger than near-lossless for graphics, and a limit must
+        // never leave a file bigger than no limit would have.
+        var chosen: URL?
+        var smallestMiss: URL?
+        func recordMiss(_ url: URL) {
+            if let current = smallestMiss, fileSize(current) <= fileSize(url) {
+                try? fm.removeItem(at: url)
+            } else {
+                if let current = smallestMiss { try? fm.removeItem(at: current) }
+                smallestMiss = url
+            }
+        }
+        func recordFit(_ url: URL) {
+            if let previous = chosen { try? fm.removeItem(at: previous) }
+            chosen = url
+        }
+        func scratchURL(_ label: String) -> URL {
+            fm.temporaryDirectory
+                .appendingPathComponent("dinky_\(label)_\(UUID().uuidString)")
+                .appendingPathExtension(format.outputExtension)
         }
 
-        // Graphic + WebP (lossy): binary-search `-near_lossless` (40…100) before lossy `-q`.
-        // Higher values = closer to lossless = larger files; we maximize nl that still fits the cap.
-        if format == .webp, !webpLossless, content == .graphic {
-            var nlLo = 40, nlHi = 100
-            var bestURL: URL?
+        bumpEncode()
+        let unlimited = scratchURL("unlimited")
+        try await compressAtQuality(
+            source: source, quality: unlimitedQuality, format: format, strip: strip, output: unlimited,
+            content: content, nearLossless: unlimitedNearLossless, avifJobs: avifJobs,
+            chromaSubsampling: chromaSubsampling, webpLossless: webpLossless
+        )
+        // Lossless WebP has no quality to trade, so it's kept whatever its size.
+        if webpLossless || fileSize(unlimited) <= targetBytes {
+            recordFit(unlimited)
+        } else {
+            recordMiss(unlimited)
+        }
+
+        // Graphic + WebP (lossy): binary-search `-near_lossless` below the unlimited setting before
+        // lossy `-q`. Higher values = closer to lossless = larger files; maximize nl that fits.
+        if chosen == nil, let nlCeiling = unlimitedNearLossless {
+            var nlLo = 40, nlHi = nlCeiling - 1
             while nlLo <= nlHi {
                 bumpEncode()
                 let mid = (nlLo + nlHi) / 2
-                let tmp = fm.temporaryDirectory
-                    .appendingPathComponent("dinky_nl\(mid)_\(UUID().uuidString)")
-                    .appendingPathExtension(format.outputExtension)
+                let tmp = scratchURL("nl\(mid)")
                 try await runCwebp(
                     source: source, quality: 100, strip: strip, output: tmp,
                     content: content, nearLossless: mid, webpLossless: false
                 )
                 if fileSize(tmp) <= targetBytes {
-                    if let prev = bestURL { try? fm.removeItem(at: prev) }
-                    bestURL = tmp
+                    recordFit(tmp)
                     nlLo = mid + 1
                 } else {
-                    try? fm.removeItem(at: tmp)
+                    recordMiss(tmp)
                     nlHi = mid - 1
                 }
             }
-            if let best = bestURL {
-                output = try OutputPathUniqueness.moveTempItemToUniqueOutput(
-                    temp: best,
-                    desiredOutput: output,
-                    sourceURL: sourceURLForUniqueness,
-                    style: collisionNamingStyle,
-                    customPattern: collisionCustomPattern,
-                    fileManager: fm
+        }
+
+        if chosen == nil {
+            // The unlimited encode was this exact lossy quality unless it used near-lossless.
+            var lo = qualityFloor
+            var hi = unlimitedNearLossless == nil ? unlimitedQuality - 1 : unlimitedQuality
+            while lo <= hi {
+                bumpEncode()
+                let mid = (lo + hi) / 2
+                let tmp = scratchURL("q\(mid)")
+                try await compressAtQuality(
+                    source: source, quality: mid, format: format, strip: strip, output: tmp,
+                    content: content, avifJobs: avifJobs,
+                    chromaSubsampling: chromaSubsampling, webpLossless: webpLossless
                 )
-                progressHandler?(1)
-                return
+                if fileSize(tmp) <= targetBytes {
+                    recordFit(tmp)
+                    lo = mid + 1     // fits — try higher quality
+                } else {
+                    recordMiss(tmp)
+                    hi = mid - 1     // too big — lower quality
+                }
             }
         }
 
-        var lo = qualityFloor, hi = 92
-        var bestURL: URL?
-
-        while lo <= hi {
-            bumpEncode()
-            let mid = (lo + hi) / 2
-            let tmp = fm.temporaryDirectory
-                .appendingPathComponent("dinky_q\(mid)_\(UUID().uuidString)")
-                .appendingPathExtension(format.outputExtension)
-
-            try await compressAtQuality(
-                source: source, quality: mid, format: format, strip: strip, output: tmp,
-                content: content, avifJobs: avifJobs,
-                chromaSubsampling: chromaSubsampling, webpLossless: webpLossless
-            )
-
-            if fileSize(tmp) <= targetBytes {
-                if let prev = bestURL { try? fm.removeItem(at: prev) }
-                bestURL = tmp
-                lo = mid + 1     // fits — try higher quality
-            } else {
-                try? fm.removeItem(at: tmp)
-                hi = mid - 1     // too big — lower quality
-            }
-        }
-
-        if let best = bestURL {
-            output = try OutputPathUniqueness.moveTempItemToUniqueOutput(
-                temp: best,
-                desiredOutput: output,
-                sourceURL: sourceURLForUniqueness,
-                style: collisionNamingStyle,
-                customPattern: collisionCustomPattern,
-                fileManager: fm
-            )
-            progressHandler?(1)
-        } else {
-            // Nothing met the target — use floor quality and let caller decide
-            bumpEncode()
-            output = OutputPathUniqueness.refreshUniqueOutput(
-                currentCandidate: output,
-                sourceURL: sourceURLForUniqueness,
-                style: collisionNamingStyle,
-                customPattern: collisionCustomPattern
-            )
-            try await compressAtQuality(
-                source: source, quality: qualityFloor,
-                format: format, strip: strip, output: output,
-                content: content, avifJobs: avifJobs,
-                chromaSubsampling: chromaSubsampling, webpLossless: webpLossless
-            )
-            progressHandler?(1)
-        }
+        guard let keep = chosen ?? smallestMiss else { throw DinkyImageCompressionError.outputMissing }
+        if let miss = smallestMiss, miss != keep { try? fm.removeItem(at: miss) }
+        output = try OutputPathUniqueness.moveTempItemToUniqueOutput(
+            temp: keep,
+            desiredOutput: output,
+            sourceURL: sourceURLForUniqueness,
+            style: collisionNamingStyle,
+            customPattern: collisionCustomPattern,
+            fileManager: fm
+        )
+        progressHandler?(1)
     }
 
     // MARK: - Format runners
