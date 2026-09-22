@@ -39,6 +39,25 @@ enum DockPresenceManager {
         if NSApp.activationPolicy() != policy {
             NSApp.setActivationPolicy(policy)
         }
+        if showsDockIcon {
+            refreshApplicationMenuTitle()
+        }
+    }
+
+    /// Accessory → regular leaves the application menu untitled for a beat. Stamp "Dinky" on
+    /// the first item now and again after AppKit rebuilds the menu.
+    static func refreshApplicationMenuTitle() {
+        let name = "Dinky"
+        applyApplicationMenuTitle(name)
+        DispatchQueue.main.async { applyApplicationMenuTitle(name) }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { applyApplicationMenuTitle(name) }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { applyApplicationMenuTitle(name) }
+    }
+
+    private static func applyApplicationMenuTitle(_ name: String) {
+        guard let mainMenu = NSApp.mainMenu, let appItem = mainMenu.items.first else { return }
+        appItem.title = name
+        appItem.submenu?.title = name
     }
 
     /// Minimized windows count: in hidden mode the Dock is the only way to get them back.
@@ -187,6 +206,7 @@ enum DockPresenceManager {
         } else {
             NSApp.activate()
         }
+        refreshApplicationMenuTitle()
     }
 
     /// The main window only. SwiftUI stamps its scene id on the window as soon as it exists; the
