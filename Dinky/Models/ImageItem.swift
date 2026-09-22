@@ -57,6 +57,8 @@ final class CompressionItem: ObservableObject, Identifiable {
     var videoDuration: Double? = nil
     /// When set, compression uses this preset’s stored options (`CompressionPreset`) instead of the sidebar.
     var presetID: UUID? = nil
+    /// Arrived via a Watch folder (not drag-and-drop / Open / Services). Uses the Watch originals policy.
+    var ingestedFromWatchFolder: Bool = false
     /// True when the file was fetched from an `http(s)` URL (temp download). Affects output path and original disposal.
     var isURLDownloadSource: Bool = false
     /// While downloading, the original remote URL (for cancel / logging).
