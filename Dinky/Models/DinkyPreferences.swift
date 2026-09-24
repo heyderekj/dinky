@@ -50,6 +50,8 @@ final class DinkyPreferences: ObservableObject {
     init() {
         Self.migrateConcurrentTasksToTiersIfNeeded()
         Self.migrateMoveOriginalsToOriginalsActionIfNeeded()
+        // After the originals migration above, so it copies the already-migrated setting.
+        WatchOriginalsMigration.runIfNeeded(.standard)
     }
 
     /// Migrates legacy `moveOriginalsToTrash` Bool to `originalsAction` once.
