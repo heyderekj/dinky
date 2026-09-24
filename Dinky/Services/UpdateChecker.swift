@@ -104,6 +104,44 @@ final class UpdateChecker: ObservableObject {
         }
     }
 
+    // MARK: - Install confirmation
+
+    /// Routes an install request from the banner. A running batch — drag-and-drop or Watch
+    /// Folder, both surfaced the same way via `isProcessing` — gets a choice instead of being
+    /// silently interrupted; otherwise this is the original queued-files confirmation.
+    func confirmAndInstall(
+        isProcessing: Bool,
+        queuedCount: Int,
+        deferUntilIdle: @escaping (@escaping () -> Void) -> Void
+    ) {
+        if isProcessing {
+            let alert = NSAlert()
+            alert.messageText = String(localized: "A compression batch is running", comment: "Alert when installing while a batch is processing.")
+            alert.informativeText = String(localized: "Install after this batch finishes, or install now and interrupt it.", comment: "Alert detail for install while processing.")
+            alert.addButton(withTitle: String(localized: "Install After This Batch", comment: "Alert button: wait for the batch, then install."))
+            alert.addButton(withTitle: String(localized: "Cancel", comment: "Alert cancel button."))
+            alert.addButton(withTitle: String(localized: "Install Now", comment: "Alert button: install immediately, interrupting the batch."))
+            switch alert.runModal() {
+            case .alertFirstButtonReturn:
+                deferUntilIdle { Task { await self.downloadAndInstall() } }
+            case .alertThirdButtonReturn:
+                Task { await downloadAndInstall() }
+            default:
+                break
+            }
+            return
+        }
+        if queuedCount > 0 {
+            let alert = NSAlert()
+            alert.messageText = String(localized: "Install update now?", comment: "Alert when installing with queued files.")
+            alert.informativeText = String(localized: "Your current results will be cleared when Dinky relaunches.", comment: "Alert detail for install with queue.")
+            alert.addButton(withTitle: String(localized: "Install", comment: "Alert confirm button."))
+            alert.addButton(withTitle: String(localized: "Cancel", comment: "Alert cancel button."))
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+        }
+        Task { await downloadAndInstall() }
+    }
+
     // MARK: - In-app install
 
     /// Downloads the zip via URLSession (no quarantine), unzips with ditto,

@@ -33,31 +33,14 @@ enum DockPresenceManager {
     /// Hidden mode still shows the Dock icon — and with it Dinky's menu bar and a ⌘Tab entry —
     /// while a Dinky window is open, so the window behaves like any other app window. Once the
     /// last one closes, Dinky goes back to living in the menu bar only.
-    private static func updateActivationPolicy(opening: Bool = false) {
+    /// Returns true when this call switched Dinky from menu-bar-only to a regular Dock app.
+    @discardableResult
+    private static func updateActivationPolicy(opening: Bool = false) -> Bool {
         let showsDockIcon = !isEffectivelyHidden || opening || hasOpenWindow
         let policy: NSApplication.ActivationPolicy = showsDockIcon ? .regular : .accessory
-        if NSApp.activationPolicy() != policy {
-            NSApp.setActivationPolicy(policy)
-        }
-        if showsDockIcon {
-            refreshApplicationMenuTitle()
-        }
-    }
-
-    /// Accessory → regular leaves the application menu untitled for a beat. Stamp "Dinky" on
-    /// the first item now and again after AppKit rebuilds the menu.
-    static func refreshApplicationMenuTitle() {
-        let name = "Dinky"
-        applyApplicationMenuTitle(name)
-        DispatchQueue.main.async { applyApplicationMenuTitle(name) }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { applyApplicationMenuTitle(name) }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { applyApplicationMenuTitle(name) }
-    }
-
-    private static func applyApplicationMenuTitle(_ name: String) {
-        guard let mainMenu = NSApp.mainMenu, let appItem = mainMenu.items.first else { return }
-        appItem.title = name
-        appItem.submenu?.title = name
+        guard NSApp.activationPolicy() != policy else { return false }
+        NSApp.setActivationPolicy(policy)
+        return policy == .regular
     }
 
     /// Minimized windows count: in hidden mode the Dock is the only way to get them back.
@@ -127,6 +110,7 @@ enum DockPresenceManager {
 
     @MainActor
     private final class StatusMenuTarget: NSObject {
+
         @objc func openDinky() {
             DockPresenceManager.showMainWindow()
         }
@@ -168,8 +152,7 @@ enum DockPresenceManager {
     /// be restored with no windows at all. `action` runs once the window's content is live:
     /// straight away if the window already exists, otherwise when it first appears.
     static func showMainWindow(then action: (() -> Void)? = nil) {
-        updateActivationPolicy(opening: true)
-        activateForUserRequest()
+        activateForUserRequest(becameRegular: updateActivationPolicy(opening: true))
         if let window = mainContentWindow() {
             window.makeKeyAndOrderFront(nil)
             // Activation is only a request (macOS can decline it for an app with no Dock icon);
@@ -190,8 +173,7 @@ enum DockPresenceManager {
     }
 
     static func showSettings() {
-        updateActivationPolicy(opening: true)
-        activateForUserRequest()
+        activateForUserRequest(becameRegular: updateActivationPolicy(opening: true))
         SceneOpener.open(id: DinkyMacPreferencesWindow.sceneID)
     }
 
@@ -199,14 +181,33 @@ enum DockPresenceManager {
     /// macOS 14 `NSApp.activate()` is only a request, and it's routinely declined here: the window
     /// appears, but the other app keeps focus and the menu bar. Taking activation from the
     /// frontmost app is the non-deprecated way to do what the user just asked for.
-    private static func activateForUserRequest() {
+    private static func activateForUserRequest(becameRegular: Bool = false) {
         let me = ProcessInfo.processInfo.processIdentifier
-        if let frontmost = NSWorkspace.shared.frontmostApplication, frontmost.processIdentifier != me {
+        let frontmost = NSWorkspace.shared.frontmostApplication.flatMap { $0.processIdentifier != me ? $0 : nil }
+        activateNow(from: frontmost)
+        if becameRegular, let frontmost { refreshMenuBar(bouncingThrough: frontmost) }
+    }
+
+    private static func activateNow(from frontmost: NSRunningApplication?) {
+        if let frontmost {
             _ = NSRunningApplication.current.activate(from: frontmost, options: [])
         } else {
             NSApp.activate()
         }
-        refreshApplicationMenuTitle()
+    }
+
+    /// Going from menu-bar-only to a Dock app leaves the menu bar showing the previous app's
+    /// contents until Dinky loses focus and gets it back — switching away and back by hand fixes
+    /// it. So do that once: hand focus to the app you were just in, then take it back. Of the
+    /// variants tried by hand this worked best; bouncing through the Dock instead flickered.
+    private static func refreshMenuBar(bouncingThrough previous: NSRunningApplication) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            _ = previous.activate(from: .current, options: [])
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                _ = NSRunningApplication.current.activate(from: previous, options: [])
+                NSApp.orderedWindows.first(where: \.canBecomeMain)?.makeKeyAndOrderFront(nil)
+            }
+        }
     }
 
     /// The main window only. SwiftUI stamps its scene id on the window as soon as it exists; the

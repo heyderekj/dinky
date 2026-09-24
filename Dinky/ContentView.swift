@@ -43,6 +43,8 @@ final class ContentViewModel: ObservableObject {
     @Published var needsExplicitCompressAfterUndo: Bool = false
     private var compressionTask: Task<Void, Never>?
     private var compressionStartTime: Date = .now
+    /// Work deferred by `runWhenIdle` until the current batch (if any) finishes.
+    private var idleWorkQueue: [() -> Void] = []
 
     /// Limits parallel `URLDownloader` work when many links are dropped at once.
     private static let remoteDownloadSemaphore = AsyncSemaphore(limit: 4)
@@ -133,14 +135,14 @@ final class ContentViewModel: ObservableObject {
     private func route(_ url: URL, through registry: WatchPipelineRegistry) {
         switch registry.pipeline(for: url) {
         case .global:
-            addAndCompress([url], presetID: nil)
+            addAndCompress([url], presetID: nil, fromWatchFolder: true)
         case .preset(let id):
             let preset = prefs.savedPresets.first(where: { $0.id == id })
             let media = MediaTypeDetector.detect(url)
             if let p = preset, let m = media, p.applies(to: m) {
-                addAndCompress([url], presetID: id)
+                addAndCompress([url], presetID: id, fromWatchFolder: true)
             } else {
-                addAndCompress([url], presetID: nil)
+                addAndCompress([url], presetID: nil, fromWatchFolder: true)
             }
         }
     }
@@ -234,7 +236,7 @@ final class ContentViewModel: ObservableObject {
         Set(items.map { $0.mediaType })
     }
 
-    func addAndCompress(_ urls: [URL], force: Bool = false, presetID: UUID? = nil) {
+    func addAndCompress(_ urls: [URL], force: Bool = false, presetID: UUID? = nil, fromWatchFolder: Bool = false) {
         var seen = Set(items.map(\.sourceURL.path))
         let newURLs = urls.filter { url in
             let p = url.path
@@ -245,6 +247,7 @@ final class ContentViewModel: ObservableObject {
         guard !newURLs.isEmpty else { return }
         let new = newURLs.map { CompressionItem(sourceURL: $0, presetID: presetID) }
         if force { new.forEach { $0.forceCompress = true } }
+        if fromWatchFolder { new.forEach { $0.ingestedFromWatchFolder = true } }
         items.append(contentsOf: new)
         // Smallest files first — quick wins land early, the big ones stack
         // up at the bottom. This is also the order they'll be processed in.
@@ -444,6 +447,7 @@ final class ContentViewModel: ObservableObject {
         items = []
         phase = .idle
         isProcessing = false
+        drainIdleWorkQueue()
         compressionInterrupted = false
         lastBatchSummary = nil
         pendingBatchSummarySupportsUndo = true
@@ -553,6 +557,47 @@ final class ContentViewModel: ObservableObject {
 
     // MARK: - Compress
 
+    /// Runs `work` immediately if no batch is running, otherwise holds it until the current one
+    /// (drag-and-drop or Watch Folder — both go through `compress()`) finishes or is cleared.
+    func runWhenIdle(_ work: @escaping () -> Void) {
+        if isProcessing {
+            idleWorkQueue.append(work)
+        } else {
+            work()
+        }
+    }
+
+    private func drainIdleWorkQueue() {
+        guard !idleWorkQueue.isEmpty else { return }
+        let queued = idleWorkQueue
+        idleWorkQueue.removeAll()
+        queued.forEach { $0() }
+    }
+
+    /// Called once a batch's own completion handling (summary, sound, auto-clear) has fully run,
+    /// on every exit path. Items can arrive mid-batch — a second Watch Folder event, a drop while
+    /// one was already running — and `compress()` no-ops while `isProcessing` is already true, so
+    /// without this they'd sit `.pending` forever. Picks the queue back up when that happens;
+    /// only once nothing is left pending do we count the app as idle for `runWhenIdle`.
+    private func finishBatchCompletion() {
+        let hasPending = items.contains { if case .pending = $0.status { return true }; return false }
+        if hasPending {
+            compress()
+        } else {
+            drainIdleWorkQueue()
+        }
+    }
+
+    /// Watch-ingested items use the Watch originals policy (Settings → Watch) instead of the
+    /// general Settings → Output one, so a watch folder can stay an inbox that empties itself.
+    private func effectiveOriginalsAction(for item: CompressionItem) -> OriginalsAction {
+        item.ingestedFromWatchFolder ? prefs.watchOriginalsAction : prefs.originalsAction
+    }
+
+    private func effectiveOriginalsBackupFolder(for item: CompressionItem) -> URL? {
+        effectiveOriginalsAction(for: item) == .backup ? prefs.originalsBackupDestinationURL() : nil
+    }
+
     func compress() {
         guard !isProcessing else { return }
         compressionInterrupted = false
@@ -600,6 +645,11 @@ final class ContentViewModel: ObservableObject {
             await MainActor.run {
                 self.compressionTask = nil
                 self.isProcessing = false
+                // Runs after every statement below, on every exit path (including the early
+                // `return`s) — see `finishBatchCompletion()`. Deliberately not called eagerly
+                // here: doing so before `self.phase` is set below would let a just-continued
+                // batch's `.processing` phase get overwritten back to `.done`.
+                defer { self.finishBatchCompletion() }
                 if self.items.isEmpty {
                     self.phase = .idle
                     self.compressionInterrupted = false
@@ -848,7 +898,7 @@ final class ContentViewModel: ObservableObject {
         }()
         noteSelfWrittenOutput(outputURL)
         let replaceOrigin = (preset.map { FilenameHandling(rawValue: $0.filenameHandlingRaw) } ?? prefs.filenameHandling) == .replaceOrigin
-        let backupURL = prefs.originalsAction == .backup ? prefs.originalsBackupDestinationURL() : nil
+        let backupURL = effectiveOriginalsBackupFolder(for: item)
         CompressionTiming.logReproContext(
             media: "image",
             smartQuality: smartQ,
@@ -866,7 +916,7 @@ final class ContentViewModel: ObservableObject {
                 goals: goals,
                 stripMetadata: strip,
                 outputURL: outputURL,
-                originalsAction: prefs.originalsAction,
+                originalsAction: effectiveOriginalsAction(for: item),
                 backupFolderURL: backupURL,
                 isURLDownloadSource: urlDL,
                 smartQuality: smartQ,
@@ -906,8 +956,8 @@ final class ContentViewModel: ObservableObject {
                         } else if let r2 = try? OriginalsHandler.disposeForReplace(
                             originalAt: item.sourceURL,
                             outputURL: result.outputURL,
-                            action: self.prefs.originalsAction,
-                            backupFolder: self.prefs.originalsAction == .backup ? self.prefs.originalsBackupDestinationURL() : nil
+                            action: self.effectiveOriginalsAction(for: item),
+                            backupFolder: self.effectiveOriginalsBackupFolder(for: item)
                         ) {
                             mergedRecovery = r2
                         }
@@ -1189,8 +1239,8 @@ final class ContentViewModel: ObservableObject {
                 do {
                     recoveryForUndo = try? OriginalsHandler.disposeSourceBeforeTempSwap(
                         originalAt: sourceURL,
-                        action: prefs.originalsAction,
-                        backupFolder: prefs.originalsAction == .backup ? prefs.originalsBackupDestinationURL() : nil
+                        action: effectiveOriginalsAction(for: item),
+                        backupFolder: effectiveOriginalsBackupFolder(for: item)
                     )
                     producedURL = try OutputPathUniqueness.moveTempItemToUniqueOutput(
                         temp: workURL,
@@ -1215,8 +1265,8 @@ final class ContentViewModel: ObservableObject {
                         recoveryForUndo = try? OriginalsHandler.disposeForReplace(
                             originalAt: item.sourceURL,
                             outputURL: producedURL,
-                            action: prefs.originalsAction,
-                            backupFolder: prefs.originalsAction == .backup ? prefs.originalsBackupDestinationURL() : nil
+                            action: effectiveOriginalsAction(for: item),
+                            backupFolder: effectiveOriginalsBackupFolder(for: item)
                         )
                     }
                 }
@@ -1385,8 +1435,8 @@ final class ContentViewModel: ObservableObject {
                 do {
                     recoveryForUndo = try? OriginalsHandler.disposeSourceBeforeTempSwap(
                         originalAt: sourceURL,
-                        action: prefs.originalsAction,
-                        backupFolder: prefs.originalsAction == .backup ? prefs.originalsBackupDestinationURL() : nil
+                        action: effectiveOriginalsAction(for: item),
+                        backupFolder: effectiveOriginalsBackupFolder(for: item)
                     )
                     producedURL = try OutputPathUniqueness.moveTempItemToUniqueOutput(
                         temp: workURL,
@@ -1411,8 +1461,8 @@ final class ContentViewModel: ObservableObject {
                         recoveryForUndo = try? OriginalsHandler.disposeForReplace(
                             originalAt: item.sourceURL,
                             outputURL: producedURL,
-                            action: prefs.originalsAction,
-                            backupFolder: prefs.originalsAction == .backup ? prefs.originalsBackupDestinationURL() : nil
+                            action: effectiveOriginalsAction(for: item),
+                            backupFolder: effectiveOriginalsBackupFolder(for: item)
                         )
                     }
                 }
@@ -1546,8 +1596,8 @@ final class ContentViewModel: ObservableObject {
                 do {
                     recoveryForUndo = try? OriginalsHandler.disposeSourceBeforeTempSwap(
                         originalAt: sourceURL,
-                        action: prefs.originalsAction,
-                        backupFolder: prefs.originalsAction == .backup ? prefs.originalsBackupDestinationURL() : nil
+                        action: effectiveOriginalsAction(for: item),
+                        backupFolder: effectiveOriginalsBackupFolder(for: item)
                     )
                     producedURL = try OutputPathUniqueness.moveTempItemToUniqueOutput(
                         temp: workURL,
@@ -1572,8 +1622,8 @@ final class ContentViewModel: ObservableObject {
                         recoveryForUndo = try? OriginalsHandler.disposeForReplace(
                             originalAt: sourceURL,
                             outputURL: producedURL,
-                            action: prefs.originalsAction,
-                            backupFolder: prefs.originalsAction == .backup ? prefs.originalsBackupDestinationURL() : nil
+                            action: effectiveOriginalsAction(for: item),
+                            backupFolder: effectiveOriginalsBackupFolder(for: item)
                         )
                     }
                 }
@@ -1932,7 +1982,12 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 if updater.shouldShow(dismissedVersion: prefs.dismissedUpdateVersion) {
                     VStack(spacing: 8) {
-                        UpdateBanner(updater: updater, itemCount: vm.items.count)
+                        UpdateBanner(
+                            updater: updater,
+                            itemCount: vm.items.count,
+                            isProcessing: vm.isProcessing,
+                            deferUntilIdle: { work in vm.runWhenIdle(work) }
+                        )
                             .environmentObject(prefs)
                         if !reviewPromptBelowUpdateDismissed {
                             ReviewPromptBanner {

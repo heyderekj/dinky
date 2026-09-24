@@ -126,6 +126,14 @@ final class DinkyPreferences: ObservableObject {
     }
     @AppStorage("originalsBackupFolderBookmark") var originalsBackupFolderBookmark: Data = Data()
     @AppStorage("originalsBackupFolderDisplayPath") var originalsBackupFolderDisplayPath: String = ""
+    /// Originals policy for items a Watch Folder picked up, separate from the general one above
+    /// so a watch folder can default to emptying itself (Trash) without changing how drag-and-drop
+    /// or Open behave. Backup mode reuses `originalsBackupFolderBookmark` — one destination, not two.
+    @AppStorage("watchOriginalsAction") private var watchOriginalsActionRaw: String = OriginalsAction.trash.rawValue
+    var watchOriginalsAction: OriginalsAction {
+        get { OriginalsAction(rawValue: watchOriginalsActionRaw) ?? .trash }
+        set { watchOriginalsActionRaw = newValue.rawValue }
+    }
     @AppStorage("minimumSavingsPercent") var minimumSavingsPercent: Int = 2
     @AppStorage("concurrentTasks")      var concurrentTasks: Int = 3
 
