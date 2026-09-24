@@ -1866,6 +1866,27 @@ private struct WatchFoldersTab: View {
             }
 
             Section {
+                Picker(String(localized: "After compressing, watch-folder originals:", comment: "Settings UI."), selection: Binding(
+                    get: { prefs.watchOriginalsAction },
+                    set: { prefs.watchOriginalsAction = $0 }
+                )) {
+                    Text(String(localized: "Stay where they are", comment: "Settings UI.")).tag(OriginalsAction.keep)
+                    Text(String(localized: "Move to Trash", comment: "Settings UI.")).tag(OriginalsAction.trash)
+                    Text(String(localized: "Move to Backup folder", comment: "Settings UI.")).tag(OriginalsAction.backup)
+                }
+                .pickerStyle(.radioGroup)
+                .labelsHidden()
+                Text(String(localized: "Applies to items a watch folder picked up (global or preset) — drag-and-drop and Open use Settings → Output instead. Defaults to Trash so a watch folder stays an inbox instead of filling up with originals.", comment: "Settings UI."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if prefs.watchOriginalsAction == .backup {
+                    PreferencesRelatedTabLink(title: String(localized: "Backup folder…", comment: "Settings UI."), tab: .output)
+                }
+            } header: {
+                Text(String(localized: "Originals", comment: "Settings UI."))
+            }
+
+            Section {
                 if prefs.savedPresets.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(String(localized: "No presets yet. Create one to watch a folder with saved compression options.", comment: "Settings UI."))

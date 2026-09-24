@@ -1648,6 +1648,9 @@
         }
       }
     },
+    "A compression batch is running" : {
+      "comment" : "Alert when installing while a batch is processing."
+    },
     "A temporary re-save was %@ than your file. That version was discarded — your original was not replaced.\n\nPreserve text and links first runs stream optimization (bundled qpdf), then a PDFKit rewrite if needed. Many modern PDFs are already tightly compressed, so this mode often cannot shrink them further. It is not a guaranteed size optimizer. In the sidebar (or below), you can try Advanced (experimental) passes for a bit more shrink while staying in preserve mode. For reliably smaller files, use “Smallest file (flatten pages)”, or the flatten button below." : {
       "comment" : "Zero-gain sheet: preserve PDF; first format arg is size phrase."
     },
@@ -2152,6 +2155,9 @@
           }
         }
       }
+    },
+    "After compressing, watch-folder originals:" : {
+      "comment" : "Settings UI."
     },
     "After success: originals move to Trash" : {
       "comment" : "Compression confirm: originals policy."
@@ -3174,6 +3180,9 @@
         }
       }
     },
+    "Applies to items a watch folder picked up (global or preset) — drag-and-drop and Open use Settings → Output instead. Defaults to Trash so a watch folder stays an inbox instead of filling up with originals." : {
+      "comment" : "Settings UI."
+    },
     "Approve Dinky in System Settings → General → Login Items." : {
       "comment" : "Settings UI.",
       "localizations" : {
@@ -3542,6 +3551,9 @@
           }
         }
       }
+    },
+    "Backup folder…" : {
+      "comment" : "Settings UI."
     },
     "Balanced chroma — half the vertical color detail of 4:4:4. Good when you want smaller files without full 4:2:0 softness." : {
       "comment" : "Chroma chip picker: 4:2:2 detail."
@@ -14739,6 +14751,15 @@
         }
       }
     },
+    "Install After This Batch" : {
+      "comment" : "Alert button: wait for the batch, then install."
+    },
+    "Install after this batch finishes, or install now and interrupt it." : {
+      "comment" : "Alert detail for install while processing."
+    },
+    "Install Now" : {
+      "comment" : "Alert button: install immediately, interrupting the batch."
+    },
     "Install unavailable" : {
       "comment" : "Update banner: release has no downloadable asset yet."
     },
@@ -19315,6 +19336,9 @@
           }
         }
       }
+    },
+    "Originals" : {
+      "comment" : "Settings UI."
     },
     "Output" : {
       "comment" : "Outcome map row title; matches Output scope tab.\nSettings UI.\nSettings UI: Media PDF subsection.\nVoiceOver: Output scope.",
