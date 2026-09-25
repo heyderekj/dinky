@@ -74,7 +74,7 @@
 - Support: help@dinkyfiles.com
 - GitHub: https://github.com/heyderekj/dinky
 - Latest release: https://github.com/heyderekj/dinky/releases/latest
-- Download v2.14.0: https://github.com/heyderekj/dinky/releases/download/v2.14.0/Dinky-2.14.0.dmg
+- Download v2.15.0: https://github.com/heyderekj/dinky/releases/download/v2.15.0/Dinky-2.15.0.dmg
 - Homebrew (optional): `brew tap heyderekj/dinky https://github.com/heyderekj/dinky` then `brew install --cask dinky`
 
 ## Author
