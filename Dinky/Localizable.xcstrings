@@ -169,6 +169,12 @@
         }
       }
     },
+    "%lld px" : {
+      "comment" : "Results row chip: image was resized to this width in pixels."
+    },
+    "%lld resized to fit the width limit" : {
+      "comment" : "Batch summary; argument is the number of images downscaled to the width limit."
+    },
     "-dinky" : {
       "comment" : "Settings UI.",
       "localizations" : {
@@ -245,6 +251,33 @@
           }
         }
       }
+    },
+    "Applies to files a watch folder picked up (global or preset). Pick Move to Trash to keep a watch folder as an inbox that empties itself. Originals are only moved once a smaller file has been saved." : {
+      "comment" : "Settings UI."
+    },
+    "Originals are only moved once a smaller file has been saved. If a file can't be made smaller, the original stays where it is." : {
+      "comment" : "Settings UI: originals are never touched when the result is discarded."
+    },
+    "Resized from %lld to %lld px wide (width limit)" : {
+      "comment" : "Results row tooltip / VoiceOver: image downscaled to the width limit. Arguments are the original and new widths in pixels."
+    },
+    "Resized to %lld px" : {
+      "comment" : "Batch summary per file: image downscaled to this width in pixels."
+    },
+    "Resized to %lld px wide" : {
+      "comment" : "Result status when an image was downscaled to the width limit but the file didn't get smaller. Argument is the new width in pixels."
+    },
+    "Same as Original Files (currently: %@)" : {
+      "comment" : "Settings UI: watch originals follow the general setting. Argument is that setting, e.g. “Stay where they are”."
+    },
+    "The global folder uses the preset selected in the main window when it covers the file type, otherwise the sidebar settings. Presets can add separate watched folders in their own settings." : {
+      "comment" : "Settings UI."
+    },
+    "Watch folders use their own setting: %@." : {
+      "comment" : "Settings UI: shown under Original Files when watch folders override it. Argument is the watch setting, e.g. “Move to Trash”."
+    },
+    "Watch settings…" : {
+      "comment" : "Settings UI: link to Watch tab."
     },
     "—" : {
       "comment" : "Em dash when download size unknown.",
@@ -3179,9 +3212,6 @@
           }
         }
       }
-    },
-    "Applies to items a watch folder picked up (global or preset) — drag-and-drop and Open use Settings → Output instead. Defaults to Trash so a watch folder stays an inbox instead of filling up with originals." : {
-      "comment" : "Settings UI."
     },
     "Approve Dinky in System Settings → General → Login Items." : {
       "comment" : "Settings UI.",
@@ -27179,6 +27209,7 @@
     },
     "The global folder uses whatever settings are in the main window (sidebar). Presets can add separate watched folders in their own settings." : {
       "comment" : "Settings UI.",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

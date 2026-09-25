@@ -390,6 +390,19 @@ private struct OriginalsPreferencesPane: View {
                     Text(String(localized: "Source files are never moved or deleted — even when Filename = Replace original (the original is only displaced when output would overwrite it).", comment: "Settings UI."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                } else {
+                    Text(String(localized: "Originals are only moved once a smaller file has been saved. If a file can't be made smaller, the original stays where it is.", comment: "Settings UI: originals are never touched when the result is discarded."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if case .explicit(let watchAction) = prefs.watchOriginalsPolicy, watchAction != prefs.originalsAction {
+                    Text(String.localizedStringWithFormat(
+                        String(localized: "Watch folders use their own setting: %@.", comment: "Settings UI: shown under Original Files when watch folders override it. Argument is the watch setting, e.g. “Move to Trash”."),
+                        Self.label(for: watchAction)
+                    ))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    PreferencesRelatedTabLink(title: String(localized: "Watch settings…", comment: "Settings UI: link to Watch tab."), tab: .watch)
                 }
                 if prefs.originalsAction == .trash {
                     Text(String(localized: "Permanent once the trash is emptied.", comment: "Settings UI."))
@@ -424,6 +437,14 @@ private struct OriginalsPreferencesPane: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    static func label(for action: OriginalsAction) -> String {
+        switch action {
+        case .keep: return String(localized: "Stay where they are", comment: "Settings UI.")
+        case .trash: return String(localized: "Move to Trash", comment: "Settings UI.")
+        case .backup: return String(localized: "Move to Backup folder", comment: "Settings UI.")
+        }
     }
 
     private func pickOriginalsBackupFolder() {
@@ -1855,7 +1876,7 @@ private struct WatchFoldersTab: View {
                         Button(String(localized: "Choose…", comment: "Settings UI.")) { pickGlobalWatchFolder() }
                             .buttonStyle(.bordered)
                     }
-                    Text(String(localized: "The global folder uses whatever settings are in the main window (sidebar). Presets can add separate watched folders in their own settings.", comment: "Settings UI."))
+                    Text(String(localized: "The global folder uses the preset selected in the main window when it covers the file type, otherwise the sidebar settings. Presets can add separate watched folders in their own settings.", comment: "Settings UI."))
                     .font(.caption)
                         .foregroundStyle(.secondary)
 
@@ -1867,20 +1888,25 @@ private struct WatchFoldersTab: View {
 
             Section {
                 Picker(String(localized: "After compressing, watch-folder originals:", comment: "Settings UI."), selection: Binding(
-                    get: { prefs.watchOriginalsAction },
-                    set: { prefs.watchOriginalsAction = $0 }
+                    get: { prefs.watchOriginalsPolicy },
+                    set: { prefs.watchOriginalsPolicy = $0 }
                 )) {
-                    Text(String(localized: "Stay where they are", comment: "Settings UI.")).tag(OriginalsAction.keep)
-                    Text(String(localized: "Move to Trash", comment: "Settings UI.")).tag(OriginalsAction.trash)
-                    Text(String(localized: "Move to Backup folder", comment: "Settings UI.")).tag(OriginalsAction.backup)
+                    Text(String.localizedStringWithFormat(
+                        String(localized: "Same as Original Files (currently: %@)", comment: "Settings UI: watch originals follow the general setting. Argument is that setting, e.g. “Stay where they are”."),
+                        OriginalsPreferencesPane.label(for: prefs.originalsAction)
+                    )).tag(WatchOriginalsPolicy.followGeneral)
+                    Text(String(localized: "Stay where they are", comment: "Settings UI.")).tag(WatchOriginalsPolicy.explicit(.keep))
+                    Text(String(localized: "Move to Trash", comment: "Settings UI.")).tag(WatchOriginalsPolicy.explicit(.trash))
+                    Text(String(localized: "Move to Backup folder", comment: "Settings UI.")).tag(WatchOriginalsPolicy.explicit(.backup))
                 }
                 .pickerStyle(.radioGroup)
                 .labelsHidden()
-                Text(String(localized: "Applies to items a watch folder picked up (global or preset) — drag-and-drop and Open use Settings → Output instead. Defaults to Trash so a watch folder stays an inbox instead of filling up with originals.", comment: "Settings UI."))
+                .accessibilityLabel(String(localized: "After compressing, watch-folder originals:", comment: "Settings UI."))
+                Text(String(localized: "Applies to files a watch folder picked up (global or preset). Pick Move to Trash to keep a watch folder as an inbox that empties itself. Originals are only moved once a smaller file has been saved.", comment: "Settings UI."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                if prefs.watchOriginalsAction == .backup {
-                    PreferencesRelatedTabLink(title: String(localized: "Backup folder…", comment: "Settings UI."), tab: .output)
+                if prefs.effectiveWatchOriginalsAction == .backup {
+                    PreferencesRelatedTabLink(title: String(localized: "Backup folder…", comment: "Settings UI."), tab: .originals)
                 }
             } header: {
                 Text(String(localized: "Originals", comment: "Settings UI."))

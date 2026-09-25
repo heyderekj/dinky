@@ -52,6 +52,7 @@ final class DinkyPreferences: ObservableObject {
         Self.migrateMoveOriginalsToOriginalsActionIfNeeded()
         // After the originals migration above, so it copies the already-migrated setting.
         WatchOriginalsMigration.runIfNeeded(.standard)
+        WatchOriginalsMigration.runFollowGeneralMigrationIfNeeded(.standard)
     }
 
     /// Migrates legacy `moveOriginalsToTrash` Bool to `originalsAction` once.
@@ -128,13 +129,17 @@ final class DinkyPreferences: ObservableObject {
     }
     @AppStorage("originalsBackupFolderBookmark") var originalsBackupFolderBookmark: Data = Data()
     @AppStorage("originalsBackupFolderDisplayPath") var originalsBackupFolderDisplayPath: String = ""
-    /// Originals policy for items a Watch Folder picked up, separate from the general one above
-    /// so a watch folder can default to emptying itself (Trash) without changing how drag-and-drop
-    /// or Open behave. Backup mode reuses `originalsBackupFolderBookmark` — one destination, not two.
-    @AppStorage("watchOriginalsAction") private var watchOriginalsActionRaw: String = OriginalsAction.trash.rawValue
-    var watchOriginalsAction: OriginalsAction {
-        get { OriginalsAction(rawValue: watchOriginalsActionRaw) ?? .trash }
-        set { watchOriginalsActionRaw = newValue.rawValue }
+    /// Originals policy for items a Watch Folder picked up. Follows the general setting above unless
+    /// the user picks something just for watch folders (e.g. Trash, so a folder stays an inbox).
+    /// Backup mode reuses `originalsBackupFolderBookmark` — one destination, not two.
+    @AppStorage("watchOriginalsAction") private var watchOriginalsActionRaw: String = WatchOriginalsPolicy.followRawValue
+    var watchOriginalsPolicy: WatchOriginalsPolicy {
+        get { WatchOriginalsPolicy(storedRawValue: watchOriginalsActionRaw) }
+        set { watchOriginalsActionRaw = newValue.storedRawValue }
+    }
+    /// What actually happens to a watch-folder original.
+    var effectiveWatchOriginalsAction: OriginalsAction {
+        watchOriginalsPolicy.resolved(general: originalsAction)
     }
     @AppStorage("minimumSavingsPercent") var minimumSavingsPercent: Int = 2
     @AppStorage("concurrentTasks")      var concurrentTasks: Int = 3
@@ -477,7 +482,8 @@ final class DinkyPreferences: ObservableObject {
             if r.path != customFolderDisplayPath { customFolderDisplayPath = r.path }
             if r.bookmark != customFolderBookmark { customFolderBookmark = r.bookmark }
         }
-        if originalsAction == .backup, let r = Self.reanchorDirectory(bookmark: originalsBackupFolderBookmark) {
+        if originalsAction == .backup || effectiveWatchOriginalsAction == .backup,
+           let r = Self.reanchorDirectory(bookmark: originalsBackupFolderBookmark) {
             if r.path != originalsBackupFolderDisplayPath { originalsBackupFolderDisplayPath = r.path }
             if r.bookmark != originalsBackupFolderBookmark { originalsBackupFolderBookmark = r.bookmark }
         }
