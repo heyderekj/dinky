@@ -13,7 +13,7 @@
       "type": "skill-md",
       "description": "Local dinky image CLI and loopback serve — build from GitHub; JSON schema dinky.image.compress/1.0.0",
       "url": "https://dinkyfiles.com/.well-known/agent-skills/dinky-local-cli/SKILL.md",
-      "digest": "sha256:0bfa7b52ef5f908ed2aae9167e08261c84bff2fd222ebe48cfa97b8d0312e0d7"
+      "digest": "sha256:b1b8d249a03624e2f9f4c5b04b8448c8f4255e5a50c6e8f6ba5f88656ccb7535"
     },
     {
       "name": "dinky-release-bump",

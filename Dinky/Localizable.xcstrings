@@ -9723,7 +9723,7 @@
         }
       }
     },
-    "Dinky includes advanced local tools for pro users: a `dinky` command-line tool and optional local HTTP mode (`dinky serve`) for automation and AI agents." : {
+    "Dinky includes advanced local tools for pro users: a `dinky` command-line tool and optional local HTTP mode (`dinky serve`) for automation and AI agents. It only answers apps on this Mac that know its token." : {
       "comment" : "Settings UI."
     },
     "Dinky picks a tier from each document. The choice below is the manual fallback if analysis fails." : {

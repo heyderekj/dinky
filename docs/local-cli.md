@@ -146,7 +146,38 @@ Ignored in CLI: watch-folder fields, “open folder when done”, notification t
 
 ## `dinky serve` (local HTTP)
 
-Default port **17381**. Prefer **`127.0.0.1`** in clients.
+```text
+dinky serve [--port <n>] [--token <value>]
+```
+
+Default port **17381**. The server listens on **`127.0.0.1`** and **`[::1]`** only, so other devices on your network can't connect. Use `http://127.0.0.1:17381` in clients.
+
+### Access token
+
+Every request except `GET /v1/health` needs `Authorization: Bearer <token>`.
+
+- By default, `dinky serve` makes a new random token at each launch and prints it on stderr.
+- To keep the same token across launches (handy for scripts and agents), set **`DINKY_SERVE_TOKEN`** before starting the server — at least 16 characters from `A-Z a-z 0-9 . _ ~ + / = -`. `--token <value>` works too, but other users on the Mac can see command-line arguments in `ps`, so prefer the environment variable.
+
+```bash
+export DINKY_SERVE_TOKEN="$(openssl rand -hex 32)"
+dinky serve &
+curl -s http://127.0.0.1:17381/v1/compress \
+  -H "Authorization: Bearer $DINKY_SERVE_TOKEN" \
+  --json '{"inputPaths":["/path/to/photo.png"],"format":"webp"}'
+```
+
+POSTs must send `Content-Type: application/json`. Plain `curl -d` sends a form type and Node `fetch` with a string body sends `text/plain`, so both get **415** unless you set the header. If you use an HTTP proxy, add `127.0.0.1,localhost,::1` to `NO_PROXY`.
+
+### Rejected requests
+
+| Status | When |
+|--------|------|
+| `400` | Malformed request, or missing / duplicate `Host` header |
+| `403` | `Host` isn't `127.0.0.1:<port>`, `localhost:<port>`, or `[::1]:<port>` (blocks DNS rebinding) |
+| `403` | Request has an `Origin` header — browsers always send one, so web pages can't drive the server |
+| `401` | Missing or wrong bearer token (every endpoint except `GET /v1/health`) |
+| `415` | `POST` without `Content-Type: application/json` |
 
 | Method | Path | Notes |
 |--------|------|--------|
@@ -155,7 +186,7 @@ Default port **17381**. Prefer **`127.0.0.1`** in clients.
 | `POST` | `/v1/video/compress` | Video options JSON; response `dinky.video.compress/1.0.0` |
 | `POST` | `/v1/pdf/compress` | PDF options JSON; response `dinky.pdf.compress/1.0.0` |
 
-HTTP **200** if all files OK, **422** if any failed (image/video/PDF). **503** if `DINKY_BIN` missing for PDF handler.
+HTTP **200** if all files OK, **422** if any failed (image/video/PDF). **503** if `DINKY_BIN` missing for PDF handler. **400 / 401 / 403 / 415** for rejected requests (above).
 
 ### Example: image POST
 
@@ -205,7 +236,10 @@ HTTP **200** if all files OK, **422** if any failed (image/video/PDF). **503** i
 
 - No upload to a hosted Dinky API.
 - Only files you pass are read; output paths are under your control.
-- Prefer loopback and explicit paths for agents/scripts.
+- `dinky serve` binds loopback only (`127.0.0.1` and `[::1]`); it is not reachable from other devices.
+- The bearer token keeps out other user accounts on the Mac, sandboxed apps, and web pages. It does not stop software already running as you.
+- Web pages are also refused by the `Origin`, `Host`, and JSON-only checks (CSRF and DNS rebinding).
+- Whoever has the token can make Dinky read any file your account can read and write output anywhere your account can write. Treat it like a password: don't commit it or leave it in shared logs.
 
 ---
 
@@ -227,7 +261,7 @@ Use `--json` to print the manifest to stdout after writing.
 
 ## Roadmap / follow-ups
 
-- Loopback-only bind option for `serve`, request size caps, structured errors.
+- `serve`: request size caps, honor `Content-Length`, structured errors.
 - `dinky preset list|export` and JSON schema for presets.
 - Optional bundled tiny media fixtures for CI video smoke tests.
 

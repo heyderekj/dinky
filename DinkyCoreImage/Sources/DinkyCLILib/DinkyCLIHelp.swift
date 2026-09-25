@@ -18,7 +18,7 @@ public enum DinkyCLIHelp {
           dinky compress-pdf <files>… [options]
           dinky ocr <pdf>… [--languages en-US,fr] [-o dir] [--json]
           dinky make-fixtures [--output-dir <path>] [--types images,video,pdf] [--count 1..20] …   # developer testing
-          dinky serve --port <n>
+          dinky serve [--port <n>] [--token <value>]
           dinky help | --help
           dinky version
 
@@ -67,12 +67,17 @@ public enum DinkyCLIHelp {
           -o, --output-dir <path>   --json
           JSON: \(dinkyPdfCompressResultSchema)
 
-        serve (HTTP, local use only):
-          --port <n>   (default 17381)
-          POST /v1/compress       image body (existing)
+        serve (HTTP on 127.0.0.1 and [::1] only — not reachable from other devices):
+          --port <n>         (default 17381)
+          --token <value>    fixed bearer token (visible in ps; prefer $DINKY_SERVE_TOKEN)
+          Default: a new random token each launch, printed at startup.
+          Send Authorization: Bearer <token> (not needed for GET /v1/health) and, on POST,
+          Content-Type: application/json. Requests with an Origin header or a Host other than
+          localhost / 127.0.0.1 / [::1] on the serve port are refused.
+          POST /v1/compress        image body (existing)
           POST /v1/video/compress  video JSON
           POST /v1/pdf/compress    PDF JSON
-          GET /v1/health           schema \(dinkyImageServeInfoSchema)
+          GET  /v1/health          schema \(dinkyImageServeInfoSchema) (no token)
 
         make-fixtures (developer / local testing only):
           Writes valid sample images (png, jpg, tiff, bmp, heic, optional webp+avif), short synthetic videos (.mov, .mp4),

@@ -620,7 +620,7 @@ private struct AboutPreferencesPane: View {
             }
 
             Section {
-                Text(String(localized: "Dinky includes advanced local tools for pro users: a `dinky` command-line tool and optional local HTTP mode (`dinky serve`) for automation and AI agents.", comment: "Settings UI."))
+                Text(String(localized: "Dinky includes advanced local tools for pro users: a `dinky` command-line tool and optional local HTTP mode (`dinky serve`) for automation and AI agents. It only answers apps on this Mac that know its token.", comment: "Settings UI."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Text(String(localized: "Quirky but straightforward: give Dinky file paths, get smaller files back. Everything runs on your Mac.", comment: "Settings UI."))

@@ -60,7 +60,7 @@ Hey! I'm [Derek Castelli](https://www.heyderekj.com), a full-time freelance web 
 - **Session history** — review past compression sessions with file counts and total bytes saved
 - **Apple Shortcuts** — compress images from automations via a native Shortcuts action
 - **Custom keyboard shortcuts** — rebind Open Files, Clipboard Compress, Compress Now, Clear, and Delete in Settings → Shortcuts
-- **CLI + local API (pro users)** — optional `dinky` CLI and local `dinky serve` endpoint for scripts and AI-agent workflows (`--json` output, loopback/local use)
+- **CLI + local API (pro users)** — optional `dinky` CLI and local `dinky serve` endpoint for scripts and AI-agent workflows (`--json` output; `serve` stays on this Mac and needs a token)
 - **Launch at login** — opt in once and Dinky's ready the moment you log in (handy alongside Watch Folders for set-and-forget compression)
 - **Easy updating** — one click checks for a new release, installs, and relaunches; no browser, no re-drag
 - **Skip threshold** — skip files below a minimum savings target: Off, 2%, 5%, or 10%
@@ -130,7 +130,7 @@ Updating Dinky is one click — no browser, no re-drag, no quarantine step. A ba
 
 ## CLI and local image API (optional)
 
-The same compression engines as the app are shipped as a small Swift package in this repo (`DinkyCoreImage/`). Build the `dinky` binary with SwiftPM and run **`dinky compress-image`**, **`dinky compress-video`**, **`dinky compress-pdf`**, **`dinky ocr`**, **`dinky serve`** (loopback HTTP), or **`dinky make-fixtures`** (developer-only sample files for testing). See [docs/local-cli.md](docs/local-cli.md) for flags and JSON schemas.
+The same compression engines as the app are shipped as a small Swift package in this repo (`DinkyCoreImage/`). Build the `dinky` binary with SwiftPM and run **`dinky compress-image`**, **`dinky compress-video`**, **`dinky compress-pdf`**, **`dinky ocr`**, **`dinky serve`** (loopback-only HTTP with a bearer token), or **`dinky make-fixtures`** (developer-only sample files for testing). See [docs/local-cli.md](docs/local-cli.md) for flags and JSON schemas.
 
 - **Docs:** [docs/local-cli.md](docs/local-cli.md) — flags, exit codes, JSON schema (`dinky.image.compress/1.0.0`), and `serve` endpoints.
 - **Encoders** must be on disk (`DINKY_BIN`, `bin/` next to the binary, or Homebrew `cwebp` / `avifenc` / `oxipng`), matching how the app bundles them.
@@ -163,6 +163,6 @@ swift build -c release
 ```
 
 - One-shot automation: run `dinky compress ... --json`
-- Repeated automation/agents: run `dinky serve --port 17381` and call `127.0.0.1` endpoints
+- Repeated automation/agents: run `dinky serve` and call `http://127.0.0.1:17381` with `Authorization: Bearer <token>` (printed at startup, or pin one with `DINKY_SERVE_TOKEN`) and `Content-Type: application/json`
 
 See [docs/local-cli.md](docs/local-cli.md) for commands, JSON schemas, and examples.
