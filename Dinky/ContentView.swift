@@ -956,13 +956,18 @@ final class ContentViewModel: ObservableObject {
                 item.compressionProgress = Double(p)
             }
         }
+        // Encode into a private folder and pick the final name only when moving the result into
+        // place: two files in one batch can want the same output name (photo.jpg and photo.png →
+        // photo-dinky.webp), and checking for a free name up front let both write to the same file.
+        let stagingDir = Self.makeStagingDirectory()
+        defer { try? FileManager.default.removeItem(at: stagingDir) }
         do {
             let result = try await CompressionService.shared.compress(
                 source: item.sourceURL,
                 format: format,
                 goals: goals,
                 stripMetadata: strip,
-                outputURL: outputURL,
+                outputURL: stagingDir.appendingPathComponent(outputURL.lastPathComponent),
                 smartQuality: smartQ,
                 contentTypeHint: hint,
                 preclassifiedContent: preclassifiedForSmartQ,
@@ -992,7 +997,7 @@ final class ContentViewModel: ObservableObject {
                 item.status = .skipped(savedPercent: savedPercent, threshold: prefs.minimumSavingsPercent)
             case .keep:
                 let fin = try await finalizeKeptOutput(
-                    item, produced: result.outputURL, stagedDestination: result.stagedDestinationURL
+                    item, produced: result.outputURL, stagedDestination: outputURL
                 )
                 item.imageResize = result.imageResize
                 item.status = .done(outputURL: fin.outputURL,
@@ -1009,6 +1014,13 @@ final class ContentViewModel: ObservableObject {
         } catch {
             item.status = .failed(error)
         }
+    }
+
+    private static func makeStagingDirectory() -> URL {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("dinky_out_\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
     }
 
     /// Puts a kept result in place and applies the originals setting. Only called once a result has
@@ -1422,13 +1434,13 @@ final class ContentViewModel: ObservableObject {
             style: collisionStyle,
             customPattern: collisionCustomPattern(for: item)
         )
-        let workURL: URL
-        if sourceURL.path == finalURL.path {
-            workURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent("dinky_vid_\(UUID().uuidString).mp4")
-        } else {
-            workURL = finalURL
-        }
+        // Always a private temp file; `finalizeKeptOutput` picks the free name when it moves it in,
+        // so two jobs wanting the same output name can't write into one file.
+        let workURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("dinky_vid_\(UUID().uuidString)")
+            .appendingPathExtension(finalURL.pathExtension.isEmpty ? "mp4" : finalURL.pathExtension)
+        // Removes a discarded or failed encode; a kept one has already been moved into place.
+        defer { try? FileManager.default.removeItem(at: workURL) }
         let replaceOrigin = (preset.map { FilenameHandling(rawValue: $0.filenameHandlingRaw) } ?? prefs.filenameHandling) == .replaceOrigin
 
         let progressHandler: @Sendable (Float) -> Void = { p in
@@ -1474,7 +1486,7 @@ final class ContentViewModel: ObservableObject {
                 let fin = try await finalizeKeptOutput(
                     item,
                     produced: result.outputURL,
-                    stagedDestination: workURL.path != finalURL.path ? finalURL : nil
+                    stagedDestination: finalURL
                 )
                 item.status = .done(outputURL: fin.outputURL,
                                     originalSize: result.originalSize,
@@ -1544,14 +1556,13 @@ final class ContentViewModel: ObservableObject {
             style: collisionStyle,
             customPattern: collisionCustomPattern(for: item)
         )
-        let workURL: URL
-        if sourceURL.path == finalURL.path {
-            workURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent("dinky_aud_\(UUID().uuidString)")
-                .appendingPathExtension(targetFormat.fileExtension)
-        } else {
-            workURL = finalURL
-        }
+        // Always a private temp file (see video): `music.mp3` and `music.m4a` both become
+        // `music-dinky.m4a`, and converting both at once into that one path corrupted or failed them.
+        let workURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("dinky_aud_\(UUID().uuidString)")
+            .appendingPathExtension(targetFormat.fileExtension)
+        // Removes a discarded or failed encode; a kept one has already been moved into place.
+        defer { try? FileManager.default.removeItem(at: workURL) }
 
         let replaceOrigin = (preset.map { FilenameHandling(rawValue: $0.filenameHandlingRaw) } ?? prefs.filenameHandling)
             == .replaceOrigin
@@ -1593,7 +1604,7 @@ final class ContentViewModel: ObservableObject {
                 let fin = try await finalizeKeptOutput(
                     item,
                     produced: result.outputURL,
-                    stagedDestination: workURL.path != finalURL.path ? finalURL : nil
+                    stagedDestination: finalURL
                 )
                 item.status = .done(outputURL: fin.outputURL,
                                     originalSize: result.originalSize,
