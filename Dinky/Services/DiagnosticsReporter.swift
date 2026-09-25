@@ -140,8 +140,34 @@ final class DiagnosticsReporter: NSObject, ObservableObject {
         App: Dinky v\(ver) (build \(build))
         macOS: \(osString)
         Date: \(date)
+        \(watchSettingsSummary())
 
 
+        """
+    }
+
+    /// Watch-folder and originals settings, without any paths — the usual suspects when "a file
+    /// disappeared" or "nothing happened".
+    static func watchSettingsSummary(_ d: UserDefaults = .standard) -> String {
+        func dirExists(_ path: String) -> Bool {
+            var isDir: ObjCBool = false
+            return !path.isEmpty && FileManager.default.fileExists(atPath: path, isDirectory: &isDir) && isDir.boolValue
+        }
+        let globalOn = d.bool(forKey: "folderWatchEnabled")
+        let globalFound = dirExists(d.string(forKey: "watchedFolderPath") ?? "")
+        let presets = (d.data(forKey: "savedPresetsData"))
+            .flatMap { try? JSONDecoder().decode([CompressionPreset].self, from: $0) } ?? []
+        let presetWatches = presets.filter { $0.watchFolderEnabled && $0.watchFolderModeRaw == "unique" }
+        let presetFound = presetWatches.filter { dirExists($0.watchFolderPath) }.count
+        let general = OriginalsAction(rawValue: d.string(forKey: "originalsAction") ?? "") ?? .keep
+        let watchPolicy = WatchOriginalsPolicy(storedRawValue: d.string(forKey: "watchOriginalsAction"))
+        let activePreset = !(d.string(forKey: "activePresetID") ?? "").isEmpty
+        let minSavings = d.object(forKey: "minimumSavingsPercent") as? Int ?? 2
+        return """
+        Watch: global \(globalOn ? "on" : "off")\(globalOn ? (globalFound ? " (folder found)" : " (folder NOT found)") : ""), \
+        preset folders \(presetWatches.count) (\(presetFound) found)
+        Originals: general \(general.rawValue), watch \(watchPolicy.storedRawValue) → \(watchPolicy.resolved(general: general).rawValue)
+        Active preset: \(activePreset ? "yes" : "no"), manual mode: \(d.bool(forKey: "manualMode") ? "on" : "off"), min savings: \(minSavings)%
         """
     }
 
