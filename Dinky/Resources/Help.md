@@ -106,8 +106,9 @@ Switch the active preset from the sidebar at any time.
 
 Drop files into a folder and let Dinky handle them in the background.
 
-- **Global watch** — *Settings → Watch → Global*. Uses whatever the sidebar is currently set to. Good for an "incoming" or screenshot folder.
+- **Global watch** — *Settings → Watch → Global*. Uses the preset selected in the sidebar (when it covers that file type), otherwise the sidebar settings. Good for an "incoming" or screenshot folder.
 - **Per-preset watch** — each preset can also watch its own folder with its own rules. Independent of the sidebar — change the sidebar all you want, the preset still does its thing.
+- **Originals** — follow *Settings → Original Files* unless you pick something else under *Settings → Watch → Originals* (for example *Move to Trash*, so the folder empties itself). Originals are only moved once a smaller file has been saved.
 
 > **Pro tip:** Combine "screen recordings folder" + a preset that strips audio and re-encodes to H.264 Balanced. Hit `⌘⇧5`, screen-record, hit stop — Dinky has a small file ready before you reach the Finder.
 
@@ -161,7 +162,7 @@ Dinky registers a **Compress Images** action for the Shortcuts app. Use it to pi
 ## Troubleshooting
 
 **A file came out larger than the original.**
-Dinky keeps the original instead. You'll see *"Couldn't make this one any smaller. Keeping the original."* in the row.
+Dinky keeps the original instead, exactly where it was — nothing is moved to the Trash or Backup. (One exception: if a width limit shrank the image, the resized file is kept, since the new size is what you asked for.) You'll see *"Couldn't make this one any smaller. Keeping the original."* in the row.
 
 **A file was skipped.**
 Either it was already very small (under your *Skip if savings below* threshold), or the encoder couldn't read it. Click the row for details.

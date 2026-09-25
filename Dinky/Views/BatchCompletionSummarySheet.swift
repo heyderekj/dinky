@@ -12,6 +12,9 @@ struct BatchCompletionFileRow: Identifiable, Equatable, Codable {
     let outputSize: Int64
     /// Whether this row can still be reverted (undo snapshot present on the queue item).
     let canUndo: Bool
+    /// Pixel widths when an image was downscaled to fit a width limit (optional so older history decodes).
+    var resizedFromWidth: Int? = nil
+    var resizedToWidth: Int? = nil
 }
 
 /// One row in the batch summary file list (compressed, skipped, failed, or no gain).
@@ -45,7 +48,9 @@ enum BatchSummaryListRow: Identifiable, Equatable, Codable {
                         outputPath: outputURL.path,
                         originalSize: orig,
                         outputSize: out,
-                        canUndo: item.undoSnapshot != nil
+                        canUndo: item.undoSnapshot != nil,
+                        resizedFromWidth: item.imageResize?.originalWidth,
+                        resizedToWidth: item.imageResize?.outputWidth
                     )
                 )
             case .skipped(let savedPercent, let threshold):
@@ -187,11 +192,20 @@ struct BatchCompletionSummarySheet: View {
                     if let p = SavingsPerspective.perspective(savedBytes: summary.savedBytes, seed: summary.id) {
                         SummaryStatRow(icon: p.icon, text: p.text)
                     }
-                } else {
+                } else if resizedCount(summary) == 0 {
                     SummaryStatRow(
                         icon: "equal.circle",
                         text: String(localized: "No space saved (outputs were already small or similar size).", comment: "Batch summary when saved bytes zero."),
                         textSecondary: true
+                    )
+                }
+                if resizedCount(summary) > 0 {
+                    SummaryStatRow(
+                        icon: "arrow.down.right.and.arrow.up.left",
+                        text: String.localizedStringWithFormat(
+                            String(localized: "%lld resized to fit the width limit", comment: "Batch summary; argument is the number of images downscaled to the width limit."),
+                            Int64(resizedCount(summary))
+                        )
                     )
                 }
 
@@ -557,6 +571,13 @@ struct BatchCompletionSummarySheet: View {
         .help(help)
     }
 
+    private func resizedCount(_ summary: CompressionBatchSummary) -> Int {
+        summary.fileRows.filter {
+            if case .compressed(let r) = $0 { return r.resizedToWidth != nil }
+            return false
+        }.count
+    }
+
     private func fileRowView(_ row: BatchCompletionFileRow, supportsUndo: Bool) -> some View {
         let saved = row.originalSize - row.outputSize
         let pct: Double? = (row.originalSize > 0 && saved > 0)
@@ -572,15 +593,21 @@ struct BatchCompletionSummarySheet: View {
             row.sourceName
         )
         let helpText = "\(row.sourcePath)\n→ \(row.outputPath)"
+        let resizedLabel: String? = row.resizedToWidth.map {
+            String.localizedStringWithFormat(
+                String(localized: "Resized to %lld px", comment: "Batch summary per file: image downscaled to this width in pixels."),
+                Int64($0)
+            )
+        }
         let a11yMetrics: String = {
             if let pct {
                 let pctStr = String(
                     format: String(localized: "%.0f%% smaller", comment: "Batch summary per file; percent saved vs original."),
                     pct
                 )
-                return "\(sizeLine). \(pctStr)"
+                return [sizeLine, pctStr, resizedLabel].compactMap { $0 }.joined(separator: ". ")
             }
-            return sizeLine
+            return [sizeLine, resizedLabel].compactMap { $0 }.joined(separator: ". ")
         }()
         var accessibilitySummary = "\(row.outputName). \(fromLine). \(a11yMetrics)"
         if supportsUndo, row.canUndo {
@@ -625,6 +652,17 @@ struct BatchCompletionSummarySheet: View {
                             Capsule(style: .continuous)
                                 .fill(Color(nsColor: .quaternaryLabelColor).opacity(0.55))
                         }
+                    }
+                    if let resizedLabel {
+                        Text(resizedLabel)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background {
+                                Capsule(style: .continuous)
+                                    .fill(Color(nsColor: .quaternaryLabelColor).opacity(0.55))
+                            }
                     }
                 }
             }
