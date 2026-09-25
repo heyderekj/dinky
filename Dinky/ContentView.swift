@@ -353,6 +353,7 @@ final class ContentViewModel: ObservableObject {
 
     /// Rebuilds file rows and byte totals from the current queue while preserving batch metadata and stable summary id.
     private func reconciledBatchSummary(from existing: CompressionBatchSummary) -> CompressionBatchSummary {
+        let items = batchItems(ids: existing.itemIDs.map(Set.init))
         let fileRows = BatchSummaryListRow.rows(from: items)
         let doneCount = items.filter { if case .done = $0.status { return true }; return false }.count
         let skippedCount = items.filter { if case .skipped = $0.status { return true }; return false }.count
@@ -379,8 +380,14 @@ final class ContentViewModel: ObservableObject {
             outputFolderURL: outputFolderURL,
             fileRows: fileRows,
             undoableDoneCount: undoableDoneCount,
-            pdfOCRAppliedCount: pdfOCRAppliedCount
+            pdfOCRAppliedCount: pdfOCRAppliedCount,
+            itemIDs: existing.itemIDs
         )
+    }
+
+    /// Queue rows that belong to one batch (all rows when `ids` is nil — summaries from older versions).
+    private func batchItems(ids: Set<UUID>?) -> [CompressionItem] {
+        BatchScope.items(items, in: ids, id: \.id)
     }
 
     /// Keeps the batch summary sheet in sync after a single-item undo (stable summary `id` preserves the open sheet).
@@ -406,9 +413,11 @@ final class ContentViewModel: ObservableObject {
         pendingBatchSummarySupportsUndo = false
     }
 
-    /// Undoes all completed items that still have an undo snapshot (reverse queue order).
+    /// Undoes the shown batch's completed items that still have an undo snapshot (reverse queue order).
     func undoAllCompressibleDone() {
-        let targets = items.filter { item in
+        // Only the batch the summary sheet is showing — its "Undo All" count covers just those rows.
+        let summary = pendingBatchSummary ?? lastBatchSummary
+        let targets = batchItems(ids: summary?.itemIDs.map(Set.init)).filter { item in
             guard case .done = item.status else { return false }
             return item.undoSnapshot != nil
         }
@@ -614,6 +623,9 @@ final class ContentViewModel: ObservableObject {
         compressionStartTime = .now
 
         let batchPreset = batchSharedPreset(from: pending)
+        // Only this batch's rows count toward its summary, history and lifetime savings — the queue
+        // can still hold rows from earlier batches.
+        let batchIDs = pending.map(\.id)
 
         compressionTask = Task { [weak self] in
             guard let self else { return }
@@ -675,13 +687,14 @@ final class ContentViewModel: ObservableObject {
                 // If the queue was emptied mid-run (Clear All, autoClear race, etc.),
                 // don't strand the empty drop zone in `.done` — fall back to idle.
                 self.phase = self.items.isEmpty ? .idle : .done
-                let batchSaved = self.items.reduce(Int64(0)) { $0 + $1.savedBytes }
+                let batchItems = self.batchItems(ids: Set(batchIDs))
+                let batchSaved = batchItems.reduce(Int64(0)) { $0 + $1.savedBytes }
                 self.prefs.lifetimeSavedBytes += batchSaved
 
-                let doneCount = self.items.filter { if case .done = $0.status { return true }; return false }.count
+                let doneCount = batchItems.filter { if case .done = $0.status { return true }; return false }.count
 
                 let elapsed = Date.now.timeIntervalSince(self.compressionStartTime)
-                let doneItems = self.items.compactMap { item -> URL? in
+                let doneItems = batchItems.compactMap { item -> URL? in
                     if case .done(let url, _, _) = item.status { return url } else { return nil }
                 }
                 let outputFolderURL = doneItems.first?.deletingLastPathComponent()
@@ -691,7 +704,7 @@ final class ContentViewModel: ObservableObject {
                     NSWorkspace.shared.open(first.deletingLastPathComponent())
                 }
 
-                let hasTerminalForSummary = self.items.contains { item in
+                let hasTerminalForSummary = batchItems.contains { item in
                     switch item.status {
                     case .done, .skipped, .zeroGain, .failed: return true
                     default: return false
@@ -699,20 +712,20 @@ final class ContentViewModel: ObservableObject {
                 }
 
                 if hasTerminalForSummary {
-                    let skippedCount = self.items.filter { if case .skipped = $0.status { return true }; return false }.count
+                    let skippedCount = batchItems.filter { if case .skipped = $0.status { return true }; return false }.count
                     let openedFolder = openFolder && outputFolderURL != nil
-                    let fileRows = BatchSummaryListRow.rows(from: self.items)
+                    let fileRows = BatchSummaryListRow.rows(from: batchItems)
                     let summaryOutputFolder = fileRows.compactMap { row -> URL? in
                         if case .compressed(let r) = row {
                             return URL(fileURLWithPath: r.outputPath).deletingLastPathComponent()
                         }
                         return nil
                     }.first ?? outputFolderURL
-                    let undoableDoneCount = self.items.filter { i in
+                    let undoableDoneCount = batchItems.filter { i in
                         guard case .done = i.status else { return false }
                         return i.undoSnapshot != nil
                     }.count
-                    let pdfOCRAppliedCount = self.items.filter { i in
+                    let pdfOCRAppliedCount = batchItems.filter { i in
                         guard i.mediaType == .pdf, case .done = i.status else { return false }
                         return i.lastPdfCompressionOCRApplied
                     }.count
@@ -726,11 +739,12 @@ final class ContentViewModel: ObservableObject {
                         outputFolderURL: summaryOutputFolder,
                         fileRows: fileRows,
                         undoableDoneCount: undoableDoneCount,
-                        pdfOCRAppliedCount: pdfOCRAppliedCount
+                        pdfOCRAppliedCount: pdfOCRAppliedCount,
+                        itemIDs: batchIDs
                     )
                     self.lastBatchSummary = summary
                     let batchSummaryData = try? JSONEncoder().encode(summary)
-                    let formats = Array(Set(self.items.compactMap { item -> String? in
+                    let formats = Array(Set(batchItems.compactMap { item -> String? in
                         guard case .done = item.status else { return nil }
                         switch item.mediaType {
                         case .image: return (item.formatOverride ?? self.selectedFormat).displayName
