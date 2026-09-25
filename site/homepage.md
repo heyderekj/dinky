@@ -22,7 +22,7 @@ A tiny macOS app that shrinks images, videos, audio, and PDFs. Drag, drop, get s
 - **PDFs** — preserve or flatten; optional on-device OCR on scans, then compress
 - **Batch speed** — Fast / Faster / Fastest (parallel job caps)
 - **Watch folder** — auto-compress files dropped into a watched folder
-- **Originals** — keep, move to Trash, or move to a Backup folder per preset
+- **Originals** — keep, move to Trash, or move to a Backup folder (global setting; watch folders can override it)
 - **Custom keyboard shortcuts** — rebind Open Files, Clipboard Compress, Compress Now, Clear, and Delete
 - **CLI + local API (pro users)** — optional `dinky` CLI and `dinky serve` loopback endpoint for scripts and AI agents
 - **Launch at login** — opt in once and Dinky's ready when you log in

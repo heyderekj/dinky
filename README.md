@@ -54,7 +54,7 @@ Hey! I'm [Derek Castelli](https://www.heyderekj.com), a full-time freelance web 
 - **Show in Finder** — jump straight to any compressed file from the results list
 - **PNG lossless** — run oxipng on PNGs when you need to keep transparency or format fidelity
 - **Destination** — save next to the original, to Downloads, or pick a custom folder; presets can have their own unique output folder
-- **Originals** — keep, move to Trash, or move to a Backup folder of your choosing on every successful compress; set per preset or globally
+- **Originals** — keep, move to Trash, or move to a Backup folder of your choosing on every successful compress; watch folders can use their own setting
 - **Notifications** — sound and system notification when a batch finishes; sound scales with savings: a soft tink for tiny saves, a full chime for big ones
 - **Smart quality** — auto-detects photo vs. graphic (UI, illustration, logo, screenshot) per image and picks quality accordingly; or force Photo, Graphic, or Mixed per preset
 - **Session history** — review past compression sessions with file counts and total bytes saved
