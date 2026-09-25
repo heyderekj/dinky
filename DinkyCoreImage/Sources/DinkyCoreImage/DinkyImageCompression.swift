@@ -933,32 +933,15 @@ public actor DinkyImageCompression {
     // MARK: - Process runner
 
     private func run(_ binary: URL, args: [String]) async throws {
-        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
-            let process = Process()
-            process.executableURL = binary
-            process.arguments     = args
+        // Homebrew binaries use @rpath dylibs that live in /opt/homebrew/lib.
+        // Inject that path so dyld can find them when running inside the app bundle.
+        var env = ProcessInfo.processInfo.environment
+        let existing = env["DYLD_LIBRARY_PATH"].flatMap { $0.isEmpty ? nil : $0 }
+        env["DYLD_LIBRARY_PATH"] = ["/opt/homebrew/lib", existing].compactMap { $0 }.joined(separator: ":")
 
-            // Homebrew binaries use @rpath dylibs that live in /opt/homebrew/lib.
-            // Inject that path so dyld can find them when running inside the app bundle.
-            var env = ProcessInfo.processInfo.environment
-            let existing = env["DYLD_LIBRARY_PATH"].flatMap { $0.isEmpty ? nil : $0 }
-            env["DYLD_LIBRARY_PATH"] = ["/opt/homebrew/lib", existing].compactMap { $0 }.joined(separator: ":")
-            process.environment = env
-
-            let errPipe = Pipe()
-            process.standardError  = errPipe
-            process.standardOutput = Pipe()
-            process.terminationHandler = { p in
-                let stderr = String(data: errPipe.fileHandleForReading.readDataToEndOfFile(),
-                                    encoding: .utf8) ?? ""
-                if p.terminationStatus == 0 {
-                    cont.resume()
-                } else {
-                    cont.resume(throwing: DinkyImageCompressionError.processFailed(p.terminationStatus, stderr))
-                }
-            }
-            do    { try process.run() }
-            catch { cont.resume(throwing: error) }
+        let out = try await SubprocessRunner.run(binary, arguments: args, environment: env)
+        guard out.status == 0 else {
+            throw DinkyImageCompressionError.processFailed(out.status, out.stderr)
         }
     }
 

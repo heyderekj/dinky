@@ -270,6 +270,9 @@
     "Same as Original Files (currently: %@)" : {
       "comment" : "Settings UI: watch originals follow the general setting. Argument is that setting, e.g. “Stay where they are”."
     },
+    "The Backup folder is inside a watched folder. Dinky won't compress what's in it, but a Backup folder elsewhere keeps things tidier." : {
+      "comment" : "Settings UI: warning when the originals backup folder sits inside a watch folder."
+    },
     "The global folder uses the preset selected in the main window when it covers the file type, otherwise the sidebar settings. Presets can add separate watched folders in their own settings." : {
       "comment" : "Settings UI."
     },

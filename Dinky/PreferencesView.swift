@@ -1857,6 +1857,13 @@ private struct WatchFoldersTab: View {
         prefs.folderWatchEnabled || prefs.savedPresets.contains(where: \.watchFolderEnabled)
     }
 
+    private var backupFolderIsInsideWatchedFolder: Bool {
+        let backup = prefs.originalsBackupDestinationURL().path
+        return WatchPipelineRegistry(prefs: prefs).watchedRootPaths.contains {
+            WatchPaths.path(backup, isUnder: $0)
+        }
+    }
+
     var body: some View {
         Form {
             Section {
@@ -1906,6 +1913,11 @@ private struct WatchFoldersTab: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if prefs.effectiveWatchOriginalsAction == .backup {
+                    if backupFolderIsInsideWatchedFolder {
+                        Label(String(localized: "The Backup folder is inside a watched folder. Dinky won't compress what's in it, but a Backup folder elsewhere keeps things tidier.", comment: "Settings UI: warning when the originals backup folder sits inside a watch folder."), systemImage: "exclamationmark.triangle")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                     PreferencesRelatedTabLink(title: String(localized: "Backup folder…", comment: "Settings UI."), tab: .originals)
                 }
             } header: {

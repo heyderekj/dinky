@@ -57,7 +57,13 @@ final class ContentViewModel: ObservableObject {
     private let folderWatcher = FolderWatcher()
     private var lastWatchedPaths: [String] = []
     private var lastWatchSettings: WatchSettingsSignature?
+    /// Latest routing table; ready files are routed with this, not the one from when watching started.
+    private var watchRegistry: WatchPipelineRegistry?
+    /// Retries while a watch folder is turned on but can't be found (drive not mounted yet).
+    private var unresolvedWatchRetry: Timer?
+    private var ingestLedger = WatchIngestLedger()
     private var prefsObservation: AnyCancellable?
+    private var systemObservations: Set<AnyCancellable> = []
 
     /// Destinations Dinky is about to write, so the watcher can ignore its own results. A watch
     /// folder is usually also the output folder, and without this the result is re-ingested and
@@ -97,16 +103,19 @@ final class ContentViewModel: ObservableObject {
         pruneSelfWrittenOutputs()
     }
 
+    /// Resolves the folder, not the file: symlink resolution differs for a file that doesn't exist
+    /// yet (noted before writing) and one that does (seen by the watcher), e.g. `/private/tmp`.
     private static func outputKey(_ url: URL) -> String {
-        url.resolvingSymlinksInPath().standardizedFileURL.path
+        let dir = url.standardizedFileURL.deletingLastPathComponent().resolvingSymlinksInPath().path
+        return (dir as NSString).appendingPathComponent(url.lastPathComponent)
     }
 
     /// Queues media that landed in a watched folder while Dinky wasn't running — FSEvents only
     /// reports changes from the moment the stream starts, so those files would otherwise sit
     /// there forever.
-    private func catchUpScanWatchedFolders(_ roots: [String], registry: WatchPipelineRegistry) {
+    private func catchUpScanWatchedFolders(_ roots: [String]) {
         let previousScan = prefs.lastWatchCatchUpScan
-        prefs.lastWatchCatchUpScan = Date().timeIntervalSinceReferenceDate
+        advanceCatchUpMarker()
         guard previousScan > 0 else { return }
         let cutoff = Date(timeIntervalSinceReferenceDate: previousScan)
 
@@ -127,7 +136,42 @@ final class ContentViewModel: ObservableObject {
             }
         }
         guard !pending.isEmpty else { return }
-        for url in pending {
+        watchLog.notice("Catch-up found \(pending.count, privacy: .public) file(s) that arrived while Dinky wasn't watching")
+        folderWatcher.enqueue(pending)
+        advanceCatchUpMarker()
+    }
+
+    /// Moves the catch-up marker to now — or to just before the oldest file still settling, so a
+    /// copy in progress at quit is picked up on the next launch instead of skipped.
+    private func advanceCatchUpMarker() {
+        let now = Date()
+        let marker = folderWatcher.oldestPendingSince.map { min(now, $0.addingTimeInterval(-60)) } ?? now
+        prefs.lastWatchCatchUpScan = marker.timeIntervalSinceReferenceDate
+    }
+
+    /// Files that finished arriving in a watched folder.
+    private func ingestReadyWatchFiles(_ urls: [URL]) {
+        advanceCatchUpMarker()
+        let now = Date()
+        let backupRoot = prefs.originalsBackupDestinationURL().path
+        let registry = watchRegistry ?? WatchPipelineRegistry(prefs: prefs)
+        for url in urls {
+            let name = url.lastPathComponent
+            if isSelfWrittenOutput(url) {
+                watchLog.debug("Skipped \(name, privacy: .private(mask: .hash)): Dinky's own output")
+                continue
+            }
+            // Originals backed up into a watched folder would otherwise come straight back in.
+            if WatchPaths.path(url.path, isUnder: backupRoot) {
+                watchLog.info("Skipped \(name, privacy: .private(mask: .hash)): inside the originals Backup folder")
+                continue
+            }
+            let fingerprint = FileFingerprint(url: url)
+            if ingestLedger.alreadyIngested(url.path, fingerprint: fingerprint, now: now) {
+                watchLog.debug("Skipped \(name, privacy: .private(mask: .hash)): already handled")
+                continue
+            }
+            ingestLedger.record(url.path, fingerprint: fingerprint, now: now)
             route(url, through: registry)
         }
     }
@@ -135,15 +179,19 @@ final class ContentViewModel: ObservableObject {
     /// The global folder uses whatever the main window uses — the selected preset when it covers the
     /// file type, otherwise the sidebar settings. A preset's own folder uses that preset.
     private func route(_ url: URL, through registry: WatchPipelineRegistry) {
+        let name = url.lastPathComponent
         switch registry.pipeline(for: url) {
         case .global:
+            watchLog.info("Queued \(name, privacy: .private(mask: .hash)) from the global folder (active preset: \(self.activePresetID(for: url) != nil, privacy: .public))")
             addAndCompressWithActivePreset([url], fromWatchFolder: true)
         case .preset(let id):
             let preset = prefs.savedPresets.first(where: { $0.id == id })
             let media = MediaTypeDetector.detect(url)
             if let p = preset, let m = media, p.applies(to: m) {
+                watchLog.info("Queued \(name, privacy: .private(mask: .hash)) from a preset folder")
                 addAndCompress([url], presetID: id, fromWatchFolder: true)
             } else {
+                watchLog.info("Queued \(name, privacy: .private(mask: .hash)) from a preset folder that doesn't cover this type; using the main window's settings")
                 addAndCompressWithActivePreset([url], fromWatchFolder: true)
             }
         }
@@ -171,12 +219,39 @@ final class ContentViewModel: ObservableObject {
         self.prefs = prefs
         self.selectedFormat = prefs.defaultFormat
         loadSelfWrittenOutputs()
+        folderWatcher.onReadyFiles = { [weak self] urls in self?.ingestReadyWatchFiles(urls) }
+        folderWatcher.shouldIgnore = { [weak self] url in self?.isSelfWrittenOutput(url) ?? false }
         reconcileBookmarksAndUpdateFolderWatcher()
         prefsObservation = prefs.objectWillChange.sink { [weak self] _ in
             // `objectWillChange` fires before the new value is written; defer a tick so
             // `updateFolderWatcher()` reads the post-change preferences.
             DispatchQueue.main.async { self?.updateFolderWatcher() }
         }
+        observeSystemEventsForWatchFolders()
+    }
+
+    /// Owned here rather than by the window so a hidden (menu-bar-only) launch reacts too. A drive
+    /// or share mounting after login makes its watch folder available; after sleep FSEvents may
+    /// have missed changes made by other Macs on a share, so restart and catch up.
+    private func observeSystemEventsForWatchFolders() {
+        let ws = NSWorkspace.shared.notificationCenter
+        ws.publisher(for: NSWorkspace.didMountNotification)
+            .merge(with: ws.publisher(for: NSWorkspace.didUnmountNotification))
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.refreshWatchFolders(force: true, reason: "a volume was mounted or unmounted") }
+            .store(in: &systemObservations)
+        ws.publisher(for: NSWorkspace.didWakeNotification)
+            .delay(for: .seconds(3), scheduler: RunLoop.main)
+            .sink { [weak self] _ in self?.refreshWatchFolders(force: true, reason: "woke from sleep") }
+            .store(in: &systemObservations)
+        NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
+            .sink { [weak self] _ in self?.refreshWatchFolders(force: false, reason: "app became active") }
+            .store(in: &systemObservations)
+    }
+
+    private func refreshWatchFolders(force: Bool, reason: String) {
+        prefs.reconcileFolderBookmarksIfNeeded()
+        updateFolderWatcher(force: force, recheckUnresolved: true, reason: reason)
     }
 
     /// Re-anchors moved/renamed watch folders, then syncs the watcher. Kept out of
@@ -189,32 +264,49 @@ final class ContentViewModel: ObservableObject {
 
     /// Rebuilds the watch-folder routing table from current preferences and (re)starts FSEvents
     /// monitoring only when the resolved set of watched directories actually changed.
-    func updateFolderWatcher() {
+    ///
+    /// - Parameters:
+    ///   - force: Restart the stream and catch up even if nothing changed (after mount / wake).
+    ///   - recheckUnresolved: Look again at folders that couldn't be found last time.
+    func updateFolderWatcher(force: Bool = false, recheckUnresolved: Bool = false, reason: String = "settings changed") {
         let signature = WatchSettingsSignature(prefs: prefs)
-        guard signature != lastWatchSettings else { return }
+        let hasUnresolved = (watchRegistry?.unresolvedCount ?? 0) > 0
+        guard force || signature != lastWatchSettings || (recheckUnresolved && hasUnresolved) else { return }
         lastWatchSettings = signature
         let reg = WatchPipelineRegistry(prefs: prefs)
+        watchRegistry = reg
+        scheduleUnresolvedWatchRetry(reg.unresolvedCount > 0)
+        if reg.unresolvedCount > 0 {
+            watchLog.notice("\(reg.unresolvedCount, privacy: .public) watch folder(s) turned on but not available; will retry")
+        }
         let paths = reg.watchedRootPaths
         guard !paths.isEmpty else {
             if !lastWatchedPaths.isEmpty {
                 folderWatcher.stop()
                 lastWatchedPaths = []
+                watchLog.notice("Stopped watching (\(reason, privacy: .public))")
             }
             return
         }
-        guard paths != lastWatchedPaths else { return }
+        guard force || paths != lastWatchedPaths else { return }
         lastWatchedPaths = paths
-        folderWatcher.onNewFiles = { [weak self] urls in
-            guard let self else { return }
-            // Move the catch-up marker forward for anything handled live, otherwise the next
-            // launch sees this session's own arrivals as new and compresses them a second time.
-            self.prefs.lastWatchCatchUpScan = Date().timeIntervalSinceReferenceDate
-            for url in urls where !self.isSelfWrittenOutput(url) {
-                self.route(url, through: reg)
-            }
-        }
+        watchLog.notice("Starting watcher (\(reason, privacy: .public))")
         folderWatcher.start(paths: paths)
-        catchUpScanWatchedFolders(paths, registry: reg)
+        catchUpScanWatchedFolders(paths)
+    }
+
+    private func scheduleUnresolvedWatchRetry(_ needed: Bool) {
+        guard needed else {
+            unresolvedWatchRetry?.invalidate()
+            unresolvedWatchRetry = nil
+            return
+        }
+        guard unresolvedWatchRetry == nil else { return }
+        let timer = Timer(timeInterval: 60, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.refreshWatchFolders(force: false, reason: "retrying unavailable watch folder") }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        unresolvedWatchRetry = timer
     }
 
     /// Hardware video encoders are limited; parallel `AVAssetExportSession`s usually hurt throughput.
@@ -890,6 +982,27 @@ final class ContentViewModel: ObservableObject {
             await compressVideoItem(item)
         case .audio:
             await compressAudioItem(item)
+        }
+        if item.ingestedFromWatchFolder {
+            logWatchOutcome(item)
+        }
+    }
+
+    private func logWatchOutcome(_ item: CompressionItem) {
+        let name = item.filename
+        let originals = effectiveOriginalsAction(for: item).rawValue
+        switch item.status {
+        case .done(_, let orig, let out):
+            let moved = item.undoSnapshot?.originalRecoveryURL != nil
+            watchLog.info("Done \(name, privacy: .private(mask: .hash)): \(orig, privacy: .public) → \(out, privacy: .public) bytes, resized: \(item.imageResize != nil, privacy: .public), originals \(originals, privacy: .public), original moved: \(moved, privacy: .public)")
+        case .zeroGain:
+            watchLog.info("No gain for \(name, privacy: .private(mask: .hash)); original left in place")
+        case .skipped:
+            watchLog.info("Skipped \(name, privacy: .private(mask: .hash)) (below minimum savings); original left in place")
+        case .failed(let error):
+            watchLog.error("Failed \(name, privacy: .private(mask: .hash)): \(error.localizedDescription, privacy: .public)")
+        default:
+            break
         }
     }
 
@@ -2135,9 +2248,6 @@ struct ContentView: View {
             // Next turn, so this view's notification observers are attached before queued
             // open-files / paste work posts to them.
             DispatchQueue.main.async { DockPresenceManager.mainWindowDidAppear() }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            vm.reconcileBookmarksAndUpdateFolderWatcher()
         }
         .task {
             await updater.check()

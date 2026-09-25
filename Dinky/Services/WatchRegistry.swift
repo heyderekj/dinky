@@ -9,7 +9,7 @@ enum WatchPipeline: Equatable {
 enum WatchFolderPathResolver {
 
     static func normalizedPath(_ path: String) -> String {
-        (path as NSString).standardizingPath
+        WatchPaths.normalized(path)
     }
 
     /// Prefer resolving the security-scoped bookmark (survives renames); fall back to `storedPath` only when it still exists as a directory.
@@ -37,9 +37,7 @@ enum WatchFolderPathResolver {
 
     /// Whether `file` sits under `root` (or equals it). Both paths are standardized.
     static func file(_ file: URL, isUnderRoot root: String) -> Bool {
-        let r = normalizedPath(root)
-        let f = normalizedPath(file.path)
-        return f == r || f.hasPrefix(r + "/")
+        WatchPaths.path(file.path, isUnder: root)
     }
 }
 
@@ -48,6 +46,9 @@ enum WatchFolderPathResolver {
 struct WatchPipelineRegistry {
     let globalPath: String?
     let presetPaths: [(UUID, String)]
+    /// Watch folders that are turned on but can't be found right now — e.g. on a drive or share
+    /// that isn't mounted yet after a restart.
+    let unresolvedCount: Int
 
     init(prefs: DinkyPreferences) {
         let gp: String? = prefs.folderWatchEnabled
@@ -56,18 +57,26 @@ struct WatchPipelineRegistry {
                 storedPath: prefs.watchedFolderPath
             )
             : nil
+        var unresolved = 0
+        if prefs.folderWatchEnabled, gp == nil, !(prefs.watchedFolderPath.isEmpty && prefs.watchedFolderBookmark.isEmpty) {
+            unresolved += 1
+        }
         var presets: [(UUID, String)] = []
         for preset in prefs.savedPresets where preset.watchFolderEnabled && preset.watchFolderModeRaw == "unique" {
             guard let raw = WatchFolderPathResolver.resolvedWatchDirectoryPath(
                 bookmark: preset.watchFolderBookmark,
                 storedPath: preset.watchFolderPath
-            ) else { continue }
+            ) else {
+                if !(preset.watchFolderPath.isEmpty && preset.watchFolderBookmark.isEmpty) { unresolved += 1 }
+                continue
+            }
             presets.append((preset.id, raw))
         }
         // Longest root first; same-length ties keep array order (earlier preset wins).
         presets.sort { $0.1.count > $1.1.count }
         self.globalPath = gp
         self.presetPaths = presets
+        self.unresolvedCount = unresolved
     }
 
     /// Longest matching preset root wins (list is sorted); else global if it matches.
