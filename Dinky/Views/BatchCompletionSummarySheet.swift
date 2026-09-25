@@ -98,12 +98,15 @@ struct CompressionBatchSummary: Identifiable, Equatable {
     let undoableDoneCount: Int
     /// PDFs where OCR ran and added a searchable text layer this batch.
     let pdfOCRAppliedCount: Int
+    /// Queue items that ran in this batch, so rows left over from earlier batches aren't counted.
+    /// Nil for summaries saved before this was recorded.
+    var itemIDs: [UUID]? = nil
 }
 
 extension CompressionBatchSummary: Codable {
     enum CodingKeys: String, CodingKey {
         case id, savedBytes, doneCount, elapsed, openedFolder, skippedCount, outputFolderURL, undoableDoneCount, fileRows
-        case pdfOCRAppliedCount
+        case pdfOCRAppliedCount, itemIDs
     }
 
     init(from decoder: Decoder) throws {
@@ -117,6 +120,7 @@ extension CompressionBatchSummary: Codable {
         outputFolderURL = try c.decodeIfPresent(URL.self, forKey: .outputFolderURL)
         undoableDoneCount = try c.decode(Int.self, forKey: .undoableDoneCount)
         pdfOCRAppliedCount = try c.decodeIfPresent(Int.self, forKey: .pdfOCRAppliedCount) ?? 0
+        itemIDs = try c.decodeIfPresent([UUID].self, forKey: .itemIDs)
         if let rows = try? c.decode([BatchSummaryListRow].self, forKey: .fileRows) {
             fileRows = rows
         } else {
@@ -137,6 +141,7 @@ extension CompressionBatchSummary: Codable {
         try c.encode(undoableDoneCount, forKey: .undoableDoneCount)
         try c.encode(fileRows, forKey: .fileRows)
         try c.encode(pdfOCRAppliedCount, forKey: .pdfOCRAppliedCount)
+        try c.encodeIfPresent(itemIDs, forKey: .itemIDs)
     }
 }
 
