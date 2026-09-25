@@ -49,6 +49,15 @@ struct ResultsRowView: View {
                             .help(String(localized: "Animation or other frames were omitted; only the first frame was compressed.", comment: "Tooltip: first-frame-only chip."))
                             .accessibilityLabel(String(localized: "First frame only", comment: "VoiceOver: first-frame-only chip."))
                     }
+                    if let resize = item.imageResize, case .done = item.status {
+                        mediaChip(String.localizedStringWithFormat(
+                            String(localized: "%lld px", comment: "Results row chip: image was resized to this width in pixels."),
+                            Int64(resize.outputWidth)
+                        ))
+                        .fixedSize()
+                        .help(resizeDescription(resize))
+                        .accessibilityLabel(resizeDescription(resize))
+                    }
                     if showsImageFormatConversionChip {
                         mediaChip(imageFormatConversionChipLabel())
                             .fixedSize()
@@ -376,6 +385,9 @@ struct ResultsRowView: View {
         if item.mediaType == .image, item.usedFirstFrameOnly, case .done = item.status {
             base += ", " + String(localized: "First frame only", comment: "VoiceOver: first-frame-only chip.")
         }
+        if item.mediaType == .image, let resize = item.imageResize, case .done = item.status {
+            base += ", " + resizeDescription(resize)
+        }
         if item.mediaType == .image, showsImageFormatConversionChip {
             base += ", " + imageFormatConversionAccessibilityLabel()
         }
@@ -478,9 +490,31 @@ struct ResultsRowView: View {
 
     // MARK: Size diff
 
+    private func resizeDescription(_ resize: ImageResizeInfo) -> String {
+        String.localizedStringWithFormat(
+            String(localized: "Resized from %lld to %lld px wide (width limit)", comment: "Results row tooltip / VoiceOver: image downscaled to the width limit. Arguments are the original and new widths in pixels."),
+            Int64(resize.originalWidth), Int64(resize.outputWidth)
+        )
+    }
+
     @ViewBuilder
     private var sizeInfo: some View {
         switch item.status {
+        case .done(_, let orig, let out) where out >= orig && item.imageResize != nil:
+            // Resized to the width limit but the file didn't shrink — the dimensions are the result.
+            if let resize = item.imageResize {
+                HStack(spacing: 5) {
+                    Text(verbatim: "\(resize.originalWidth) px")
+                    Image(systemName: "arrow.right")
+                        .imageScale(.small)
+                    Text(verbatim: "\(resize.outputWidth) px")
+                        .fontWeight(.medium)
+                }
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .help("\(bytes(orig)) → \(bytes(out))")
+            }
+
         case .done(_, let orig, let out):
             HStack(spacing: 5) {
                 Text(bytes(orig))

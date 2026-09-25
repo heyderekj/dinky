@@ -51,6 +51,8 @@ final class CompressionItem: ObservableObject, Identifiable {
     @Published var videoIsHDR: Bool = false
     /// True when a multi-frame source (e.g. GIF) was compressed using only the first frame.
     @Published var usedFirstFrameOnly: Bool = false
+    /// Set when an image was downscaled to fit a width limit.
+    @Published var imageResize: ImageResizeInfo? = nil
 
     var forceCompress: Bool = false
     @Published var pageCount: Int? = nil
@@ -59,6 +61,8 @@ final class CompressionItem: ObservableObject, Identifiable {
     var presetID: UUID? = nil
     /// Arrived via a Watch folder (not drag-and-drop / Open / Services). Uses the Watch originals policy.
     var ingestedFromWatchFolder: Bool = false
+    /// Size and modification date when added — tells a changed file from a repeat watch event.
+    var sourceFingerprint: FileFingerprint? = nil
     /// True when the file was fetched from an `http(s)` URL (temp download). Affects output path and original disposal.
     var isURLDownloadSource: Bool = false
     /// While downloading, the original remote URL (for cancel / logging).
@@ -126,7 +130,14 @@ final class CompressionItem: ObservableObject, Identifiable {
         case .downloading(let p, _, _, _):
             return p >= 0 ? String(format: "Downloading %.0f%%", p * 100) : "Downloading…"
         case .processing:            return "Processing…"
-        case .done:                  return String(format: "%.1f%% smaller", savedPercent)
+        case .done:
+            if savedPercent <= 0, let resize = imageResize {
+                return String.localizedStringWithFormat(
+                    String(localized: "Resized to %lld px wide", comment: "Result status when an image was downscaled to the width limit but the file didn't get smaller. Argument is the new width in pixels."),
+                    Int64(resize.outputWidth)
+                )
+            }
+            return String(format: "%.1f%% smaller", savedPercent)
         case .skipped:               return S.skipped
         case .zeroGain:              return S.zeroBytes
         case .failed:                return S.errored

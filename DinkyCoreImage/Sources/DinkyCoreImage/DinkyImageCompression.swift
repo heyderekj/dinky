@@ -149,7 +149,7 @@ private func heicTranscodeToPNGIfNeeded(source: URL) throws -> URL {
 }
 
 /// Downscale so display pixel width is `maxWidth` (same semantics as former `sips --resampleWidth`).
-private func resizeImageMaxWidthUsingImageIO(source: URL, maxWidth: Int) throws -> URL {
+private func resizeImageMaxWidthUsingImageIO(source: URL, maxWidth: Int) throws -> (URL, ImageResizeInfo?) {
     guard maxWidth > 0 else { throw DinkyImageCompressionError.imageResizeFailed }
     let cgImage = try cgImageDecodedOrientedFullSize(url: source)
 
@@ -200,7 +200,10 @@ private func resizeImageMaxWidthUsingImageIO(source: URL, maxWidth: Int) throws 
         try? FileManager.default.removeItem(at: tmpURL)
         throw DinkyImageCompressionError.imageResizeFailed
     }
-    return tmpURL
+    let info = w > maxWidth
+        ? ImageResizeInfo(originalWidth: w, originalHeight: h, outputWidth: outW, outputHeight: outH)
+        : nil
+    return (tmpURL, info)
 }
 
 /// HEIC output via ImageIO (decoded pixels only; no EXIF/XMP copied from source).
@@ -316,9 +319,6 @@ public actor DinkyImageCompression {
         goals: CompressionGoals,
         stripMetadata: Bool,
         outputURL: URL,
-        originalsAction: OriginalsAction = .keep,
-        backupFolderURL: URL? = nil,
-        isURLDownloadSource: Bool = false,
         smartQuality: Bool = false,
         contentTypeHint: String = "auto",
         /// When Smart Quality is on and the caller already classified (e.g. Auto format), skip a second Vision pass.
@@ -352,6 +352,17 @@ public actor DinkyImageCompression {
             style: collisionNamingStyle,
             customPattern: collisionCustomPattern
         )
+
+        // Output would overwrite the source (Replace original, same format): encode to a temp file
+        // instead. The caller decides whether the result is worth keeping and only then swaps it in,
+        // so a result that's thrown away never destroys the original.
+        var stagedDestination: URL?
+        if outputURL.standardizedFileURL.path == source.standardizedFileURL.path {
+            stagedDestination = outputURL
+            outputURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent("dinky_img_\(UUID().uuidString)")
+                .appendingPathExtension(format.outputExtension)
+        }
 
         try FileManager.default.createDirectory(
             at: outputURL.deletingLastPathComponent(),
@@ -412,31 +423,17 @@ public actor DinkyImageCompression {
                 throw DinkyImageCompressionError.outputMissing
             }
 
-            var recovery: URL?
-            if isURLDownloadSource {
-                try? FileManager.default.removeItem(at: source)
-            } else {
-                switch originalsAction {
-                case .keep:
-                    break
-                case .trash:
-                    recovery = try? OriginalsHandler.dispose(originalAt: source, action: .trash, backupFolder: nil)
-                case .backup:
-                    recovery = try? OriginalsHandler.dispose(originalAt: source, action: .backup, backupFolder: backupFolderURL)
-                }
-            }
-
             DinkyImageCorePhaseLog.logPhase("image.compressTotal", startedAt: tTotal)
             return DinkyImageCompressionResult(
                 outputURL: outputURL,
                 originalSize: originalSize,
                 outputSize: fileSize(outputURL),
-                originalRecoveryURL: recovery,
                 detectedContentType: detected,
                 usedFirstFrameOnly: false,
                 appliedChromaSubsampling: nil,
                 appliedWebpLossless: webpLL,
-                appliedPngOutputMode: nil
+                appliedPngOutputMode: nil,
+                stagedDestinationURL: stagedDestination
             )
         }
 
@@ -450,7 +447,7 @@ public actor DinkyImageCompression {
 
         // Step 2: maybe resize
         let tResize = CFAbsoluteTimeGetCurrent()
-        let workURL = try maybeResize(source: encoderInputURL, maxWidth: goals.maxWidth)
+        let (workURL, resize) = try maybeResize(source: encoderInputURL, maxWidth: goals.maxWidth)
         DinkyImageCorePhaseLog.logPhase("image.resize", startedAt: tResize)
         report(0.33)
         let isTempWork = workURL != encoderInputURL
@@ -520,32 +517,18 @@ public actor DinkyImageCompression {
             throw DinkyImageCompressionError.outputMissing
         }
 
-        var recovery: URL?
-        if isURLDownloadSource {
-            // Temp download — never trash/backup the temp path; remove silently.
-            try? FileManager.default.removeItem(at: source)
-        } else {
-            switch originalsAction {
-            case .keep:
-                break
-            case .trash:
-                recovery = try? OriginalsHandler.dispose(originalAt: source, action: .trash, backupFolder: nil)
-            case .backup:
-                recovery = try? OriginalsHandler.dispose(originalAt: source, action: .backup, backupFolder: backupFolderURL)
-            }
-        }
-
         DinkyImageCorePhaseLog.logPhase("image.compressTotal", startedAt: tTotal)
         return DinkyImageCompressionResult(
             outputURL: outputURL,
             originalSize: originalSize,
             outputSize: fileSize(outputURL),
-            originalRecoveryURL: recovery,
             detectedContentType: detected,
             usedFirstFrameOnly: sourceHasMultipleFrames,
             appliedChromaSubsampling: appliedChroma,
             appliedWebpLossless: format == .webp && webpLL,
-            appliedPngOutputMode: appliedPngMode
+            appliedPngOutputMode: appliedPngMode,
+            resize: resize,
+            stagedDestinationURL: stagedDestination
         )
     }
 
@@ -574,14 +557,15 @@ public actor DinkyImageCompression {
 
     // MARK: - Resize (ImageIO only; oriented dimensions, no `sips`)
 
-    private func maybeResize(source: URL, maxWidth: Int?) throws -> URL {
-        guard let maxWidth else { return source }
+    private func maybeResize(source: URL, maxWidth: Int?) throws -> (URL, ImageResizeInfo?) {
+        guard let maxWidth else { return (source, nil) }
 
         guard let size = orientedPixelSize(url: source), Int(size.width) > maxWidth else {
-            return source
+            return (source, nil)
         }
 
-        return try resizeImageMaxWidthUsingImageIO(source: source, maxWidth: maxWidth)
+        let (url, info) = try resizeImageMaxWidthUsingImageIO(source: source, maxWidth: maxWidth)
+        return (url, info)
     }
 
     // MARK: - Quality binary search for file-size target

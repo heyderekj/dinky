@@ -10,7 +10,6 @@ struct CompressionResult {
     let outputURL: URL
     let originalSize: Int64
     let outputSize: Int64
-    var originalRecoveryURL: URL? = nil
     let detectedContentType: ContentType?
     var videoDuration: Double? = nil
     var videoContentType: VideoContentType? = nil
@@ -19,6 +18,10 @@ struct CompressionResult {
     /// Duration in seconds when the job was audio (or reuse for display).
     var audioDurationSeconds: Double? = nil
     var usedFirstFrameOnly: Bool = false
+    /// Set when an image was downscaled to fit a width limit.
+    var imageResize: ImageResizeInfo? = nil
+    /// Where an image encoded to a temp file belongs (the source's own path) if it's kept.
+    var stagedDestinationURL: URL? = nil
 }
 
 enum CompressionError: LocalizedError {
@@ -85,9 +88,6 @@ actor CompressionService {
         goals: CompressionGoals,
         stripMetadata: Bool,
         outputURL: URL,
-        originalsAction: OriginalsAction = .keep,
-        backupFolderURL: URL? = nil,
-        isURLDownloadSource: Bool = false,
         smartQuality: Bool = false,
         contentTypeHint: String = "auto",
         preclassifiedContent: ContentType? = nil,
@@ -110,9 +110,6 @@ actor CompressionService {
                 goals: goals,
                 stripMetadata: stripMetadata,
                 outputURL: outputURL,
-                originalsAction: originalsAction,
-                backupFolderURL: backupFolderURL,
-                isURLDownloadSource: isURLDownloadSource,
                 smartQuality: smartQuality,
                 contentTypeHint: contentTypeHint,
                 preclassifiedContent: preclassifiedContent,
@@ -129,9 +126,10 @@ actor CompressionService {
                 outputURL: r.outputURL,
                 originalSize: r.originalSize,
                 outputSize: r.outputSize,
-                originalRecoveryURL: r.originalRecoveryURL,
                 detectedContentType: r.detectedContentType,
-                usedFirstFrameOnly: r.usedFirstFrameOnly
+                usedFirstFrameOnly: r.usedFirstFrameOnly,
+                imageResize: r.resize,
+                stagedDestinationURL: r.stagedDestinationURL
             )
         } catch let e as DinkyImageCompressionError {
             throw e.asAppError()

@@ -132,17 +132,19 @@ final class ContentViewModel: ObservableObject {
         }
     }
 
+    /// The global folder uses whatever the main window uses — the selected preset when it covers the
+    /// file type, otherwise the sidebar settings. A preset's own folder uses that preset.
     private func route(_ url: URL, through registry: WatchPipelineRegistry) {
         switch registry.pipeline(for: url) {
         case .global:
-            addAndCompress([url], presetID: nil, fromWatchFolder: true)
+            addAndCompressWithActivePreset([url], fromWatchFolder: true)
         case .preset(let id):
             let preset = prefs.savedPresets.first(where: { $0.id == id })
             let media = MediaTypeDetector.detect(url)
             if let p = preset, let m = media, p.applies(to: m) {
                 addAndCompress([url], presetID: id, fromWatchFolder: true)
             } else {
-                addAndCompress([url], presetID: nil, fromWatchFolder: true)
+                addAndCompressWithActivePreset([url], fromWatchFolder: true)
             }
         }
     }
@@ -237,15 +239,54 @@ final class ContentViewModel: ObservableObject {
     }
 
     func addAndCompress(_ urls: [URL], force: Bool = false, presetID: UUID? = nil, fromWatchFolder: Bool = false) {
-        var seen = Set(items.map(\.sourceURL.path))
-        let newURLs = urls.filter { url in
+        enqueue(urls, force: force, fromWatchFolder: fromWatchFolder) { _ in presetID }
+    }
+
+    /// Adds files using the preset selected in the main window (when it covers the file's type), read
+    /// fresh from Settings — so editing that preset applies to the next drop, not just to the copy
+    /// taken when it was selected.
+    func addAndCompressWithActivePreset(_ urls: [URL], force: Bool = false, fromWatchFolder: Bool = false) {
+        enqueue(urls, force: force, fromWatchFolder: fromWatchFolder) { self.activePresetID(for: $0) }
+    }
+
+    func activePresetID(for url: URL) -> UUID? {
+        ActivePresetResolver.presetID(
+            activePresetID: prefs.activePresetID,
+            savedPresets: prefs.savedPresets,
+            mediaType: MediaTypeDetector.detect(url)
+        )
+    }
+
+    /// Queues files. A file whose row is still waiting or working is ignored; one whose row already
+    /// finished (done, no gain, skipped, failed) gets a fresh row so dropping it again tries again.
+    /// A watch folder only retries when the file actually changed, not on a repeat event.
+    private func enqueue(
+        _ urls: [URL],
+        force: Bool,
+        fromWatchFolder: Bool,
+        presetFor: (URL) -> UUID?
+    ) {
+        var seen = Set<String>()
+        var replaced = Set<UUID>()
+        var newURLs: [URL] = []
+        for url in urls {
             let p = url.path
-            guard !seen.contains(p) else { return false }
-            seen.insert(p)
-            return true
+            guard seen.insert(p).inserted else { continue }
+            if let existing = items.first(where: { $0.sourceURL.path == p }) {
+                guard existing.status.isTerminal else { continue }
+                if fromWatchFolder, existing.sourceFingerprint == FileFingerprint(url: url) { continue }
+                replaced.insert(existing.id)
+            }
+            newURLs.append(url)
         }
         guard !newURLs.isEmpty else { return }
-        let new = newURLs.map { CompressionItem(sourceURL: $0, presetID: presetID) }
+        // Not `remove(_:)`: that cleans up temp sources, and the new row reuses this file.
+        if !replaced.isEmpty { items.removeAll { replaced.contains($0.id) } }
+        let new = newURLs.map { url in
+            let item = CompressionItem(sourceURL: url, presetID: presetFor(url))
+            item.sourceFingerprint = FileFingerprint(url: url)
+            return item
+        }
         if force { new.forEach { $0.forceCompress = true } }
         if fromWatchFolder { new.forEach { $0.ingestedFromWatchFolder = true } }
         items.append(contentsOf: new)
@@ -506,6 +547,12 @@ final class ContentViewModel: ObservableObject {
                         let row = self.items[idx]
                         row.sourceURL = local
                         row.mediaType = MediaTypeDetector.detect(local) ?? .image
+                        // The preset was picked before the file type was known.
+                        if let id = row.presetID,
+                           let p = self.prefs.savedPresets.first(where: { $0.id == id }),
+                           !p.applies(to: row.mediaType) {
+                            row.presetID = nil
+                        }
                         if row.mediaType == .pdf {
                             row.pageCount = PDFDocument(url: local)?.pageCount
                         }
@@ -588,10 +635,10 @@ final class ContentViewModel: ObservableObject {
         }
     }
 
-    /// Watch-ingested items use the Watch originals policy (Settings → Watch) instead of the
-    /// general Settings → Output one, so a watch folder can stay an inbox that empties itself.
+    /// Watch-ingested items use the Watch originals setting, which follows Settings → Original Files
+    /// unless the user picked something else for watch folders.
     private func effectiveOriginalsAction(for item: CompressionItem) -> OriginalsAction {
-        item.ingestedFromWatchFolder ? prefs.watchOriginalsAction : prefs.originalsAction
+        item.ingestedFromWatchFolder ? prefs.effectiveWatchOriginalsAction : prefs.originalsAction
     }
 
     private func effectiveOriginalsBackupFolder(for item: CompressionItem) -> URL? {
@@ -887,6 +934,7 @@ final class ContentViewModel: ObservableObject {
 
         await MainActor.run {
             item.usedFirstFrameOnly = false
+            item.imageResize = nil
             item.status = .processing
             item.compressionProgress = 0
         }
@@ -898,7 +946,6 @@ final class ContentViewModel: ObservableObject {
         }()
         noteSelfWrittenOutput(outputURL)
         let replaceOrigin = (preset.map { FilenameHandling(rawValue: $0.filenameHandlingRaw) } ?? prefs.filenameHandling) == .replaceOrigin
-        let backupURL = effectiveOriginalsBackupFolder(for: item)
         CompressionTiming.logReproContext(
             media: "image",
             smartQuality: smartQ,
@@ -916,9 +963,6 @@ final class ContentViewModel: ObservableObject {
                 goals: goals,
                 stripMetadata: strip,
                 outputURL: outputURL,
-                originalsAction: effectiveOriginalsAction(for: item),
-                backupFolderURL: backupURL,
-                isURLDownloadSource: urlDL,
                 smartQuality: smartQ,
                 contentTypeHint: hint,
                 preclassifiedContent: preclassifiedForSmartQ,
@@ -930,50 +974,77 @@ final class ContentViewModel: ObservableObject {
                 pngOutputMode: pngMode,
                 progressHandler: progressHandler
             )
-            let savings = result.originalSize > 0
-                ? Double(result.originalSize - result.outputSize) / Double(result.originalSize) : 0
-            await MainActor.run {
-                item.usedFirstFrameOnly = result.usedFirstFrameOnly
-                item.detectedContentType = result.detectedContentType
-                if result.outputSize >= result.originalSize {
-                    item.status = .zeroGain(attemptedSize: result.outputSize)
-                    try? FileManager.default.removeItem(at: result.outputURL)
-                } else if self.prefs.minimumSavingsPercent > 0 && savings < Double(self.prefs.minimumSavingsPercent) / 100.0 && !wasForced {
-                    item.status = .skipped(savedPercent: savings * 100, threshold: self.prefs.minimumSavingsPercent)
-                    try? FileManager.default.removeItem(at: result.outputURL)
-                } else {
-                    item.status = .done(outputURL: result.outputURL,
-                                        originalSize: result.originalSize,
-                                        outputSize: result.outputSize)
-                    if self.prefs.preserveTimestamps {
-                        self.copyTimestamp(from: sourceSnapshot, to: result.outputURL)
-                    }
-                    self.copyFinderCommentsIfSettingsAllow(from: sourceSnapshot, to: result.outputURL)
-                    var mergedRecovery = result.originalRecoveryURL
-                    if replaceOrigin {
-                        if urlDL {
-                            try? FileManager.default.removeItem(at: item.sourceURL)
-                        } else if let r2 = try? OriginalsHandler.disposeForReplace(
-                            originalAt: item.sourceURL,
-                            outputURL: result.outputURL,
-                            action: self.effectiveOriginalsAction(for: item),
-                            backupFolder: self.effectiveOriginalsBackupFolder(for: item)
-                        ) {
-                            mergedRecovery = r2
-                        }
-                    }
-                    item.undoSnapshot = CompressionUndoSnapshot(
-                        sourceURL: sourceSnapshot,
-                        outputURL: result.outputURL,
-                        originalRecoveryURL: mergedRecovery,
-                        replaceOriginal: replaceOrigin,
-                        isURLDownloadSource: urlDL
-                    )
-                }
+            item.usedFirstFrameOnly = result.usedFirstFrameOnly
+            item.detectedContentType = result.detectedContentType
+            let outcome = CompressionOutcomeDecider.decide(
+                originalBytes: result.originalSize,
+                outputBytes: result.outputSize,
+                minimumSavingsPercent: prefs.minimumSavingsPercent,
+                forced: wasForced,
+                didResize: result.imageResize != nil
+            )
+            switch outcome {
+            case .zeroGain:
+                try? FileManager.default.removeItem(at: result.outputURL)
+                item.status = .zeroGain(attemptedSize: result.outputSize)
+            case .skipped(let savedPercent):
+                try? FileManager.default.removeItem(at: result.outputURL)
+                item.status = .skipped(savedPercent: savedPercent, threshold: prefs.minimumSavingsPercent)
+            case .keep:
+                let fin = try await finalizeKeptOutput(
+                    item, produced: result.outputURL, stagedDestination: result.stagedDestinationURL
+                )
+                item.imageResize = result.imageResize
+                item.status = .done(outputURL: fin.outputURL,
+                                    originalSize: result.originalSize,
+                                    outputSize: result.outputSize)
+                item.undoSnapshot = CompressionUndoSnapshot(
+                    sourceURL: sourceSnapshot,
+                    outputURL: fin.outputURL,
+                    originalRecoveryURL: fin.originalRecoveryURL,
+                    replaceOriginal: replaceOrigin,
+                    isURLDownloadSource: urlDL
+                )
             }
         } catch {
-            await MainActor.run { item.status = .failed(error) }
+            item.status = .failed(error)
         }
+    }
+
+    /// Puts a kept result in place and applies the originals setting. Only called once a result has
+    /// been judged worth keeping, so a discarded one never costs the user their original. Timestamps
+    /// and Finder comments come from the original wherever it ended up (Trash, Backup, or in place).
+    private func finalizeKeptOutput(
+        _ item: CompressionItem,
+        produced: URL,
+        stagedDestination: URL?
+    ) async throws -> OutputFinalizer.Result {
+        let source = item.sourceURL
+        let action = effectiveOriginalsAction(for: item)
+        let backup = effectiveOriginalsBackupFolder(for: item)
+        let urlDL = item.isURLDownloadSource
+        let style = collisionNamingStyle(for: item)
+        let pattern = collisionCustomPattern(for: item)
+        // Off the main actor: moving a temp file to another volume copies it.
+        let fin = try await Task.detached {
+            try OutputFinalizer.finalize(
+                source: source,
+                produced: produced,
+                stagedDestination: stagedDestination,
+                action: action,
+                backupFolder: backup,
+                isURLDownloadSource: urlDL,
+                collisionStyle: style,
+                customPattern: pattern
+            )
+        }.value
+        noteSelfWrittenOutput(fin.outputURL)
+        let original = fin.originalRecoveryURL ?? source
+        if prefs.preserveTimestamps {
+            copyTimestamp(from: original, to: fin.outputURL)
+        }
+        copyFinderCommentsIfSettingsAllow(from: original, to: fin.outputURL)
+        return fin
     }
 
     private func compressPDFItem(_ item: CompressionItem) async {
@@ -1103,12 +1174,18 @@ final class ContentViewModel: ObservableObject {
             style: collisionStyle,
             customPattern: collisionCustomPattern(for: item)
         )
-        let workURL: URL
-        if sourceURL.path == finalURL.path {
-            workURL = FileManager.default.temporaryDirectory
+        // Every attempt is written to its own temp file and only the kept one is moved into place,
+        // so attempts that lose never leave stray files next to the original.
+        var attemptURLs: [URL] = []
+        defer { for u in attemptURLs { try? FileManager.default.removeItem(at: u) } }
+        func nextAttemptURL() -> URL {
+            let u = FileManager.default.temporaryDirectory
                 .appendingPathComponent("dinky_pdf_\(UUID().uuidString).pdf")
-        } else {
-            workURL = finalURL
+            attemptURLs.append(u)
+            return u
+        }
+        func sizeOf(_ url: URL) -> Int64? {
+            (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize.map { Int64($0) }
         }
         let replaceOrigin = (preset.map { FilenameHandling(rawValue: $0.filenameHandlingRaw) } ?? prefs.filenameHandling) == .replaceOrigin
         let strip = preset?.stripMetadata ?? prefs.stripMetadata
@@ -1125,10 +1202,6 @@ final class ContentViewModel: ObservableObject {
             if smartQ, autoMonoScans, monoLikelihoodForFlatten >= 0.5 { return true }
             return false
         }()
-        var preservedModDate: Date?
-        if workURL.path != finalURL.path, prefs.preserveTimestamps {
-            preservedModDate = (try? FileManager.default.attributesOfItem(atPath: sourceURL.path)[.modificationDate]) as? Date
-        }
 
         let ocrPhaseFraction: Double = (ocrTempURL != nil) ? 0.2 : 0
         let pdfProgress: @Sendable (Float) -> Void = { p in
@@ -1147,13 +1220,14 @@ final class ContentViewModel: ObservableObject {
             var lastAttemptedOutSize: Int64 = 0
 
             for q in qualityAttempts {
+                let attemptURL = nextAttemptURL()
                 let result = try await CompressionService.shared.compressPDF(
                     source: sourceForCompression,
                     outputMode: outputMode,
                     quality: q,
                     grayscale: effectiveGrayscale,
                     stripMetadata: strip,
-                    outputURL: workURL,
+                    outputURL: attemptURL,
                     preserveQpdfSteps: preserveQpdfSteps,
                     targetBytes: pdfTargetBytes,
                     resolutionDownsampling: pdfResolutionDownsampling,
@@ -1161,8 +1235,8 @@ final class ContentViewModel: ObservableObject {
                     collisionCustomPattern: collisionCustomPattern(for: item),
                     progressHandler: pdfProgress
                 )
-                let outSize = (try? workURL.resourceValues(forKeys: [.fileSizeKey]))?.fileSize.map { Int64($0) }
-                    ?? result.outputSize
+                if result.outputURL != attemptURL { attemptURLs.append(result.outputURL) }
+                let outSize = sizeOf(result.outputURL) ?? result.outputSize
                 lastAttemptedOutSize = outSize
                 if outSize >= result.originalSize {
                     continue
@@ -1189,13 +1263,14 @@ final class ContentViewModel: ObservableObject {
                     let bailoutTargetMet = pdfTargetBytes.map { (chosenOutSize) <= $0 } ?? false
                     guard chosenResult == nil || (!bailoutTargetMet && pdfTargetBytes != nil) else { break }
                     do {
+                        let attemptURL = nextAttemptURL()
                         let lr = try await CompressionService.shared.compressPDF(
                             source: sourceForCompression,
                             outputMode: outputMode,
                             quality: pdfQuality,
                             grayscale: effectiveGrayscale,
                             stripMetadata: strip,
-                            outputURL: workURL,
+                            outputURL: attemptURL,
                             flattenLastResort: pass.lastResort,
                             flattenUltra: pass.ultra,
                             preserveQpdfSteps: preserveQpdfSteps,
@@ -1203,8 +1278,8 @@ final class ContentViewModel: ObservableObject {
                             collisionCustomPattern: collisionCustomPattern(for: item),
                             progressHandler: pdfProgress
                         )
-                        let outSize = (try? workURL.resourceValues(forKeys: [.fileSizeKey]))?.fileSize.map { Int64($0) }
-                            ?? lr.outputSize
+                        if lr.outputURL != attemptURL { attemptURLs.append(lr.outputURL) }
+                        let outSize = sizeOf(lr.outputURL) ?? lr.outputSize
                         lastAttemptedOutSize = outSize
                         if outSize < lr.originalSize, chosenResult == nil || outSize < chosenOutSize {
                             chosenResult = lr
@@ -1225,78 +1300,29 @@ final class ContentViewModel: ObservableObject {
                     attemptedBytes: lastAttemptedOutSize,
                     reason: "zero_gain_no_smaller_output"
                 )
-                try? FileManager.default.removeItem(at: workURL)
-                await MainActor.run {
-                    item.zeroGainPDFOutputMode = outputMode
-                    item.status = .zeroGain(attemptedSize: lastAttemptedOutSize)
-                }
+                item.zeroGainPDFOutputMode = outputMode
+                item.status = .zeroGain(attemptedSize: lastAttemptedOutSize)
                 return
             }
 
-            let producedURL: URL
-            var recoveryForUndo: URL?
-            if workURL.path != finalURL.path {
-                do {
-                    recoveryForUndo = try? OriginalsHandler.disposeSourceBeforeTempSwap(
-                        originalAt: sourceURL,
-                        action: effectiveOriginalsAction(for: item),
-                        backupFolder: effectiveOriginalsBackupFolder(for: item)
-                    )
-                    producedURL = try OutputPathUniqueness.moveTempItemToUniqueOutput(
-                        temp: workURL,
-                        desiredOutput: finalURL,
-                        sourceURL: sourceURL,
-                        style: collisionStyle,
-                        customPattern: collisionCustomPattern(for: item)
-                    )
-                    noteSelfWrittenOutput(producedURL)
-                } catch {
-                    try? FileManager.default.removeItem(at: workURL)
-                    await MainActor.run { item.status = .failed(error) }
-                    return
-                }
-            } else {
-                producedURL = result.outputURL
-                noteSelfWrittenOutput(producedURL)
-                if replaceOrigin {
-                    if urlDL {
-                        try? FileManager.default.removeItem(at: item.sourceURL)
-                    } else {
-                        recoveryForUndo = try? OriginalsHandler.disposeForReplace(
-                            originalAt: item.sourceURL,
-                            outputURL: producedURL,
-                            action: effectiveOriginalsAction(for: item),
-                            backupFolder: effectiveOriginalsBackupFolder(for: item)
-                        )
-                    }
-                }
-            }
-
-            let outSize = (try? producedURL.resourceValues(forKeys: [.fileSizeKey]))?.fileSize.map { Int64($0) }
-                ?? chosenOutSize
-            await MainActor.run {
-                item.status = .done(outputURL: producedURL,
-                                    originalSize: result.originalSize,
-                                    outputSize: outSize)
-                if self.prefs.preserveTimestamps {
-                    if let d = preservedModDate {
-                        try? FileManager.default.setAttributes([.modificationDate: d], ofItemAtPath: producedURL.path)
-                    } else {
-                        self.copyTimestamp(from: sourceURL, to: producedURL)
-                    }
-                }
-                self.copyFinderCommentsIfSettingsAllow(from: sourceURL, to: producedURL)
-                item.undoSnapshot = CompressionUndoSnapshot(
-                    sourceURL: sourceURL,
-                    outputURL: producedURL,
-                    originalRecoveryURL: recoveryForUndo,
-                    replaceOriginal: replaceOrigin,
-                    isURLDownloadSource: urlDL
-                )
-            }
+            let fin = try await finalizeKeptOutput(
+                item,
+                produced: result.outputURL,
+                stagedDestination: finalURL
+            )
+            let outSize = sizeOf(fin.outputURL) ?? chosenOutSize
+            item.status = .done(outputURL: fin.outputURL,
+                                originalSize: result.originalSize,
+                                outputSize: outSize)
+            item.undoSnapshot = CompressionUndoSnapshot(
+                sourceURL: sourceURL,
+                outputURL: fin.outputURL,
+                originalRecoveryURL: fin.originalRecoveryURL,
+                replaceOriginal: replaceOrigin,
+                isURLDownloadSource: urlDL
+            )
         } catch let pdfErr as PDFCompressionError {
             if case .rewriteNotSmallerThanOriginal(let attempted) = pdfErr {
-                try? FileManager.default.removeItem(at: workURL)
                 await MainActor.run {
                     item.zeroGainPDFOutputMode = outputMode
                     item.status = .zeroGain(attemptedSize: attempted)
@@ -1404,10 +1430,6 @@ final class ContentViewModel: ObservableObject {
             workURL = finalURL
         }
         let replaceOrigin = (preset.map { FilenameHandling(rawValue: $0.filenameHandlingRaw) } ?? prefs.filenameHandling) == .replaceOrigin
-        var preservedModDate: Date?
-        if workURL.path != finalURL.path, prefs.preserveTimestamps {
-            preservedModDate = (try? FileManager.default.attributesOfItem(atPath: sourceURL.path)[.modificationDate]) as? Date
-        }
 
         let progressHandler: @Sendable (Float) -> Void = { p in
             Task { @MainActor in
@@ -1429,79 +1451,41 @@ final class ContentViewModel: ObservableObject {
                 videoContentType: smartContentType,
                 progressHandler: progressHandler
             )
-            let producedURL: URL
-            var recoveryForUndo: URL?
-            if workURL.path != finalURL.path {
-                do {
-                    recoveryForUndo = try? OriginalsHandler.disposeSourceBeforeTempSwap(
-                        originalAt: sourceURL,
-                        action: effectiveOriginalsAction(for: item),
-                        backupFolder: effectiveOriginalsBackupFolder(for: item)
-                    )
-                    producedURL = try OutputPathUniqueness.moveTempItemToUniqueOutput(
-                        temp: workURL,
-                        desiredOutput: finalURL,
-                        sourceURL: sourceURL,
-                        style: collisionStyle,
-                        customPattern: collisionCustomPattern(for: item)
-                    )
-                    noteSelfWrittenOutput(producedURL)
-                } catch {
-                    try? FileManager.default.removeItem(at: workURL)
-                    await MainActor.run { item.status = .failed(error) }
-                    return
-                }
-            } else {
-                producedURL = result.outputURL
-                noteSelfWrittenOutput(producedURL)
-                if replaceOrigin {
-                    if urlDL {
-                        try? FileManager.default.removeItem(at: item.sourceURL)
-                    } else {
-                        recoveryForUndo = try? OriginalsHandler.disposeForReplace(
-                            originalAt: item.sourceURL,
-                            outputURL: producedURL,
-                            action: effectiveOriginalsAction(for: item),
-                            backupFolder: effectiveOriginalsBackupFolder(for: item)
-                        )
-                    }
-                }
-            }
-
-            let outSize = (try? producedURL.resourceValues(forKeys: [.fileSizeKey]))?.fileSize.map { Int64($0) }
+            // Judge the result before anything happens to the original.
+            let outSize = (try? result.outputURL.resourceValues(forKeys: [.fileSizeKey]))?.fileSize.map { Int64($0) }
                 ?? result.outputSize
-            let savings = result.originalSize > 0
-                ? Double(result.originalSize - outSize) / Double(result.originalSize) : 0
-            await MainActor.run {
-                item.videoDuration = result.videoDuration
-                item.detectedVideoContentType = result.videoContentType
-                item.videoIsHDR = result.videoIsHDR
-                if outSize >= result.originalSize {
-                    item.status = .zeroGain(attemptedSize: outSize)
-                    try? FileManager.default.removeItem(at: producedURL)
-                } else if self.prefs.minimumSavingsPercent > 0 && savings < Double(self.prefs.minimumSavingsPercent) / 100.0 && !wasForced {
-                    item.status = .skipped(savedPercent: savings * 100, threshold: self.prefs.minimumSavingsPercent)
-                    try? FileManager.default.removeItem(at: producedURL)
-                } else {
-                    item.status = .done(outputURL: producedURL,
-                                        originalSize: result.originalSize,
-                                        outputSize: outSize)
-                    if self.prefs.preserveTimestamps {
-                        if let d = preservedModDate {
-                            try? FileManager.default.setAttributes([.modificationDate: d], ofItemAtPath: producedURL.path)
-                        } else {
-                            self.copyTimestamp(from: sourceURL, to: producedURL)
-                        }
-                    }
-                    self.copyFinderCommentsIfSettingsAllow(from: sourceURL, to: producedURL)
-                    item.undoSnapshot = CompressionUndoSnapshot(
-                        sourceURL: sourceURL,
-                        outputURL: producedURL,
-                        originalRecoveryURL: recoveryForUndo,
-                        replaceOriginal: replaceOrigin,
-                        isURLDownloadSource: urlDL
-                    )
-                }
+            item.videoDuration = result.videoDuration
+            item.detectedVideoContentType = result.videoContentType
+            item.videoIsHDR = result.videoIsHDR
+            let outcome = CompressionOutcomeDecider.decide(
+                originalBytes: result.originalSize,
+                outputBytes: outSize,
+                minimumSavingsPercent: prefs.minimumSavingsPercent,
+                forced: wasForced
+            )
+            switch outcome {
+            case .zeroGain:
+                try? FileManager.default.removeItem(at: result.outputURL)
+                item.status = .zeroGain(attemptedSize: outSize)
+            case .skipped(let savedPercent):
+                try? FileManager.default.removeItem(at: result.outputURL)
+                item.status = .skipped(savedPercent: savedPercent, threshold: prefs.minimumSavingsPercent)
+            case .keep:
+                let fin = try await finalizeKeptOutput(
+                    item,
+                    produced: result.outputURL,
+                    stagedDestination: workURL.path != finalURL.path ? finalURL : nil
+                )
+                item.status = .done(outputURL: fin.outputURL,
+                                    originalSize: result.originalSize,
+                                    outputSize: outSize)
+                item.undoSnapshot = CompressionUndoSnapshot(
+                    sourceURL: sourceURL,
+                    outputURL: fin.outputURL,
+                    originalRecoveryURL: fin.originalRecoveryURL,
+                    replaceOriginal: replaceOrigin,
+                    isURLDownloadSource: urlDL
+                )
             }
         } catch VideoCompressionError.alreadyOptimized {
             await MainActor.run {
@@ -1571,10 +1555,6 @@ final class ContentViewModel: ObservableObject {
 
         let replaceOrigin = (preset.map { FilenameHandling(rawValue: $0.filenameHandlingRaw) } ?? prefs.filenameHandling)
             == .replaceOrigin
-        var preservedModDate: Date?
-        if workURL.path != finalURL.path, prefs.preserveTimestamps {
-            preservedModDate = (try? FileManager.default.attributesOfItem(atPath: sourceURL.path)[.modificationDate]) as? Date
-        }
 
         let progressHandler: @Sendable (Float) -> Void = { p in
             Task { @MainActor in
@@ -1590,79 +1570,41 @@ final class ContentViewModel: ObservableObject {
                 outputURL: workURL,
                 progressHandler: progressHandler
             )
-            let producedURL: URL
-            var recoveryForUndo: URL?
-            if workURL.path != finalURL.path {
-                do {
-                    recoveryForUndo = try? OriginalsHandler.disposeSourceBeforeTempSwap(
-                        originalAt: sourceURL,
-                        action: effectiveOriginalsAction(for: item),
-                        backupFolder: effectiveOriginalsBackupFolder(for: item)
-                    )
-                    producedURL = try OutputPathUniqueness.moveTempItemToUniqueOutput(
-                        temp: workURL,
-                        desiredOutput: finalURL,
-                        sourceURL: sourceURL,
-                        style: collisionStyle,
-                        customPattern: collisionCustomPattern(for: item)
-                    )
-                    noteSelfWrittenOutput(producedURL)
-                } catch {
-                    try? FileManager.default.removeItem(at: workURL)
-                    await MainActor.run { item.status = .failed(error) }
-                    return
-                }
-            } else {
-                producedURL = result.outputURL
-                noteSelfWrittenOutput(producedURL)
-                if replaceOrigin {
-                    if urlDL {
-                        try? FileManager.default.removeItem(at: item.sourceURL)
-                    } else {
-                        recoveryForUndo = try? OriginalsHandler.disposeForReplace(
-                            originalAt: sourceURL,
-                            outputURL: producedURL,
-                            action: effectiveOriginalsAction(for: item),
-                            backupFolder: effectiveOriginalsBackupFolder(for: item)
-                        )
-                    }
-                }
-            }
-
-            let outSize = (try? producedURL.resourceValues(forKeys: [.fileSizeKey]))?.fileSize.map { Int64($0) }
+            // Judge the result before anything happens to the original.
+            let outSize = (try? result.outputURL.resourceValues(forKeys: [.fileSizeKey]))?.fileSize.map { Int64($0) }
                 ?? result.outputSize
-            let savings = result.originalSize > 0
-                ? Double(result.originalSize - outSize) / Double(result.originalSize) : 0
-            await MainActor.run {
-                if let d = result.audioDurationSeconds {
-                    item.videoDuration = d
-                }
-                if outSize >= result.originalSize {
-                    item.status = .zeroGain(attemptedSize: outSize)
-                    try? FileManager.default.removeItem(at: producedURL)
-                } else if self.prefs.minimumSavingsPercent > 0 && savings < Double(self.prefs.minimumSavingsPercent) / 100.0 && !wasForced {
-                    item.status = .skipped(savedPercent: savings * 100, threshold: self.prefs.minimumSavingsPercent)
-                    try? FileManager.default.removeItem(at: producedURL)
-                } else {
-                    item.status = .done(outputURL: producedURL,
-                                        originalSize: result.originalSize,
-                                        outputSize: outSize)
-                    if self.prefs.preserveTimestamps {
-                        if let d = preservedModDate {
-                            try? FileManager.default.setAttributes([.modificationDate: d], ofItemAtPath: producedURL.path)
-                        } else {
-                            self.copyTimestamp(from: sourceURL, to: producedURL)
-                        }
-                    }
-                    self.copyFinderCommentsIfSettingsAllow(from: sourceURL, to: producedURL)
-                    item.undoSnapshot = CompressionUndoSnapshot(
-                        sourceURL: sourceURL,
-                        outputURL: producedURL,
-                        originalRecoveryURL: recoveryForUndo,
-                        replaceOriginal: replaceOrigin,
-                        isURLDownloadSource: urlDL
-                    )
-                }
+            if let d = result.audioDurationSeconds {
+                item.videoDuration = d
+            }
+            let outcome = CompressionOutcomeDecider.decide(
+                originalBytes: result.originalSize,
+                outputBytes: outSize,
+                minimumSavingsPercent: prefs.minimumSavingsPercent,
+                forced: wasForced
+            )
+            switch outcome {
+            case .zeroGain:
+                try? FileManager.default.removeItem(at: result.outputURL)
+                item.status = .zeroGain(attemptedSize: outSize)
+            case .skipped(let savedPercent):
+                try? FileManager.default.removeItem(at: result.outputURL)
+                item.status = .skipped(savedPercent: savedPercent, threshold: prefs.minimumSavingsPercent)
+            case .keep:
+                let fin = try await finalizeKeptOutput(
+                    item,
+                    produced: result.outputURL,
+                    stagedDestination: workURL.path != finalURL.path ? finalURL : nil
+                )
+                item.status = .done(outputURL: fin.outputURL,
+                                    originalSize: result.originalSize,
+                                    outputSize: outSize)
+                item.undoSnapshot = CompressionUndoSnapshot(
+                    sourceURL: sourceURL,
+                    outputURL: fin.outputURL,
+                    originalRecoveryURL: fin.originalRecoveryURL,
+                    replaceOriginal: replaceOrigin,
+                    isURLDownloadSource: urlDL
+                )
             }
         } catch {
             await MainActor.run { item.status = .failed(error) }
@@ -1814,7 +1756,7 @@ struct ContentView: View {
         }
         switch imp {
         case .localFile(let url):
-            if vm.items.contains(where: { $0.sourceURL.path == url.path }) {
+            if vm.items.contains(where: { $0.sourceURL.path == url.path && !$0.status.isTerminal }) {
                 showPasteAlert(title: S.pasteDuplicateTitle, message: S.pasteDuplicateMessage)
                 return
             }
@@ -1837,7 +1779,13 @@ struct ContentView: View {
         let hasWork = !localURLs.isEmpty || !remoteURLs.isEmpty
         guard hasWork else { return }
         guard shouldShowCompressionConfirmation() else {
-            if !localURLs.isEmpty { vm.addAndCompress(localURLs, force: force, presetID: presetID) }
+            if !localURLs.isEmpty {
+                if let presetID {
+                    vm.addAndCompress(localURLs, force: force, presetID: presetID)
+                } else {
+                    vm.addAndCompressWithActivePreset(localURLs, force: force)
+                }
+            }
             if !remoteURLs.isEmpty {
                 vm.queueRemoteDownload(
                     urls: remoteURLs,
@@ -2149,7 +2097,7 @@ struct ContentView: View {
                 onContinue: {
                     let batchPresetID = UUID(uuidString: prefs.activePresetID)
                     if !pending.localURLs.isEmpty {
-                        vm.addAndCompress(pending.localURLs, force: pending.force, presetID: batchPresetID)
+                        vm.addAndCompressWithActivePreset(pending.localURLs, force: pending.force)
                     }
                     if !pending.remoteURLs.isEmpty {
                         vm.queueRemoteDownload(urls: pending.remoteURLs, force: pending.force, presetID: batchPresetID)
