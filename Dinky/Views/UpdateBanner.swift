@@ -8,6 +8,8 @@ struct UpdateBanner: View {
     @ObservedObject var updater: UpdateChecker
     @EnvironmentObject var prefs: DinkyPreferences
     var itemCount: Int = 0
+    var isProcessing: Bool = false
+    var deferUntilIdle: ((@escaping () -> Void) -> Void)? = nil
 
     var body: some View {
         HStack(alignment: .center, spacing: 14) {
@@ -68,15 +70,17 @@ struct UpdateBanner: View {
 
                     if updater.downloadURL != nil {
                         Button {
-                            if itemCount > 0 {
-                                let alert = NSAlert()
-                                alert.messageText = String(localized: "Install update now?", comment: "Alert when installing with queued files.")
-                                alert.informativeText = String(localized: "Your current results will be cleared when Dinky relaunches.", comment: "Alert detail for install with queue.")
-                                alert.addButton(withTitle: String(localized: "Install", comment: "Alert confirm button."))
-                                alert.addButton(withTitle: String(localized: "Cancel", comment: "Alert cancel button."))
-                                guard alert.runModal() == .alertFirstButtonReturn else { return }
-                            }
-                            Task { await updater.downloadAndInstall() }
+                            updater.confirmAndInstall(
+                                isProcessing: isProcessing,
+                                queuedCount: itemCount,
+                                deferUntilIdle: { work in
+                                    if let deferUntilIdle {
+                                        deferUntilIdle(work)
+                                    } else {
+                                        work()
+                                    }
+                                }
+                            )
                         } label: {
                             HStack(spacing: 4) {
                                 Image(systemName: "arrow.down.circle.fill")

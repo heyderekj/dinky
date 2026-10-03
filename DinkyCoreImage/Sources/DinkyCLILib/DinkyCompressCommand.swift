@@ -177,6 +177,8 @@ public enum DinkyCompressCommand {
                 maxWidth: opts.maxWidth,
                 maxFileSizeKB: opts.maxFileSizeKB
             )
+            let chroma = ChromaSubsampling(rawValue: opts.chromaSubsamplingRaw) ?? .auto
+            let pngMode = PNGOutputMode(rawValue: opts.pngOutputModeRaw) ?? .lossless
             do {
                 let r = try await engine.compress(
                     source: inURL,
@@ -184,9 +186,6 @@ public enum DinkyCompressCommand {
                     goals: goals,
                     stripMetadata: opts.stripMetadata,
                     outputURL: desiredOut,
-                    originalsAction: .keep,
-                    backupFolderURL: nil,
-                    isURLDownloadSource: false,
                     smartQuality: smartQ,
                     contentTypeHint: opts.contentTypeHint,
                     preclassifiedContent: classified,
@@ -194,8 +193,17 @@ public enum DinkyCompressCommand {
                     collisionNamingStyle: opts.collisionStyle,
                     collisionCustomPattern: opts.collisionCustomPattern,
                     qualityOverride: opts.quality,
+                    chromaSubsampling: chroma,
+                    webpLossless: opts.webpLossless,
+                    pngOutputMode: pngMode,
                     progressHandler: nil
                 )
+                // Writing over the input (same name and format) is encoded to a temp file first so a
+                // failed encode never costs the source; swap it in now that it succeeded.
+                var outputURL = r.outputURL
+                if let dest = r.stagedDestinationURL {
+                    outputURL = try FileManager.default.replaceItemAt(dest, withItemAt: r.outputURL) ?? dest
+                }
                 let out = r.outputSize
                 let pct: Double? = r.originalSize > 0
                     ? (1.0 - Double(out) / Double(r.originalSize)) * 100.0
@@ -203,11 +211,14 @@ public enum DinkyCompressCommand {
                 fileResults.append(
                     DinkyImageCompressFileResult(
                         input: p,
-                        output: r.outputURL.path,
+                        output: outputURL.path,
                         originalBytes: r.originalSize,
                         outputBytes: out,
                         savingsPercent: pct,
                         detectedContent: r.detectedContentType?.rawValue,
+                        appliedChromaSubsampling: r.appliedChromaSubsampling,
+                        appliedWebpLossless: format == .webp ? r.appliedWebpLossless : nil,
+                        appliedPngOutputMode: r.appliedPngOutputMode,
                         error: nil
                     )
                 )

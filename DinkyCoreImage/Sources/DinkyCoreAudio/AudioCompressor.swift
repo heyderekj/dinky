@@ -208,20 +208,60 @@ public enum AudioCompressor: Sendable {
     /// AAC-LC bitrate ceiling per source sample rate (mono); stereo doubles the cap.
     /// Prevents `kAudioConverterErr_PropertyNotSupported` (`'!dat'`) when afconvert rejects
     /// `-b` for low-sample-rate sources (e.g. 8 kHz mono voice memos).
+    /// The AAC encoder refuses bitrates above a ceiling that depends on the source sample rate and
+    /// channel count, failing with `'!dat'` rather than degrading. Ask the encoder what it will
+    /// accept instead of guessing — a hard-coded table gets this wrong (22.05 kHz mono tops out at
+    /// 64 kbps, not 96). afconvert snaps values in between, so only the ceiling matters.
     static func cappedAACBitrate(target: Int, probe: SourceProbe) -> Int {
-        let sr = probe.sampleRate
-        guard sr > 0 else { return target }
-        let monoCap: Int
-        switch sr {
-        case ..<8_001:  monoCap = 32_000
-        case ..<12_001: monoCap = 48_000
-        case ..<16_001: monoCap = 64_000
-        case ..<22_051: monoCap = 96_000
-        default:        return target
+        guard let ceiling = maxApplicableAACBitrate(sampleRate: probe.sampleRate, channels: probe.channelCount) else {
+            return target
         }
-        let channels = max(UInt32(1), probe.channelCount)
-        let cap = monoCap * Int(min(channels, 2))
-        return min(target, cap)
+        return min(target, ceiling)
+    }
+
+    static func maxApplicableAACBitrate(sampleRate: Double, channels: UInt32) -> Int? {
+        guard sampleRate > 0, channels > 0 else { return nil }
+        var sourceFormat = AudioStreamBasicDescription(
+            mSampleRate: sampleRate,
+            mFormatID: kAudioFormatLinearPCM,
+            mFormatFlags: kAudioFormatFlagIsSignedInteger | kAudioFormatFlagIsPacked,
+            mBytesPerPacket: 2 * channels,
+            mFramesPerPacket: 1,
+            mBytesPerFrame: 2 * channels,
+            mChannelsPerFrame: channels,
+            mBitsPerChannel: 16,
+            mReserved: 0
+        )
+        var destinationFormat = AudioStreamBasicDescription(
+            mSampleRate: sampleRate,
+            mFormatID: kAudioFormatMPEG4AAC,
+            mFormatFlags: 0,
+            mBytesPerPacket: 0,
+            mFramesPerPacket: 1024,
+            mBytesPerFrame: 0,
+            mChannelsPerFrame: channels,
+            mBitsPerChannel: 0,
+            mReserved: 0
+        )
+
+        var converter: AudioConverterRef?
+        guard AudioConverterNew(&sourceFormat, &destinationFormat, &converter) == noErr,
+              let converter else { return nil }
+        defer { AudioConverterDispose(converter) }
+
+        var size: UInt32 = 0
+        guard AudioConverterGetPropertyInfo(converter, kAudioConverterApplicableEncodeBitRates, &size, nil) == noErr,
+              size > 0 else { return nil }
+        var ranges = [AudioValueRange](
+            repeating: AudioValueRange(),
+            count: Int(size) / MemoryLayout<AudioValueRange>.size
+        )
+        guard AudioConverterGetProperty(converter, kAudioConverterApplicableEncodeBitRates, &size, &ranges) == noErr
+        else { return nil }
+
+        // The array is over-allocated and tail-padded with zeroes; the real ceiling is the largest.
+        let ceiling = ranges.map { Int($0.mMaximum) }.max() ?? 0
+        return ceiling > 0 ? ceiling : nil
     }
 
     // MARK: - Error mapping

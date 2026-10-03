@@ -4,10 +4,10 @@
 
 A tiny macOS app that shrinks images, videos, audio, and PDFs. Drag, drop, get smaller files back. Free and open source.
 
-- **Download:** [Dinky for macOS (DMG)](https://github.com/heyderekj/dinky/releases/download/v2.12.0/Dinky-2.12.0.dmg) — or install with [Homebrew](https://brew.sh): `brew tap heyderekj/dinky https://github.com/heyderekj/dinky` then `brew install --cask dinky`
+- **Download:** [Dinky for macOS (DMG)](https://github.com/heyderekj/dinky/releases/download/v2.15.0/Dinky-2.15.0.dmg) — or install with [Homebrew](https://brew.sh): `brew tap heyderekj/dinky https://github.com/heyderekj/dinky` then `brew install --cask dinky`
 - **Source:** [GitHub — heyderekj/dinky](https://github.com/heyderekj/dinky)
 - **Support:** [help@dinkyfiles.com](mailto:help@dinkyfiles.com)
-- **Version:** 35 MB · v2.12.0 · Apple Silicon · macOS 15 Sequoia or later
+- **Version:** 35 MB · v2.15.0 · Apple Silicon · macOS 15 Sequoia or later
 - **Note:** 1.x (from 1.0) was images only; **2.0** added videos and PDFs. **2.10** added audio compression and an optional video FPS cap. Older 1.x downloads stay on GitHub for archival use.
 
 ## Highlights
@@ -22,7 +22,7 @@ A tiny macOS app that shrinks images, videos, audio, and PDFs. Drag, drop, get s
 - **PDFs** — preserve or flatten; optional on-device OCR on scans, then compress
 - **Batch speed** — Fast / Faster / Fastest (parallel job caps)
 - **Watch folder** — auto-compress files dropped into a watched folder
-- **Originals** — keep, move to Trash, or move to a Backup folder per preset
+- **Originals** — keep, move to Trash, or move to a Backup folder (global setting; watch folders can override it)
 - **Custom keyboard shortcuts** — rebind Open Files, Clipboard Compress, Compress Now, Clear, and Delete
 - **CLI + local API (pro users)** — optional `dinky` CLI and `dinky serve` loopback endpoint for scripts and AI agents
 - **Launch at login** — opt in once and Dinky's ready when you log in

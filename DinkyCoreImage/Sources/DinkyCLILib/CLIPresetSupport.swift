@@ -193,6 +193,9 @@ public enum DinkyCLIPresetSupport: Sendable {
         }
         if !explicit.contains("stripMetadata") { o.stripMetadata = p.stripMetadata }
         if !explicit.contains("contentHint") { o.contentTypeHint = p.contentTypeHintRaw }
+        if !explicit.contains("chromaSubsampling") { o.chromaSubsamplingRaw = p.chromaSubsamplingRaw }
+        if !explicit.contains("webpLossless") { o.webpLossless = p.webpLossless }
+        if !explicit.contains("pngOutputMode") { o.pngOutputModeRaw = p.pngOutputModeRaw }
         if !explicit.contains("collisionStyle") {
             o.collisionStyle = CollisionNamingStyle(rawValue: p.collisionNamingStyleRaw) ?? .finderDuplicate
         }

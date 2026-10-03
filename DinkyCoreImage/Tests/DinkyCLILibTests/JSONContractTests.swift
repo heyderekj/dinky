@@ -4,7 +4,7 @@ import XCTest
 
 final class JSONContractTests: XCTestCase {
     func testSchemaVersionMatchesHelpDocumentation() {
-        XCTAssertEqual(dinkyImageCompressResultSchema, "dinky.image.compress/1.0.0")
+        XCTAssertEqual(dinkyImageCompressResultSchema, "dinky.image.compress/1.1.0")
         XCTAssertEqual(dinkyImageServeInfoSchema, "dinky.image.serve/1.0.0")
         XCTAssertEqual(dinkyVideoCompressResultSchema, "dinky.video.compress/1.0.0")
         XCTAssertEqual(dinkyPdfCompressResultSchema, "dinky.pdf.compress/1.0.0")

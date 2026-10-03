@@ -47,11 +47,14 @@ final class DiagnosticsReporter: NSObject, ObservableObject {
 
         try? FileManager.default.createDirectory(at: appSupportDinkyURL, withIntermediateDirectories: true)
 
-        let hadSentinel = FileManager.default.fileExists(atPath: sentinelURL.path)
-        if hadSentinel {
+        // Stopping a run in Xcode kills the app without a clean quit, so in debug builds every
+        // relaunch would otherwise be reported as a crash.
+        #if !DEBUG
+        if FileManager.default.fileExists(atPath: sentinelURL.path) {
             let subtitle = String(localized: "The previous session ended unexpectedly. Nothing is uploaded automatically — choose an option below if you’d like to share details.", comment: "Post-crash prompt subtitle after unclean quit.")
             pendingCrashReport = CrashReport(subtitle: subtitle, metricKitSummary: nil)
         }
+        #endif
 
         FileManager.default.createFile(atPath: sentinelURL.path, contents: Data(), attributes: nil)
 
@@ -137,8 +140,34 @@ final class DiagnosticsReporter: NSObject, ObservableObject {
         App: Dinky v\(ver) (build \(build))
         macOS: \(osString)
         Date: \(date)
+        \(watchSettingsSummary())
 
 
+        """
+    }
+
+    /// Watch-folder and originals settings, without any paths — the usual suspects when "a file
+    /// disappeared" or "nothing happened".
+    static func watchSettingsSummary(_ d: UserDefaults = .standard) -> String {
+        func dirExists(_ path: String) -> Bool {
+            var isDir: ObjCBool = false
+            return !path.isEmpty && FileManager.default.fileExists(atPath: path, isDirectory: &isDir) && isDir.boolValue
+        }
+        let globalOn = d.bool(forKey: "folderWatchEnabled")
+        let globalFound = dirExists(d.string(forKey: "watchedFolderPath") ?? "")
+        let presets = (d.data(forKey: "savedPresetsData"))
+            .flatMap { try? JSONDecoder().decode([CompressionPreset].self, from: $0) } ?? []
+        let presetWatches = presets.filter { $0.watchFolderEnabled && $0.watchFolderModeRaw == "unique" }
+        let presetFound = presetWatches.filter { dirExists($0.watchFolderPath) }.count
+        let general = OriginalsAction(rawValue: d.string(forKey: "originalsAction") ?? "") ?? .keep
+        let watchPolicy = WatchOriginalsPolicy(storedRawValue: d.string(forKey: "watchOriginalsAction"))
+        let activePreset = !(d.string(forKey: "activePresetID") ?? "").isEmpty
+        let minSavings = d.object(forKey: "minimumSavingsPercent") as? Int ?? 2
+        return """
+        Watch: global \(globalOn ? "on" : "off")\(globalOn ? (globalFound ? " (folder found)" : " (folder NOT found)") : ""), \
+        preset folders \(presetWatches.count) (\(presetFound) found)
+        Originals: general \(general.rawValue), watch \(watchPolicy.storedRawValue) → \(watchPolicy.resolved(general: general).rawValue)
+        Active preset: \(activePreset ? "yes" : "no"), manual mode: \(d.bool(forKey: "manualMode") ? "on" : "off"), min savings: \(minSavings)%
         """
     }
 

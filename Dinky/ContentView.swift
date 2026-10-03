@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import DinkyCoreShared
 import UniformTypeIdentifiers
 import UserNotifications
@@ -42,6 +43,8 @@ final class ContentViewModel: ObservableObject {
     @Published var needsExplicitCompressAfterUndo: Bool = false
     private var compressionTask: Task<Void, Never>?
     private var compressionStartTime: Date = .now
+    /// Work deferred by `runWhenIdle` until the current batch (if any) finishes.
+    private var idleWorkQueue: [() -> Void] = []
 
     /// Limits parallel `URLDownloader` work when many links are dropped at once.
     private static let remoteDownloadSemaphore = AsyncSemaphore(limit: 4)
@@ -49,9 +52,261 @@ final class ContentViewModel: ObservableObject {
     var selectedFormat: CompressionFormat
     var prefs: DinkyPreferences
 
+    /// Owned here (not by `ContentView`) so watching survives the main window being hidden or
+    /// never shown at all — e.g. "Hide from Dock" + "Open at Login" headless launches.
+    private let folderWatcher = FolderWatcher()
+    private var lastWatchedPaths: [String] = []
+    private var lastWatchSettings: WatchSettingsSignature?
+    /// Latest routing table; ready files are routed with this, not the one from when watching started.
+    private var watchRegistry: WatchPipelineRegistry?
+    /// Retries while a watch folder is turned on but can't be found (drive not mounted yet).
+    private var unresolvedWatchRetry: Timer?
+    private var ingestLedger = WatchIngestLedger()
+    private var prefsObservation: AnyCancellable?
+    private var systemObservations: Set<AnyCancellable> = []
+
+    /// Destinations Dinky is about to write, so the watcher can ignore its own results. A watch
+    /// folder is usually also the output folder, and without this the result is re-ingested and
+    /// recompressed, appending a suffix every pass (`shot-dinky-dinky-dinky.webp`).
+    private var selfWrittenOutputs: [String: Date] = [:]
+    /// Long enough that a catch-up scan on the next launch still recognises last session's output.
+    private static let selfWrittenTTL: TimeInterval = 60 * 60 * 24 * 7
+
+    func noteSelfWrittenOutput(_ url: URL) {
+        selfWrittenOutputs[Self.outputKey(url)] = Date()
+        pruneSelfWrittenOutputs()
+        persistSelfWrittenOutputs()
+    }
+
+    private func isSelfWrittenOutput(_ url: URL) -> Bool {
+        guard let writtenAt = selfWrittenOutputs[Self.outputKey(url)] else { return false }
+        return Date().timeIntervalSince(writtenAt) < Self.selfWrittenTTL
+    }
+
+    private func pruneSelfWrittenOutputs() {
+        let now = Date()
+        selfWrittenOutputs = selfWrittenOutputs.filter { now.timeIntervalSince($0.value) < Self.selfWrittenTTL }
+        if selfWrittenOutputs.count > 500 {
+            let newest = selfWrittenOutputs.sorted { $0.value > $1.value }.prefix(500)
+            selfWrittenOutputs = Dictionary(uniqueKeysWithValues: newest.map { ($0.key, $0.value) })
+        }
+    }
+
+    private func persistSelfWrittenOutputs() {
+        let raw = selfWrittenOutputs.mapValues { $0.timeIntervalSinceReferenceDate }
+        prefs.selfWrittenOutputsData = (try? JSONEncoder().encode(raw)) ?? Data()
+    }
+
+    private func loadSelfWrittenOutputs() {
+        guard let raw = try? JSONDecoder().decode([String: Double].self, from: prefs.selfWrittenOutputsData) else { return }
+        selfWrittenOutputs = raw.mapValues { Date(timeIntervalSinceReferenceDate: $0) }
+        pruneSelfWrittenOutputs()
+    }
+
+    /// Resolves the folder, not the file: symlink resolution differs for a file that doesn't exist
+    /// yet (noted before writing) and one that does (seen by the watcher), e.g. `/private/tmp`.
+    private static func outputKey(_ url: URL) -> String {
+        let dir = url.standardizedFileURL.deletingLastPathComponent().resolvingSymlinksInPath().path
+        return (dir as NSString).appendingPathComponent(url.lastPathComponent)
+    }
+
+    /// Queues media that landed in a watched folder while Dinky wasn't running — FSEvents only
+    /// reports changes from the moment the stream starts, so those files would otherwise sit
+    /// there forever.
+    private func catchUpScanWatchedFolders(_ roots: [String]) {
+        let previousScan = prefs.lastWatchCatchUpScan
+        advanceCatchUpMarker()
+        guard previousScan > 0 else { return }
+        let cutoff = Date(timeIntervalSinceReferenceDate: previousScan)
+
+        var pending: [URL] = []
+        for root in roots {
+            let rootURL = URL(fileURLWithPath: root)
+            guard let entries = try? FileManager.default.contentsOfDirectory(
+                at: rootURL,
+                includingPropertiesForKeys: [.creationDateKey, .contentModificationDateKey, .addedToDirectoryDateKey, .isRegularFileKey],
+                options: [.skipsHiddenFiles, .skipsSubdirectoryDescendants]
+            ) else { continue }
+            for url in entries {
+                guard MediaTypeDetector.detect(url) != nil, !isSelfWrittenOutput(url) else { continue }
+                guard (try? url.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true,
+                      let arrived = FolderWatcher.arrivalDate(of: url),
+                      arrived > cutoff else { continue }
+                pending.append(url)
+            }
+        }
+        guard !pending.isEmpty else { return }
+        watchLog.notice("Catch-up found \(pending.count, privacy: .public) file(s) that arrived while Dinky wasn't watching")
+        folderWatcher.enqueue(pending)
+        advanceCatchUpMarker()
+    }
+
+    /// Moves the catch-up marker to now — or to just before the oldest file still settling, so a
+    /// copy in progress at quit is picked up on the next launch instead of skipped.
+    private func advanceCatchUpMarker() {
+        let now = Date()
+        let marker = folderWatcher.oldestPendingSince.map { min(now, $0.addingTimeInterval(-60)) } ?? now
+        prefs.lastWatchCatchUpScan = marker.timeIntervalSinceReferenceDate
+    }
+
+    /// Files that finished arriving in a watched folder.
+    private func ingestReadyWatchFiles(_ urls: [URL]) {
+        advanceCatchUpMarker()
+        let now = Date()
+        let backupRoot = prefs.originalsBackupDestinationURL().path
+        let registry = watchRegistry ?? WatchPipelineRegistry(prefs: prefs)
+        for url in urls {
+            let name = url.lastPathComponent
+            if isSelfWrittenOutput(url) {
+                watchLog.debug("Skipped \(name, privacy: .private(mask: .hash)): Dinky's own output")
+                continue
+            }
+            // Originals backed up into a watched folder would otherwise come straight back in.
+            if WatchPaths.path(url.path, isUnder: backupRoot) {
+                watchLog.info("Skipped \(name, privacy: .private(mask: .hash)): inside the originals Backup folder")
+                continue
+            }
+            let fingerprint = FileFingerprint(url: url)
+            if ingestLedger.alreadyIngested(url.path, fingerprint: fingerprint, now: now) {
+                watchLog.debug("Skipped \(name, privacy: .private(mask: .hash)): already handled")
+                continue
+            }
+            ingestLedger.record(url.path, fingerprint: fingerprint, now: now)
+            route(url, through: registry)
+        }
+    }
+
+    /// The global folder uses whatever the main window uses — the selected preset when it covers the
+    /// file type, otherwise the sidebar settings. A preset's own folder uses that preset.
+    private func route(_ url: URL, through registry: WatchPipelineRegistry) {
+        let name = url.lastPathComponent
+        switch registry.pipeline(for: url) {
+        case .global:
+            watchLog.info("Queued \(name, privacy: .private(mask: .hash)) from the global folder (active preset: \(self.activePresetID(for: url) != nil, privacy: .public))")
+            addAndCompressWithActivePreset([url], fromWatchFolder: true)
+        case .preset(let id):
+            let preset = prefs.savedPresets.first(where: { $0.id == id })
+            let media = MediaTypeDetector.detect(url)
+            if let p = preset, let m = media, p.applies(to: m) {
+                watchLog.info("Queued \(name, privacy: .private(mask: .hash)) from a preset folder")
+                addAndCompress([url], presetID: id, fromWatchFolder: true)
+            } else {
+                watchLog.info("Queued \(name, privacy: .private(mask: .hash)) from a preset folder that doesn't cover this type; using the main window's settings")
+                addAndCompressWithActivePreset([url], fromWatchFolder: true)
+            }
+        }
+    }
+
+    /// The only preferences the watcher cares about. Compared before touching the registry so
+    /// unrelated preference edits don't re-resolve every security-scoped bookmark.
+    private struct WatchSettingsSignature: Equatable {
+        let globalEnabled: Bool
+        let globalPath: String
+        let globalBookmark: Data
+        let presets: [String]
+
+        init(prefs: DinkyPreferences) {
+            globalEnabled = prefs.folderWatchEnabled
+            globalPath = prefs.watchedFolderPath
+            globalBookmark = prefs.watchedFolderBookmark
+            presets = prefs.savedPresets.map {
+                "\($0.id)|\($0.watchFolderEnabled)|\($0.watchFolderModeRaw)|\($0.watchFolderPath)"
+            }
+        }
+    }
+
     init(prefs: DinkyPreferences) {
         self.prefs = prefs
         self.selectedFormat = prefs.defaultFormat
+        loadSelfWrittenOutputs()
+        folderWatcher.onReadyFiles = { [weak self] urls in self?.ingestReadyWatchFiles(urls) }
+        folderWatcher.shouldIgnore = { [weak self] url in self?.isSelfWrittenOutput(url) ?? false }
+        reconcileBookmarksAndUpdateFolderWatcher()
+        prefsObservation = prefs.objectWillChange.sink { [weak self] _ in
+            // `objectWillChange` fires before the new value is written; defer a tick so
+            // `updateFolderWatcher()` reads the post-change preferences.
+            DispatchQueue.main.async { self?.updateFolderWatcher() }
+        }
+        observeSystemEventsForWatchFolders()
+    }
+
+    /// Owned here rather than by the window so a hidden (menu-bar-only) launch reacts too. A drive
+    /// or share mounting after login makes its watch folder available; after sleep FSEvents may
+    /// have missed changes made by other Macs on a share, so restart and catch up.
+    private func observeSystemEventsForWatchFolders() {
+        let ws = NSWorkspace.shared.notificationCenter
+        ws.publisher(for: NSWorkspace.didMountNotification)
+            .merge(with: ws.publisher(for: NSWorkspace.didUnmountNotification))
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.refreshWatchFolders(force: true, reason: "a volume was mounted or unmounted") }
+            .store(in: &systemObservations)
+        ws.publisher(for: NSWorkspace.didWakeNotification)
+            .delay(for: .seconds(3), scheduler: RunLoop.main)
+            .sink { [weak self] _ in self?.refreshWatchFolders(force: true, reason: "woke from sleep") }
+            .store(in: &systemObservations)
+        NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
+            .sink { [weak self] _ in self?.refreshWatchFolders(force: false, reason: "app became active") }
+            .store(in: &systemObservations)
+    }
+
+    private func refreshWatchFolders(force: Bool, reason: String) {
+        prefs.reconcileFolderBookmarksIfNeeded()
+        updateFolderWatcher(force: force, recheckUnresolved: true, reason: reason)
+    }
+
+    /// Re-anchors moved/renamed watch folders, then syncs the watcher. Kept out of
+    /// `updateFolderWatcher()` because reconciling *writes* to preferences, and the
+    /// preferences observer would feed those writes straight back in as another update.
+    func reconcileBookmarksAndUpdateFolderWatcher() {
+        prefs.reconcileFolderBookmarksIfNeeded()
+        updateFolderWatcher()
+    }
+
+    /// Rebuilds the watch-folder routing table from current preferences and (re)starts FSEvents
+    /// monitoring only when the resolved set of watched directories actually changed.
+    ///
+    /// - Parameters:
+    ///   - force: Restart the stream and catch up even if nothing changed (after mount / wake).
+    ///   - recheckUnresolved: Look again at folders that couldn't be found last time.
+    func updateFolderWatcher(force: Bool = false, recheckUnresolved: Bool = false, reason: String = "settings changed") {
+        let signature = WatchSettingsSignature(prefs: prefs)
+        let hasUnresolved = (watchRegistry?.unresolvedCount ?? 0) > 0
+        guard force || signature != lastWatchSettings || (recheckUnresolved && hasUnresolved) else { return }
+        lastWatchSettings = signature
+        let reg = WatchPipelineRegistry(prefs: prefs)
+        watchRegistry = reg
+        scheduleUnresolvedWatchRetry(reg.unresolvedCount > 0)
+        if reg.unresolvedCount > 0 {
+            watchLog.notice("\(reg.unresolvedCount, privacy: .public) watch folder(s) turned on but not available; will retry")
+        }
+        let paths = reg.watchedRootPaths
+        guard !paths.isEmpty else {
+            if !lastWatchedPaths.isEmpty {
+                folderWatcher.stop()
+                lastWatchedPaths = []
+                watchLog.notice("Stopped watching (\(reason, privacy: .public))")
+            }
+            return
+        }
+        guard force || paths != lastWatchedPaths else { return }
+        lastWatchedPaths = paths
+        watchLog.notice("Starting watcher (\(reason, privacy: .public))")
+        folderWatcher.start(paths: paths)
+        catchUpScanWatchedFolders(paths)
+    }
+
+    private func scheduleUnresolvedWatchRetry(_ needed: Bool) {
+        guard needed else {
+            unresolvedWatchRetry?.invalidate()
+            unresolvedWatchRetry = nil
+            return
+        }
+        guard unresolvedWatchRetry == nil else { return }
+        let timer = Timer(timeInterval: 60, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.refreshWatchFolders(force: false, reason: "retrying unavailable watch folder") }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        unresolvedWatchRetry = timer
     }
 
     /// Hardware video encoders are limited; parallel `AVAssetExportSession`s usually hurt throughput.
@@ -75,17 +330,57 @@ final class ContentViewModel: ObservableObject {
         Set(items.map { $0.mediaType })
     }
 
-    func addAndCompress(_ urls: [URL], force: Bool = false, presetID: UUID? = nil) {
-        var seen = Set(items.map(\.sourceURL.path))
-        let newURLs = urls.filter { url in
+    func addAndCompress(_ urls: [URL], force: Bool = false, presetID: UUID? = nil, fromWatchFolder: Bool = false) {
+        enqueue(urls, force: force, fromWatchFolder: fromWatchFolder) { _ in presetID }
+    }
+
+    /// Adds files using the preset selected in the main window (when it covers the file's type), read
+    /// fresh from Settings — so editing that preset applies to the next drop, not just to the copy
+    /// taken when it was selected.
+    func addAndCompressWithActivePreset(_ urls: [URL], force: Bool = false, fromWatchFolder: Bool = false) {
+        enqueue(urls, force: force, fromWatchFolder: fromWatchFolder) { self.activePresetID(for: $0) }
+    }
+
+    func activePresetID(for url: URL) -> UUID? {
+        ActivePresetResolver.presetID(
+            activePresetID: prefs.activePresetID,
+            savedPresets: prefs.savedPresets,
+            mediaType: MediaTypeDetector.detect(url)
+        )
+    }
+
+    /// Queues files. A file whose row is still waiting or working is ignored; one whose row already
+    /// finished (done, no gain, skipped, failed) gets a fresh row so dropping it again tries again.
+    /// A watch folder only retries when the file actually changed, not on a repeat event.
+    private func enqueue(
+        _ urls: [URL],
+        force: Bool,
+        fromWatchFolder: Bool,
+        presetFor: (URL) -> UUID?
+    ) {
+        var seen = Set<String>()
+        var replaced = Set<UUID>()
+        var newURLs: [URL] = []
+        for url in urls {
             let p = url.path
-            guard !seen.contains(p) else { return false }
-            seen.insert(p)
-            return true
+            guard seen.insert(p).inserted else { continue }
+            if let existing = items.first(where: { $0.sourceURL.path == p }) {
+                guard existing.status.isTerminal else { continue }
+                if fromWatchFolder, existing.sourceFingerprint == FileFingerprint(url: url) { continue }
+                replaced.insert(existing.id)
+            }
+            newURLs.append(url)
         }
         guard !newURLs.isEmpty else { return }
-        let new = newURLs.map { CompressionItem(sourceURL: $0, presetID: presetID) }
+        // Not `remove(_:)`: that cleans up temp sources, and the new row reuses this file.
+        if !replaced.isEmpty { items.removeAll { replaced.contains($0.id) } }
+        let new = newURLs.map { url in
+            let item = CompressionItem(sourceURL: url, presetID: presetFor(url))
+            item.sourceFingerprint = FileFingerprint(url: url)
+            return item
+        }
         if force { new.forEach { $0.forceCompress = true } }
+        if fromWatchFolder { new.forEach { $0.ingestedFromWatchFolder = true } }
         items.append(contentsOf: new)
         // Smallest files first — quick wins land early, the big ones stack
         // up at the bottom. This is also the order they'll be processed in.
@@ -191,6 +486,7 @@ final class ContentViewModel: ObservableObject {
 
     /// Rebuilds file rows and byte totals from the current queue while preserving batch metadata and stable summary id.
     private func reconciledBatchSummary(from existing: CompressionBatchSummary) -> CompressionBatchSummary {
+        let items = batchItems(ids: existing.itemIDs.map(Set.init))
         let fileRows = BatchSummaryListRow.rows(from: items)
         let doneCount = items.filter { if case .done = $0.status { return true }; return false }.count
         let skippedCount = items.filter { if case .skipped = $0.status { return true }; return false }.count
@@ -217,8 +513,14 @@ final class ContentViewModel: ObservableObject {
             outputFolderURL: outputFolderURL,
             fileRows: fileRows,
             undoableDoneCount: undoableDoneCount,
-            pdfOCRAppliedCount: pdfOCRAppliedCount
+            pdfOCRAppliedCount: pdfOCRAppliedCount,
+            itemIDs: existing.itemIDs
         )
+    }
+
+    /// Queue rows that belong to one batch (all rows when `ids` is nil — summaries from older versions).
+    private func batchItems(ids: Set<UUID>?) -> [CompressionItem] {
+        BatchScope.items(items, in: ids, id: \.id)
     }
 
     /// Keeps the batch summary sheet in sync after a single-item undo (stable summary `id` preserves the open sheet).
@@ -244,9 +546,11 @@ final class ContentViewModel: ObservableObject {
         pendingBatchSummarySupportsUndo = false
     }
 
-    /// Undoes all completed items that still have an undo snapshot (reverse queue order).
+    /// Undoes the shown batch's completed items that still have an undo snapshot (reverse queue order).
     func undoAllCompressibleDone() {
-        let targets = items.filter { item in
+        // Only the batch the summary sheet is showing — its "Undo All" count covers just those rows.
+        let summary = pendingBatchSummary ?? lastBatchSummary
+        let targets = batchItems(ids: summary?.itemIDs.map(Set.init)).filter { item in
             guard case .done = item.status else { return false }
             return item.undoSnapshot != nil
         }
@@ -285,6 +589,7 @@ final class ContentViewModel: ObservableObject {
         items = []
         phase = .idle
         isProcessing = false
+        drainIdleWorkQueue()
         compressionInterrupted = false
         lastBatchSummary = nil
         pendingBatchSummarySupportsUndo = true
@@ -343,6 +648,12 @@ final class ContentViewModel: ObservableObject {
                         let row = self.items[idx]
                         row.sourceURL = local
                         row.mediaType = MediaTypeDetector.detect(local) ?? .image
+                        // The preset was picked before the file type was known.
+                        if let id = row.presetID,
+                           let p = self.prefs.savedPresets.first(where: { $0.id == id }),
+                           !p.applies(to: row.mediaType) {
+                            row.presetID = nil
+                        }
                         if row.mediaType == .pdf {
                             row.pageCount = PDFDocument(url: local)?.pageCount
                         }
@@ -394,6 +705,47 @@ final class ContentViewModel: ObservableObject {
 
     // MARK: - Compress
 
+    /// Runs `work` immediately if no batch is running, otherwise holds it until the current one
+    /// (drag-and-drop or Watch Folder — both go through `compress()`) finishes or is cleared.
+    func runWhenIdle(_ work: @escaping () -> Void) {
+        if isProcessing {
+            idleWorkQueue.append(work)
+        } else {
+            work()
+        }
+    }
+
+    private func drainIdleWorkQueue() {
+        guard !idleWorkQueue.isEmpty else { return }
+        let queued = idleWorkQueue
+        idleWorkQueue.removeAll()
+        queued.forEach { $0() }
+    }
+
+    /// Called once a batch's own completion handling (summary, sound, auto-clear) has fully run,
+    /// on every exit path. Items can arrive mid-batch — a second Watch Folder event, a drop while
+    /// one was already running — and `compress()` no-ops while `isProcessing` is already true, so
+    /// without this they'd sit `.pending` forever. Picks the queue back up when that happens;
+    /// only once nothing is left pending do we count the app as idle for `runWhenIdle`.
+    private func finishBatchCompletion() {
+        let hasPending = items.contains { if case .pending = $0.status { return true }; return false }
+        if hasPending {
+            compress()
+        } else {
+            drainIdleWorkQueue()
+        }
+    }
+
+    /// Watch-ingested items use the Watch originals setting, which follows Settings → Original Files
+    /// unless the user picked something else for watch folders.
+    private func effectiveOriginalsAction(for item: CompressionItem) -> OriginalsAction {
+        item.ingestedFromWatchFolder ? prefs.effectiveWatchOriginalsAction : prefs.originalsAction
+    }
+
+    private func effectiveOriginalsBackupFolder(for item: CompressionItem) -> URL? {
+        effectiveOriginalsAction(for: item) == .backup ? prefs.originalsBackupDestinationURL() : nil
+    }
+
     func compress() {
         guard !isProcessing else { return }
         compressionInterrupted = false
@@ -410,6 +762,9 @@ final class ContentViewModel: ObservableObject {
         compressionStartTime = .now
 
         let batchPreset = batchSharedPreset(from: pending)
+        // Only this batch's rows count toward its summary, history and lifetime savings — the queue
+        // can still hold rows from earlier batches.
+        let batchIDs = pending.map(\.id)
 
         compressionTask = Task { [weak self] in
             guard let self else { return }
@@ -441,6 +796,11 @@ final class ContentViewModel: ObservableObject {
             await MainActor.run {
                 self.compressionTask = nil
                 self.isProcessing = false
+                // Runs after every statement below, on every exit path (including the early
+                // `return`s) — see `finishBatchCompletion()`. Deliberately not called eagerly
+                // here: doing so before `self.phase` is set below would let a just-continued
+                // batch's `.processing` phase get overwritten back to `.done`.
+                defer { self.finishBatchCompletion() }
                 if self.items.isEmpty {
                     self.phase = .idle
                     self.compressionInterrupted = false
@@ -466,13 +826,14 @@ final class ContentViewModel: ObservableObject {
                 // If the queue was emptied mid-run (Clear All, autoClear race, etc.),
                 // don't strand the empty drop zone in `.done` — fall back to idle.
                 self.phase = self.items.isEmpty ? .idle : .done
-                let batchSaved = self.items.reduce(Int64(0)) { $0 + $1.savedBytes }
+                let batchItems = self.batchItems(ids: Set(batchIDs))
+                let batchSaved = batchItems.reduce(Int64(0)) { $0 + $1.savedBytes }
                 self.prefs.lifetimeSavedBytes += batchSaved
 
-                let doneCount = self.items.filter { if case .done = $0.status { return true }; return false }.count
+                let doneCount = batchItems.filter { if case .done = $0.status { return true }; return false }.count
 
                 let elapsed = Date.now.timeIntervalSince(self.compressionStartTime)
-                let doneItems = self.items.compactMap { item -> URL? in
+                let doneItems = batchItems.compactMap { item -> URL? in
                     if case .done(let url, _, _) = item.status { return url } else { return nil }
                 }
                 let outputFolderURL = doneItems.first?.deletingLastPathComponent()
@@ -482,7 +843,7 @@ final class ContentViewModel: ObservableObject {
                     NSWorkspace.shared.open(first.deletingLastPathComponent())
                 }
 
-                let hasTerminalForSummary = self.items.contains { item in
+                let hasTerminalForSummary = batchItems.contains { item in
                     switch item.status {
                     case .done, .skipped, .zeroGain, .failed: return true
                     default: return false
@@ -490,20 +851,20 @@ final class ContentViewModel: ObservableObject {
                 }
 
                 if hasTerminalForSummary {
-                    let skippedCount = self.items.filter { if case .skipped = $0.status { return true }; return false }.count
+                    let skippedCount = batchItems.filter { if case .skipped = $0.status { return true }; return false }.count
                     let openedFolder = openFolder && outputFolderURL != nil
-                    let fileRows = BatchSummaryListRow.rows(from: self.items)
+                    let fileRows = BatchSummaryListRow.rows(from: batchItems)
                     let summaryOutputFolder = fileRows.compactMap { row -> URL? in
                         if case .compressed(let r) = row {
                             return URL(fileURLWithPath: r.outputPath).deletingLastPathComponent()
                         }
                         return nil
                     }.first ?? outputFolderURL
-                    let undoableDoneCount = self.items.filter { i in
+                    let undoableDoneCount = batchItems.filter { i in
                         guard case .done = i.status else { return false }
                         return i.undoSnapshot != nil
                     }.count
-                    let pdfOCRAppliedCount = self.items.filter { i in
+                    let pdfOCRAppliedCount = batchItems.filter { i in
                         guard i.mediaType == .pdf, case .done = i.status else { return false }
                         return i.lastPdfCompressionOCRApplied
                     }.count
@@ -517,11 +878,12 @@ final class ContentViewModel: ObservableObject {
                         outputFolderURL: summaryOutputFolder,
                         fileRows: fileRows,
                         undoableDoneCount: undoableDoneCount,
-                        pdfOCRAppliedCount: pdfOCRAppliedCount
+                        pdfOCRAppliedCount: pdfOCRAppliedCount,
+                        itemIDs: batchIDs
                     )
                     self.lastBatchSummary = summary
                     let batchSummaryData = try? JSONEncoder().encode(summary)
-                    let formats = Array(Set(self.items.compactMap { item -> String? in
+                    let formats = Array(Set(batchItems.compactMap { item -> String? in
                         guard case .done = item.status else { return nil }
                         switch item.mediaType {
                         case .image: return (item.formatOverride ?? self.selectedFormat).displayName
@@ -635,6 +997,27 @@ final class ContentViewModel: ObservableObject {
         case .audio:
             await compressAudioItem(item)
         }
+        if item.ingestedFromWatchFolder {
+            logWatchOutcome(item)
+        }
+    }
+
+    private func logWatchOutcome(_ item: CompressionItem) {
+        let name = item.filename
+        let originals = effectiveOriginalsAction(for: item).rawValue
+        switch item.status {
+        case .done(_, let orig, let out):
+            let moved = item.undoSnapshot?.originalRecoveryURL != nil
+            watchLog.info("Done \(name, privacy: .private(mask: .hash)): \(orig, privacy: .public) → \(out, privacy: .public) bytes, resized: \(item.imageResize != nil, privacy: .public), originals \(originals, privacy: .public), original moved: \(moved, privacy: .public)")
+        case .zeroGain:
+            watchLog.info("No gain for \(name, privacy: .private(mask: .hash)); original left in place")
+        case .skipped:
+            watchLog.info("Skipped \(name, privacy: .private(mask: .hash)) (below minimum savings); original left in place")
+        case .failed(let error):
+            watchLog.error("Failed \(name, privacy: .private(mask: .hash)): \(error.localizedDescription, privacy: .public)")
+        default:
+            break
+        }
     }
 
     private func compressImageItem(_ item: CompressionItem, goals: CompressionGoals) async {
@@ -649,6 +1032,9 @@ final class ContentViewModel: ObservableObject {
         let smartQ = preset?.smartQuality ?? prefs.smartQuality
         let hint = preset?.contentTypeHintRaw ?? prefs.contentTypeHintRaw
         let strip = preset?.stripMetadata ?? prefs.stripMetadata
+        let chroma = ChromaSubsampling(rawValue: preset?.chromaSubsamplingRaw ?? prefs.chromaSubsamplingRaw) ?? .auto
+        let webpLL = preset?.webpLossless ?? prefs.webpLossless
+        let pngMode = PNGOutputMode(rawValue: preset?.pngOutputModeRaw ?? prefs.pngOutputModeRaw) ?? .lossless
 
         var classifiedForResolver: ContentType? = nil
         var preclassifiedForSmartQ: ContentType? = nil
@@ -673,15 +1059,9 @@ final class ContentViewModel: ObservableObject {
             classifiedContent: classifiedForResolver
         )
 
-        let srcExt = item.sourceURL.pathExtension.lowercased()
-        let pngSourceOK = srcExt == "png" || srcExt == "heic" || srcExt == "heif"
-        if format == .png && !pngSourceOK {
-            await MainActor.run { item.status = .failed(PNGInputError()) }
-            return
-        }
-
         await MainActor.run {
             item.usedFirstFrameOnly = false
+            item.imageResize = nil
             item.status = .processing
             item.compressionProgress = 0
         }
@@ -691,8 +1071,8 @@ final class ContentViewModel: ObservableObject {
             if let pr = preset { return pr.outputURL(for: item.sourceURL, format: format, globalPrefs: prefs, isFromURLDownload: urlDL) }
             return prefs.outputURL(for: item.sourceURL, format: format, isFromURLDownload: urlDL)
         }()
+        noteSelfWrittenOutput(outputURL)
         let replaceOrigin = (preset.map { FilenameHandling(rawValue: $0.filenameHandlingRaw) } ?? prefs.filenameHandling) == .replaceOrigin
-        let backupURL = prefs.originalsAction == .backup ? prefs.originalsBackupDestinationURL() : nil
         CompressionTiming.logReproContext(
             media: "image",
             smartQuality: smartQ,
@@ -703,68 +1083,107 @@ final class ContentViewModel: ObservableObject {
                 item.compressionProgress = Double(p)
             }
         }
+        // Encode into a private folder and pick the final name only when moving the result into
+        // place: two files in one batch can want the same output name (photo.jpg and photo.png →
+        // photo-dinky.webp), and checking for a free name up front let both write to the same file.
+        let stagingDir = Self.makeStagingDirectory()
+        defer { try? FileManager.default.removeItem(at: stagingDir) }
         do {
             let result = try await CompressionService.shared.compress(
                 source: item.sourceURL,
                 format: format,
                 goals: goals,
                 stripMetadata: strip,
-                outputURL: outputURL,
-                originalsAction: prefs.originalsAction,
-                backupFolderURL: backupURL,
-                isURLDownloadSource: urlDL,
+                outputURL: stagingDir.appendingPathComponent(outputURL.lastPathComponent),
                 smartQuality: smartQ,
                 contentTypeHint: hint,
                 preclassifiedContent: preclassifiedForSmartQ,
                 parallelCompressionLimit: prefs.concurrentCompressionLimit,
                 collisionNamingStyle: collisionNamingStyle(for: item),
                 collisionCustomPattern: collisionCustomPattern(for: item),
+                chromaSubsampling: chroma,
+                webpLossless: webpLL,
+                pngOutputMode: pngMode,
                 progressHandler: progressHandler
             )
-            let savings = result.originalSize > 0
-                ? Double(result.originalSize - result.outputSize) / Double(result.originalSize) : 0
-            await MainActor.run {
-                item.usedFirstFrameOnly = result.usedFirstFrameOnly
-                item.detectedContentType = result.detectedContentType
-                if result.outputSize >= result.originalSize {
-                    item.status = .zeroGain(attemptedSize: result.outputSize)
-                    try? FileManager.default.removeItem(at: result.outputURL)
-                } else if self.prefs.minimumSavingsPercent > 0 && savings < Double(self.prefs.minimumSavingsPercent) / 100.0 && !wasForced {
-                    item.status = .skipped(savedPercent: savings * 100, threshold: self.prefs.minimumSavingsPercent)
-                    try? FileManager.default.removeItem(at: result.outputURL)
-                } else {
-                    item.status = .done(outputURL: result.outputURL,
-                                        originalSize: result.originalSize,
-                                        outputSize: result.outputSize)
-                    if self.prefs.preserveTimestamps {
-                        self.copyTimestamp(from: sourceSnapshot, to: result.outputURL)
-                    }
-                    self.copyFinderCommentsIfSettingsAllow(from: sourceSnapshot, to: result.outputURL)
-                    var mergedRecovery = result.originalRecoveryURL
-                    if replaceOrigin {
-                        if urlDL {
-                            try? FileManager.default.removeItem(at: item.sourceURL)
-                        } else if let r2 = try? OriginalsHandler.disposeForReplace(
-                            originalAt: item.sourceURL,
-                            outputURL: result.outputURL,
-                            action: self.prefs.originalsAction,
-                            backupFolder: self.prefs.originalsAction == .backup ? self.prefs.originalsBackupDestinationURL() : nil
-                        ) {
-                            mergedRecovery = r2
-                        }
-                    }
-                    item.undoSnapshot = CompressionUndoSnapshot(
-                        sourceURL: sourceSnapshot,
-                        outputURL: result.outputURL,
-                        originalRecoveryURL: mergedRecovery,
-                        replaceOriginal: replaceOrigin,
-                        isURLDownloadSource: urlDL
-                    )
-                }
+            item.usedFirstFrameOnly = result.usedFirstFrameOnly
+            item.detectedContentType = result.detectedContentType
+            let outcome = CompressionOutcomeDecider.decide(
+                originalBytes: result.originalSize,
+                outputBytes: result.outputSize,
+                minimumSavingsPercent: prefs.minimumSavingsPercent,
+                forced: wasForced,
+                didResize: result.imageResize != nil
+            )
+            switch outcome {
+            case .zeroGain:
+                try? FileManager.default.removeItem(at: result.outputURL)
+                item.status = .zeroGain(attemptedSize: result.outputSize)
+            case .skipped(let savedPercent):
+                try? FileManager.default.removeItem(at: result.outputURL)
+                item.status = .skipped(savedPercent: savedPercent, threshold: prefs.minimumSavingsPercent)
+            case .keep:
+                let fin = try await finalizeKeptOutput(
+                    item, produced: result.outputURL, stagedDestination: outputURL
+                )
+                item.imageResize = result.imageResize
+                item.status = .done(outputURL: fin.outputURL,
+                                    originalSize: result.originalSize,
+                                    outputSize: result.outputSize)
+                item.undoSnapshot = CompressionUndoSnapshot(
+                    sourceURL: sourceSnapshot,
+                    outputURL: fin.outputURL,
+                    originalRecoveryURL: fin.originalRecoveryURL,
+                    replaceOriginal: replaceOrigin,
+                    isURLDownloadSource: urlDL
+                )
             }
         } catch {
-            await MainActor.run { item.status = .failed(error) }
+            item.status = .failed(error)
         }
+    }
+
+    private static func makeStagingDirectory() -> URL {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("dinky_out_\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    /// Puts a kept result in place and applies the originals setting. Only called once a result has
+    /// been judged worth keeping, so a discarded one never costs the user their original. Timestamps
+    /// and Finder comments come from the original wherever it ended up (Trash, Backup, or in place).
+    private func finalizeKeptOutput(
+        _ item: CompressionItem,
+        produced: URL,
+        stagedDestination: URL?
+    ) async throws -> OutputFinalizer.Result {
+        let source = item.sourceURL
+        let action = effectiveOriginalsAction(for: item)
+        let backup = effectiveOriginalsBackupFolder(for: item)
+        let urlDL = item.isURLDownloadSource
+        let style = collisionNamingStyle(for: item)
+        let pattern = collisionCustomPattern(for: item)
+        // Off the main actor: moving a temp file to another volume copies it.
+        let fin = try await Task.detached {
+            try OutputFinalizer.finalize(
+                source: source,
+                produced: produced,
+                stagedDestination: stagedDestination,
+                action: action,
+                backupFolder: backup,
+                isURLDownloadSource: urlDL,
+                collisionStyle: style,
+                customPattern: pattern
+            )
+        }.value
+        noteSelfWrittenOutput(fin.outputURL)
+        let original = fin.originalRecoveryURL ?? source
+        if prefs.preserveTimestamps {
+            copyTimestamp(from: original, to: fin.outputURL)
+        }
+        copyFinderCommentsIfSettingsAllow(from: original, to: fin.outputURL)
+        return fin
     }
 
     private func compressPDFItem(_ item: CompressionItem) async {
@@ -800,6 +1219,7 @@ final class ContentViewModel: ObservableObject {
             if let pr = preset { return pr.outputURL(for: item.sourceURL, mediaType: .pdf, globalPrefs: prefs, isFromURLDownload: urlDL) }
             return prefs.outputURL(for: item.sourceURL, mediaType: .pdf, isFromURLDownload: urlDL)
         }()
+        noteSelfWrittenOutput(intendedOutput)
         let pdfFallback = preset.map { PDFQuality(rawValue: $0.pdfQualityRaw) ?? .medium } ?? prefs.pdfQuality
         let sourceURL = item.sourceURL
         let outputMode = pdfModeOverride ?? preset.map { PDFOutputMode(rawValue: $0.pdfOutputModeRaw) ?? .flattenPages } ?? prefs.pdfOutputMode
@@ -893,12 +1313,18 @@ final class ContentViewModel: ObservableObject {
             style: collisionStyle,
             customPattern: collisionCustomPattern(for: item)
         )
-        let workURL: URL
-        if sourceURL.path == finalURL.path {
-            workURL = FileManager.default.temporaryDirectory
+        // Every attempt is written to its own temp file and only the kept one is moved into place,
+        // so attempts that lose never leave stray files next to the original.
+        var attemptURLs: [URL] = []
+        defer { for u in attemptURLs { try? FileManager.default.removeItem(at: u) } }
+        func nextAttemptURL() -> URL {
+            let u = FileManager.default.temporaryDirectory
                 .appendingPathComponent("dinky_pdf_\(UUID().uuidString).pdf")
-        } else {
-            workURL = finalURL
+            attemptURLs.append(u)
+            return u
+        }
+        func sizeOf(_ url: URL) -> Int64? {
+            (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize.map { Int64($0) }
         }
         let replaceOrigin = (preset.map { FilenameHandling(rawValue: $0.filenameHandlingRaw) } ?? prefs.filenameHandling) == .replaceOrigin
         let strip = preset?.stripMetadata ?? prefs.stripMetadata
@@ -915,10 +1341,6 @@ final class ContentViewModel: ObservableObject {
             if smartQ, autoMonoScans, monoLikelihoodForFlatten >= 0.5 { return true }
             return false
         }()
-        var preservedModDate: Date?
-        if workURL.path != finalURL.path, prefs.preserveTimestamps {
-            preservedModDate = (try? FileManager.default.attributesOfItem(atPath: sourceURL.path)[.modificationDate]) as? Date
-        }
 
         let ocrPhaseFraction: Double = (ocrTempURL != nil) ? 0.2 : 0
         let pdfProgress: @Sendable (Float) -> Void = { p in
@@ -937,13 +1359,14 @@ final class ContentViewModel: ObservableObject {
             var lastAttemptedOutSize: Int64 = 0
 
             for q in qualityAttempts {
+                let attemptURL = nextAttemptURL()
                 let result = try await CompressionService.shared.compressPDF(
                     source: sourceForCompression,
                     outputMode: outputMode,
                     quality: q,
                     grayscale: effectiveGrayscale,
                     stripMetadata: strip,
-                    outputURL: workURL,
+                    outputURL: attemptURL,
                     preserveQpdfSteps: preserveQpdfSteps,
                     targetBytes: pdfTargetBytes,
                     resolutionDownsampling: pdfResolutionDownsampling,
@@ -951,8 +1374,8 @@ final class ContentViewModel: ObservableObject {
                     collisionCustomPattern: collisionCustomPattern(for: item),
                     progressHandler: pdfProgress
                 )
-                let outSize = (try? workURL.resourceValues(forKeys: [.fileSizeKey]))?.fileSize.map { Int64($0) }
-                    ?? result.outputSize
+                if result.outputURL != attemptURL { attemptURLs.append(result.outputURL) }
+                let outSize = sizeOf(result.outputURL) ?? result.outputSize
                 lastAttemptedOutSize = outSize
                 if outSize >= result.originalSize {
                     continue
@@ -979,13 +1402,14 @@ final class ContentViewModel: ObservableObject {
                     let bailoutTargetMet = pdfTargetBytes.map { (chosenOutSize) <= $0 } ?? false
                     guard chosenResult == nil || (!bailoutTargetMet && pdfTargetBytes != nil) else { break }
                     do {
+                        let attemptURL = nextAttemptURL()
                         let lr = try await CompressionService.shared.compressPDF(
                             source: sourceForCompression,
                             outputMode: outputMode,
                             quality: pdfQuality,
                             grayscale: effectiveGrayscale,
                             stripMetadata: strip,
-                            outputURL: workURL,
+                            outputURL: attemptURL,
                             flattenLastResort: pass.lastResort,
                             flattenUltra: pass.ultra,
                             preserveQpdfSteps: preserveQpdfSteps,
@@ -993,8 +1417,8 @@ final class ContentViewModel: ObservableObject {
                             collisionCustomPattern: collisionCustomPattern(for: item),
                             progressHandler: pdfProgress
                         )
-                        let outSize = (try? workURL.resourceValues(forKeys: [.fileSizeKey]))?.fileSize.map { Int64($0) }
-                            ?? lr.outputSize
+                        if lr.outputURL != attemptURL { attemptURLs.append(lr.outputURL) }
+                        let outSize = sizeOf(lr.outputURL) ?? lr.outputSize
                         lastAttemptedOutSize = outSize
                         if outSize < lr.originalSize, chosenResult == nil || outSize < chosenOutSize {
                             chosenResult = lr
@@ -1015,76 +1439,29 @@ final class ContentViewModel: ObservableObject {
                     attemptedBytes: lastAttemptedOutSize,
                     reason: "zero_gain_no_smaller_output"
                 )
-                try? FileManager.default.removeItem(at: workURL)
-                await MainActor.run {
-                    item.zeroGainPDFOutputMode = outputMode
-                    item.status = .zeroGain(attemptedSize: lastAttemptedOutSize)
-                }
+                item.zeroGainPDFOutputMode = outputMode
+                item.status = .zeroGain(attemptedSize: lastAttemptedOutSize)
                 return
             }
 
-            let producedURL: URL
-            var recoveryForUndo: URL?
-            if workURL.path != finalURL.path {
-                do {
-                    recoveryForUndo = try? OriginalsHandler.disposeSourceBeforeTempSwap(
-                        originalAt: sourceURL,
-                        action: prefs.originalsAction,
-                        backupFolder: prefs.originalsAction == .backup ? prefs.originalsBackupDestinationURL() : nil
-                    )
-                    producedURL = try OutputPathUniqueness.moveTempItemToUniqueOutput(
-                        temp: workURL,
-                        desiredOutput: finalURL,
-                        sourceURL: sourceURL,
-                        style: collisionStyle,
-                        customPattern: collisionCustomPattern(for: item)
-                    )
-                } catch {
-                    try? FileManager.default.removeItem(at: workURL)
-                    await MainActor.run { item.status = .failed(error) }
-                    return
-                }
-            } else {
-                producedURL = result.outputURL
-                if replaceOrigin {
-                    if urlDL {
-                        try? FileManager.default.removeItem(at: item.sourceURL)
-                    } else {
-                        recoveryForUndo = try? OriginalsHandler.disposeForReplace(
-                            originalAt: item.sourceURL,
-                            outputURL: producedURL,
-                            action: prefs.originalsAction,
-                            backupFolder: prefs.originalsAction == .backup ? prefs.originalsBackupDestinationURL() : nil
-                        )
-                    }
-                }
-            }
-
-            let outSize = (try? producedURL.resourceValues(forKeys: [.fileSizeKey]))?.fileSize.map { Int64($0) }
-                ?? chosenOutSize
-            await MainActor.run {
-                item.status = .done(outputURL: producedURL,
-                                    originalSize: result.originalSize,
-                                    outputSize: outSize)
-                if self.prefs.preserveTimestamps {
-                    if let d = preservedModDate {
-                        try? FileManager.default.setAttributes([.modificationDate: d], ofItemAtPath: producedURL.path)
-                    } else {
-                        self.copyTimestamp(from: sourceURL, to: producedURL)
-                    }
-                }
-                self.copyFinderCommentsIfSettingsAllow(from: sourceURL, to: producedURL)
-                item.undoSnapshot = CompressionUndoSnapshot(
-                    sourceURL: sourceURL,
-                    outputURL: producedURL,
-                    originalRecoveryURL: recoveryForUndo,
-                    replaceOriginal: replaceOrigin,
-                    isURLDownloadSource: urlDL
-                )
-            }
+            let fin = try await finalizeKeptOutput(
+                item,
+                produced: result.outputURL,
+                stagedDestination: finalURL
+            )
+            let outSize = sizeOf(fin.outputURL) ?? chosenOutSize
+            item.status = .done(outputURL: fin.outputURL,
+                                originalSize: result.originalSize,
+                                outputSize: outSize)
+            item.undoSnapshot = CompressionUndoSnapshot(
+                sourceURL: sourceURL,
+                outputURL: fin.outputURL,
+                originalRecoveryURL: fin.originalRecoveryURL,
+                replaceOriginal: replaceOrigin,
+                isURLDownloadSource: urlDL
+            )
         } catch let pdfErr as PDFCompressionError {
             if case .rewriteNotSmallerThanOriginal(let attempted) = pdfErr {
-                try? FileManager.default.removeItem(at: workURL)
                 await MainActor.run {
                     item.zeroGainPDFOutputMode = outputMode
                     item.status = .zeroGain(attemptedSize: attempted)
@@ -1119,6 +1496,7 @@ final class ContentViewModel: ObservableObject {
             if let pr = preset { return pr.outputURL(for: item.sourceURL, mediaType: .video, globalPrefs: prefs, isFromURLDownload: urlDL) }
             return prefs.outputURL(for: item.sourceURL, mediaType: .video, isFromURLDownload: urlDL)
         }()
+        noteSelfWrittenOutput(intendedOutput)
         let videoFallback = preset.map { VideoQuality.resolve($0.videoQualityRaw) } ?? prefs.videoQuality
         let sourceURL = item.sourceURL
         let asset = VideoCompressor.makeURLAsset(url: sourceURL)
@@ -1183,18 +1561,14 @@ final class ContentViewModel: ObservableObject {
             style: collisionStyle,
             customPattern: collisionCustomPattern(for: item)
         )
-        let workURL: URL
-        if sourceURL.path == finalURL.path {
-            workURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent("dinky_vid_\(UUID().uuidString).mp4")
-        } else {
-            workURL = finalURL
-        }
+        // Always a private temp file; `finalizeKeptOutput` picks the free name when it moves it in,
+        // so two jobs wanting the same output name can't write into one file.
+        let workURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("dinky_vid_\(UUID().uuidString)")
+            .appendingPathExtension(finalURL.pathExtension.isEmpty ? "mp4" : finalURL.pathExtension)
+        // Removes a discarded or failed encode; a kept one has already been moved into place.
+        defer { try? FileManager.default.removeItem(at: workURL) }
         let replaceOrigin = (preset.map { FilenameHandling(rawValue: $0.filenameHandlingRaw) } ?? prefs.filenameHandling) == .replaceOrigin
-        var preservedModDate: Date?
-        if workURL.path != finalURL.path, prefs.preserveTimestamps {
-            preservedModDate = (try? FileManager.default.attributesOfItem(atPath: sourceURL.path)[.modificationDate]) as? Date
-        }
 
         let progressHandler: @Sendable (Float) -> Void = { p in
             Task { @MainActor in
@@ -1216,77 +1590,41 @@ final class ContentViewModel: ObservableObject {
                 videoContentType: smartContentType,
                 progressHandler: progressHandler
             )
-            let producedURL: URL
-            var recoveryForUndo: URL?
-            if workURL.path != finalURL.path {
-                do {
-                    recoveryForUndo = try? OriginalsHandler.disposeSourceBeforeTempSwap(
-                        originalAt: sourceURL,
-                        action: prefs.originalsAction,
-                        backupFolder: prefs.originalsAction == .backup ? prefs.originalsBackupDestinationURL() : nil
-                    )
-                    producedURL = try OutputPathUniqueness.moveTempItemToUniqueOutput(
-                        temp: workURL,
-                        desiredOutput: finalURL,
-                        sourceURL: sourceURL,
-                        style: collisionStyle,
-                        customPattern: collisionCustomPattern(for: item)
-                    )
-                } catch {
-                    try? FileManager.default.removeItem(at: workURL)
-                    await MainActor.run { item.status = .failed(error) }
-                    return
-                }
-            } else {
-                producedURL = result.outputURL
-                if replaceOrigin {
-                    if urlDL {
-                        try? FileManager.default.removeItem(at: item.sourceURL)
-                    } else {
-                        recoveryForUndo = try? OriginalsHandler.disposeForReplace(
-                            originalAt: item.sourceURL,
-                            outputURL: producedURL,
-                            action: prefs.originalsAction,
-                            backupFolder: prefs.originalsAction == .backup ? prefs.originalsBackupDestinationURL() : nil
-                        )
-                    }
-                }
-            }
-
-            let outSize = (try? producedURL.resourceValues(forKeys: [.fileSizeKey]))?.fileSize.map { Int64($0) }
+            // Judge the result before anything happens to the original.
+            let outSize = (try? result.outputURL.resourceValues(forKeys: [.fileSizeKey]))?.fileSize.map { Int64($0) }
                 ?? result.outputSize
-            let savings = result.originalSize > 0
-                ? Double(result.originalSize - outSize) / Double(result.originalSize) : 0
-            await MainActor.run {
-                item.videoDuration = result.videoDuration
-                item.detectedVideoContentType = result.videoContentType
-                item.videoIsHDR = result.videoIsHDR
-                if outSize >= result.originalSize {
-                    item.status = .zeroGain(attemptedSize: outSize)
-                    try? FileManager.default.removeItem(at: producedURL)
-                } else if self.prefs.minimumSavingsPercent > 0 && savings < Double(self.prefs.minimumSavingsPercent) / 100.0 && !wasForced {
-                    item.status = .skipped(savedPercent: savings * 100, threshold: self.prefs.minimumSavingsPercent)
-                    try? FileManager.default.removeItem(at: producedURL)
-                } else {
-                    item.status = .done(outputURL: producedURL,
-                                        originalSize: result.originalSize,
-                                        outputSize: outSize)
-                    if self.prefs.preserveTimestamps {
-                        if let d = preservedModDate {
-                            try? FileManager.default.setAttributes([.modificationDate: d], ofItemAtPath: producedURL.path)
-                        } else {
-                            self.copyTimestamp(from: sourceURL, to: producedURL)
-                        }
-                    }
-                    self.copyFinderCommentsIfSettingsAllow(from: sourceURL, to: producedURL)
-                    item.undoSnapshot = CompressionUndoSnapshot(
-                        sourceURL: sourceURL,
-                        outputURL: producedURL,
-                        originalRecoveryURL: recoveryForUndo,
-                        replaceOriginal: replaceOrigin,
-                        isURLDownloadSource: urlDL
-                    )
-                }
+            item.videoDuration = result.videoDuration
+            item.detectedVideoContentType = result.videoContentType
+            item.videoIsHDR = result.videoIsHDR
+            let outcome = CompressionOutcomeDecider.decide(
+                originalBytes: result.originalSize,
+                outputBytes: outSize,
+                minimumSavingsPercent: prefs.minimumSavingsPercent,
+                forced: wasForced
+            )
+            switch outcome {
+            case .zeroGain:
+                try? FileManager.default.removeItem(at: result.outputURL)
+                item.status = .zeroGain(attemptedSize: outSize)
+            case .skipped(let savedPercent):
+                try? FileManager.default.removeItem(at: result.outputURL)
+                item.status = .skipped(savedPercent: savedPercent, threshold: prefs.minimumSavingsPercent)
+            case .keep:
+                let fin = try await finalizeKeptOutput(
+                    item,
+                    produced: result.outputURL,
+                    stagedDestination: finalURL
+                )
+                item.status = .done(outputURL: fin.outputURL,
+                                    originalSize: result.originalSize,
+                                    outputSize: outSize)
+                item.undoSnapshot = CompressionUndoSnapshot(
+                    sourceURL: sourceURL,
+                    outputURL: fin.outputURL,
+                    originalRecoveryURL: fin.originalRecoveryURL,
+                    replaceOriginal: replaceOrigin,
+                    isURLDownloadSource: urlDL
+                )
             }
         } catch VideoCompressionError.alreadyOptimized {
             await MainActor.run {
@@ -1332,6 +1670,7 @@ final class ContentViewModel: ObservableObject {
             }
             return prefs.outputURL(for: item.sourceURL, mediaType: .audio, isFromURLDownload: urlDL)
         }()
+        noteSelfWrittenOutput(intendedOutput)
         // Smart Quality may pick a different container than the preset’s stored `audioFormatRaw`.
         let outDir = intendedOutput.deletingLastPathComponent()
         let outStem = intendedOutput.deletingPathExtension().lastPathComponent
@@ -1344,21 +1683,16 @@ final class ContentViewModel: ObservableObject {
             style: collisionStyle,
             customPattern: collisionCustomPattern(for: item)
         )
-        let workURL: URL
-        if sourceURL.path == finalURL.path {
-            workURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent("dinky_aud_\(UUID().uuidString)")
-                .appendingPathExtension(targetFormat.fileExtension)
-        } else {
-            workURL = finalURL
-        }
+        // Always a private temp file (see video): `music.mp3` and `music.m4a` both become
+        // `music-dinky.m4a`, and converting both at once into that one path corrupted or failed them.
+        let workURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("dinky_aud_\(UUID().uuidString)")
+            .appendingPathExtension(targetFormat.fileExtension)
+        // Removes a discarded or failed encode; a kept one has already been moved into place.
+        defer { try? FileManager.default.removeItem(at: workURL) }
 
         let replaceOrigin = (preset.map { FilenameHandling(rawValue: $0.filenameHandlingRaw) } ?? prefs.filenameHandling)
             == .replaceOrigin
-        var preservedModDate: Date?
-        if workURL.path != finalURL.path, prefs.preserveTimestamps {
-            preservedModDate = (try? FileManager.default.attributesOfItem(atPath: sourceURL.path)[.modificationDate]) as? Date
-        }
 
         let progressHandler: @Sendable (Float) -> Void = { p in
             Task { @MainActor in
@@ -1374,77 +1708,41 @@ final class ContentViewModel: ObservableObject {
                 outputURL: workURL,
                 progressHandler: progressHandler
             )
-            let producedURL: URL
-            var recoveryForUndo: URL?
-            if workURL.path != finalURL.path {
-                do {
-                    recoveryForUndo = try? OriginalsHandler.disposeSourceBeforeTempSwap(
-                        originalAt: sourceURL,
-                        action: prefs.originalsAction,
-                        backupFolder: prefs.originalsAction == .backup ? prefs.originalsBackupDestinationURL() : nil
-                    )
-                    producedURL = try OutputPathUniqueness.moveTempItemToUniqueOutput(
-                        temp: workURL,
-                        desiredOutput: finalURL,
-                        sourceURL: sourceURL,
-                        style: collisionStyle,
-                        customPattern: collisionCustomPattern(for: item)
-                    )
-                } catch {
-                    try? FileManager.default.removeItem(at: workURL)
-                    await MainActor.run { item.status = .failed(error) }
-                    return
-                }
-            } else {
-                producedURL = result.outputURL
-                if replaceOrigin {
-                    if urlDL {
-                        try? FileManager.default.removeItem(at: item.sourceURL)
-                    } else {
-                        recoveryForUndo = try? OriginalsHandler.disposeForReplace(
-                            originalAt: sourceURL,
-                            outputURL: producedURL,
-                            action: prefs.originalsAction,
-                            backupFolder: prefs.originalsAction == .backup ? prefs.originalsBackupDestinationURL() : nil
-                        )
-                    }
-                }
-            }
-
-            let outSize = (try? producedURL.resourceValues(forKeys: [.fileSizeKey]))?.fileSize.map { Int64($0) }
+            // Judge the result before anything happens to the original.
+            let outSize = (try? result.outputURL.resourceValues(forKeys: [.fileSizeKey]))?.fileSize.map { Int64($0) }
                 ?? result.outputSize
-            let savings = result.originalSize > 0
-                ? Double(result.originalSize - outSize) / Double(result.originalSize) : 0
-            await MainActor.run {
-                if let d = result.audioDurationSeconds {
-                    item.videoDuration = d
-                }
-                if outSize >= result.originalSize {
-                    item.status = .zeroGain(attemptedSize: outSize)
-                    try? FileManager.default.removeItem(at: producedURL)
-                } else if self.prefs.minimumSavingsPercent > 0 && savings < Double(self.prefs.minimumSavingsPercent) / 100.0 && !wasForced {
-                    item.status = .skipped(savedPercent: savings * 100, threshold: self.prefs.minimumSavingsPercent)
-                    try? FileManager.default.removeItem(at: producedURL)
-                } else {
-                    item.status = .done(outputURL: producedURL,
-                                        originalSize: result.originalSize,
-                                        outputSize: outSize)
-                    if self.prefs.preserveTimestamps {
-                        if let d = preservedModDate {
-                            try? FileManager.default.setAttributes([.modificationDate: d], ofItemAtPath: producedURL.path)
-                        } else {
-                            self.copyTimestamp(from: sourceURL, to: producedURL)
-                        }
-                    }
-                    self.copyFinderCommentsIfSettingsAllow(from: sourceURL, to: producedURL)
-                    item.undoSnapshot = CompressionUndoSnapshot(
-                        sourceURL: sourceURL,
-                        outputURL: producedURL,
-                        originalRecoveryURL: recoveryForUndo,
-                        replaceOriginal: replaceOrigin,
-                        isURLDownloadSource: urlDL
-                    )
-                }
+            if let d = result.audioDurationSeconds {
+                item.videoDuration = d
+            }
+            let outcome = CompressionOutcomeDecider.decide(
+                originalBytes: result.originalSize,
+                outputBytes: outSize,
+                minimumSavingsPercent: prefs.minimumSavingsPercent,
+                forced: wasForced
+            )
+            switch outcome {
+            case .zeroGain:
+                try? FileManager.default.removeItem(at: result.outputURL)
+                item.status = .zeroGain(attemptedSize: outSize)
+            case .skipped(let savedPercent):
+                try? FileManager.default.removeItem(at: result.outputURL)
+                item.status = .skipped(savedPercent: savedPercent, threshold: prefs.minimumSavingsPercent)
+            case .keep:
+                let fin = try await finalizeKeptOutput(
+                    item,
+                    produced: result.outputURL,
+                    stagedDestination: finalURL
+                )
+                item.status = .done(outputURL: fin.outputURL,
+                                    originalSize: result.originalSize,
+                                    outputSize: outSize)
+                item.undoSnapshot = CompressionUndoSnapshot(
+                    sourceURL: sourceURL,
+                    outputURL: fin.outputURL,
+                    originalRecoveryURL: fin.originalRecoveryURL,
+                    replaceOriginal: replaceOrigin,
+                    isURLDownloadSource: urlDL
+                )
             }
         } catch {
             await MainActor.run { item.status = .failed(error) }
@@ -1514,12 +1812,6 @@ final class ContentViewModel: ObservableObject {
     }
 }
 
-struct PNGInputError: LocalizedError {
-    var errorDescription: String? {
-        String(localized: "PNG lossless only works on PNG, HEIC, or HEIF files. Try WebP or AVIF for other images.", comment: "Error when PNG output selected for unsupported input.")
-    }
-}
-
 // MARK: - Root view
 
 struct ContentView: View {
@@ -1529,7 +1821,6 @@ struct ContentView: View {
     @Environment(\.openSettings) private var openSettings
     @Environment(\.openWindow) private var openWindow
     @ObservedObject var vm: ContentViewModel
-    @StateObject private var folderWatcher = FolderWatcher()
     @State private var sidebarVisible = false
     @State private var isDropTargeted  = false
     @State private var idleLoop        = 0
@@ -1603,7 +1894,7 @@ struct ContentView: View {
         }
         switch imp {
         case .localFile(let url):
-            if vm.items.contains(where: { $0.sourceURL.path == url.path }) {
+            if vm.items.contains(where: { $0.sourceURL.path == url.path && !$0.status.isTerminal }) {
                 showPasteAlert(title: S.pasteDuplicateTitle, message: S.pasteDuplicateMessage)
                 return
             }
@@ -1626,7 +1917,13 @@ struct ContentView: View {
         let hasWork = !localURLs.isEmpty || !remoteURLs.isEmpty
         guard hasWork else { return }
         guard shouldShowCompressionConfirmation() else {
-            if !localURLs.isEmpty { vm.addAndCompress(localURLs, force: force, presetID: presetID) }
+            if !localURLs.isEmpty {
+                if let presetID {
+                    vm.addAndCompress(localURLs, force: force, presetID: presetID)
+                } else {
+                    vm.addAndCompressWithActivePreset(localURLs, force: force)
+                }
+            }
             if !remoteURLs.isEmpty {
                 vm.queueRemoteDownload(
                     urls: remoteURLs,
@@ -1771,7 +2068,12 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 if updater.shouldShow(dismissedVersion: prefs.dismissedUpdateVersion) {
                     VStack(spacing: 8) {
-                        UpdateBanner(updater: updater, itemCount: vm.items.count)
+                        UpdateBanner(
+                            updater: updater,
+                            itemCount: vm.items.count,
+                            isProcessing: vm.isProcessing,
+                            deferUntilIdle: { work in vm.runWhenIdle(work) }
+                        )
                             .environmentObject(prefs)
                         if !reviewPromptBelowUpdateDismissed {
                             ReviewPromptBanner {
@@ -1842,9 +2144,6 @@ struct ContentView: View {
                     .help(String(localized: "Run compression on queued files (\(prefs.shortcut(for: .compressNow).displayString))", comment: "Toolbar: Compress Now help; argument is shortcut."))
                 }
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .dinkyOpenMacPreferences)) { _ in
-            openWindow(id: DinkyMacPreferencesWindow.sceneID)
         }
         .onReceive(NotificationCenter.default.publisher(for: .dinkyPrepareQuit)) { _ in prepareForQuit() }
     }
@@ -1936,7 +2235,7 @@ struct ContentView: View {
                 onContinue: {
                     let batchPresetID = UUID(uuidString: prefs.activePresetID)
                     if !pending.localURLs.isEmpty {
-                        vm.addAndCompress(pending.localURLs, force: pending.force, presetID: batchPresetID)
+                        vm.addAndCompressWithActivePreset(pending.localURLs, force: pending.force)
                     }
                     if !pending.remoteURLs.isEmpty {
                         vm.queueRemoteDownload(urls: pending.remoteURLs, force: pending.force, presetID: batchPresetID)
@@ -1970,18 +2269,14 @@ struct ContentView: View {
         .onAppear {
             URLDownloader.sweepOldDownloads()
             prefs.reconcileSidebarSectionsForSimpleModeIfNeeded()
-            updateFolderWatcher()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            updateFolderWatcher()
+            vm.reconcileBookmarksAndUpdateFolderWatcher()
+            // Next turn, so this view's notification observers are attached before queued
+            // open-files / paste work posts to them.
+            DispatchQueue.main.async { DockPresenceManager.mainWindowDidAppear() }
         }
         .task {
             await updater.check()
         }
-        .onChange(of: prefs.folderWatchEnabled) { _, _ in updateFolderWatcher() }
-        .onChange(of: prefs.watchedFolderPath) { _, _ in updateFolderWatcher() }
-        .onChange(of: prefs.watchedFolderBookmark) { _, _ in updateFolderWatcher() }
-        .onChange(of: prefs.savedPresetsData) { _, _ in updateFolderWatcher() }
         .sheet(item: $diagnostics.pendingCrashReport) { report in
             PostCrashReportSheet(report: report, diagnostics: diagnostics)
         }
@@ -2287,35 +2582,6 @@ struct ContentView: View {
                 .compactMap { $0 as? URL } ?? [])
             : [url]
         return urls.filter { MediaTypeDetector.detect($0) != nil }
-    }
-
-    // MARK: - Folder watcher
-
-    private func updateFolderWatcher() {
-        prefs.reconcileFolderBookmarksIfNeeded()
-        let reg = WatchPipelineRegistry(prefs: prefs)
-        let paths = reg.watchedRootPaths
-        guard !paths.isEmpty else {
-            folderWatcher.stop()
-            return
-        }
-        folderWatcher.onNewFiles = { urls in
-            for url in urls {
-                switch reg.pipeline(for: url) {
-                case .global:
-                    vm.addAndCompress([url], presetID: nil)
-                case .preset(let id):
-                    let preset = prefs.savedPresets.first(where: { $0.id == id })
-                    let media = MediaTypeDetector.detect(url)
-                    if let p = preset, let m = media, p.applies(to: m) {
-                        vm.addAndCompress([url], presetID: id)
-                    } else {
-                        vm.addAndCompress([url], presetID: nil)
-                    }
-                }
-            }
-        }
-        folderWatcher.start(paths: paths)
     }
 
     // MARK: - Open panel

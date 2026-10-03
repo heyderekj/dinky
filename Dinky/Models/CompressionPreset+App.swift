@@ -29,6 +29,9 @@ extension CompressionPreset {
             presetCustomFolderPath: "",
             presetCustomFolderBookmark: Data(),
             contentTypeHintRaw: prefs.contentTypeHintRaw,
+            chromaSubsamplingRaw: prefs.chromaSubsamplingRaw,
+            webpLossless: prefs.webpLossless,
+            pngOutputModeRaw: prefs.pngOutputModeRaw,
             presetMediaScopeRaw: PresetMediaScope.all.rawValue,
             pdfOutputModeRaw: prefs.pdfOutputModeRaw,
             pdfQualityRaw: prefs.pdfQualityRaw,
@@ -76,6 +79,9 @@ extension CompressionPreset {
             prefs.customFolderDisplayPath = presetCustomFolderPath
         }
         prefs.contentTypeHintRaw = contentTypeHintRaw
+        prefs.chromaSubsamplingRaw = chromaSubsamplingRaw
+        prefs.webpLossless = webpLossless
+        prefs.pngOutputModeRaw = pngOutputModeRaw
         prefs.pdfOutputModeRaw = pdfOutputModeRaw
         prefs.pdfQualityRaw = pdfQualityRaw
         prefs.videoQualityRaw = videoQualityRaw
@@ -136,6 +142,12 @@ extension CompressionPreset {
     }
 
     func destinationDirectory(for source: URL, globalPrefs: DinkyPreferences, isFromURLDownload: Bool = false) -> URL {
+        let base = baseDestinationDirectory(for: source, globalPrefs: globalPrefs, isFromURLDownload: isFromURLDownload)
+        guard let subfolder = CompressionPreset.sanitizedOutputSubfolder(outputSubfolder) else { return base }
+        return base.appendingPathComponent(subfolder, isDirectory: true)
+    }
+
+    private func baseDestinationDirectory(for source: URL, globalPrefs: DinkyPreferences, isFromURLDownload: Bool = false) -> URL {
         if isFromURLDownload, saveLocationRaw == "sameFolder" {
             return FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
                 ?? source.deletingLastPathComponent()

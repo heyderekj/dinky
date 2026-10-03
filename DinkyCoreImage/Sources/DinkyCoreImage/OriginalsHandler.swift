@@ -21,42 +21,6 @@ public enum OriginalsHandler {
             return destination
         }
     }
-
-    @discardableResult
-    public static func disposeForReplace(
-        originalAt url: URL,
-        outputURL: URL,
-        action: OriginalsAction,
-        backupFolder: URL?
-    ) throws -> URL? {
-        let collides = url.standardizedFileURL.path == outputURL.standardizedFileURL.path
-        switch action {
-        case .keep:
-            if collides { return try dispose(originalAt: url, action: .trash, backupFolder: nil) }
-            return nil
-        case .trash:
-            return try dispose(originalAt: url, action: .trash, backupFolder: nil)
-        case .backup:
-            return try dispose(originalAt: url, action: .backup, backupFolder: backupFolder)
-        }
-    }
-
-    @discardableResult
-    public static func disposeSourceBeforeTempSwap(
-        originalAt url: URL,
-        action: OriginalsAction,
-        backupFolder: URL?
-    ) throws -> URL? {
-        switch action {
-        case .keep:
-            guard FileManager.default.fileExists(atPath: url.path) else { return nil }
-            return try dispose(originalAt: url, action: .trash, backupFolder: nil)
-        case .trash:
-            return try dispose(originalAt: url, action: .trash, backupFolder: nil)
-        case .backup:
-            return try dispose(originalAt: url, action: .backup, backupFolder: backupFolder)
-        }
-    }
 }
 
 public enum OriginalsHandlerError: LocalizedError {

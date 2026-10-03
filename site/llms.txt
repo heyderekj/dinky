@@ -14,7 +14,7 @@
 - **Custom keyboard shortcuts** — rebind Open Files, Clipboard Compress, Compress Now, Clear, and Delete in Settings → Shortcuts
 - **Launch at login** — opt-in via SMAppService so Dinky and any watch folders are ready at login
 - **Localized** — functional UI follows the system language for 12 Tier-1 macOS locales (de, es, fr, it, ja, ko, nl, pt-BR, ru, tr, zh-Hans, zh-Hant); brand voice and playful copy stay in English
-- **Originals** — keep, move to Trash, or move to a Backup folder per preset / globally
+- **Originals** — keep, move to Trash, or move to a Backup folder (global setting; watch folders can override it)
 - **Batch speed** — Fast (one at a time), Faster (up to three parallel), or Fastest (up to eight)
 - Max width resizing (common web presets or custom value)
 - Max file size targeting via binary search on quality (images); step-down quality targeting for PDFs
@@ -74,7 +74,7 @@
 - Support: help@dinkyfiles.com
 - GitHub: https://github.com/heyderekj/dinky
 - Latest release: https://github.com/heyderekj/dinky/releases/latest
-- Download v2.12.0: https://github.com/heyderekj/dinky/releases/download/v2.12.0/Dinky-2.12.0.dmg
+- Download v2.15.0: https://github.com/heyderekj/dinky/releases/download/v2.15.0/Dinky-2.15.0.dmg
 - Homebrew (optional): `brew tap heyderekj/dinky https://github.com/heyderekj/dinky` then `brew install --cask dinky`
 
 ## Author
@@ -88,6 +88,6 @@ Derek Castelli — freelance web designer (Webflow, Figma, Cursor)
 This website is a static marketing page for the Dinky macOS app. There is **no public HTTP API**, **no OAuth/OIDC**, **no protected API resource**, and **no remote MCP server** on dinkyfiles.com.
 
 - Machine-readable discovery: `https://dinkyfiles.com/openapi.yaml` (empty paths for the *site*; see description for the local product), `https://dinkyfiles.com/.well-known/api-catalog`, `https://dinkyfiles.com/.well-known/agent-skills/index.json`, and this file (`https://dinkyfiles.com/llms.txt`).
-- **Local automation (images):** the open-source app repo ships a `dinky` **CLI** and optional **loopback** `dinky serve` (build from `DinkyCoreImage/` on a Mac). Same JSON contract for `--json` and `POST /v1/compress`. Documented in-repo: `docs/local-cli.md` (schema `dinky.image.compress/1.0.0`). **No** upload to dinkyfiles.com; paths are explicit and on-device.
+- **Local automation (images):** the open-source app repo ships a `dinky` **CLI** and optional **loopback-only**, token-protected `dinky serve` (build from `DinkyCoreImage/` on a Mac; listens on `127.0.0.1`/`[::1]` only, POSTs need `Authorization: Bearer <token>` and `Content-Type: application/json`, browser `Origin` requests are refused). Same JSON contract for `--json` and `POST /v1/compress`. Documented in-repo: `docs/local-cli.md` (schema `dinky.image.compress/1.0.0`). **No** upload to dinkyfiles.com; paths are explicit and on-device.
 - **WebMCP** (Chromium): when supported, the homepage registers in-browser tools via `navigator.modelContext.registerTool()` — e.g. scroll to FAQ, open install help, copy the quarantine Terminal command, open GitHub Releases.
 - Automation outside the browser: use **GitHub** (source, issues, releases) and direct **DMG download URLs** from the Releases page for the GUI app. For image compression from Terminal/agents, use the **local** `dinky` tool from the repository — not this website.

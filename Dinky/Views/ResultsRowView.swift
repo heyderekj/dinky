@@ -31,103 +31,21 @@ struct ResultsRowView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
-                HStack(spacing: 6) {
-                // Content-type / media-type chip
-                if item.mediaType == .image {
-                    if let type = item.detectedContentType {
-                        contentTypeChip(type)
-                            .transition(.opacity.combined(with: .scale(scale: 0.9)))
-                            .fixedSize()
-                            .help(type.tooltipLabel)
-                    } else {
-                        mediaChip(String(localized: "image", comment: "Results row: generic image chip until Smart Quality classifies (photo / graphic / mixed)."))
-                            .help(String(localized: "Image file", comment: "Tooltip for generic image type chip."))
+                // Chips never squash (they used to wrap letter by letter on narrow windows). When a
+                // row is tight, secondary chips go first, then the name may shrink to its minimum.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 6) {
+                        chips(compact: false)
+                        titleBlock(minWidth: Self.titleMinWidth)
                     }
-                    if item.usedFirstFrameOnly, case .done = item.status {
-                        mediaChip(String(localized: "First frame", comment: "Results row: multi-frame source was compressed as a single frame."))
-                            .fixedSize()
-                            .help(String(localized: "Animation or other frames were omitted; only the first frame was compressed.", comment: "Tooltip: first-frame-only chip."))
-                            .accessibilityLabel(String(localized: "First frame only", comment: "VoiceOver: first-frame-only chip."))
+                    HStack(spacing: 6) {
+                        chips(compact: true)
+                        titleBlock(minWidth: Self.titleMinWidth)
                     }
-                    if showsImageFormatConversionChip {
-                        mediaChip(imageFormatConversionChipLabel())
-                            .fixedSize()
-                            .help(String(localized: "Saved in a different format than the original — not a same-file recompress.", comment: "Tooltip: format conversion chip."))
-                            .accessibilityLabel(imageFormatConversionAccessibilityLabel())
+                    HStack(spacing: 6) {
+                        chips(compact: true)
+                        titleBlock(minWidth: 0)
                     }
-                } else if item.mediaType == .pdf {
-                    if let pages = item.pageCount {
-                        mediaChip("\(pages)p")
-                            .help(String(localized: "\(pages) pages", comment: "Tooltip: PDF page count."))
-                    } else {
-                        mediaChip(String(localized: "pdf", comment: "Results row: generic PDF chip until page count is known."))
-                            .help(String(localized: "PDF document", comment: "Tooltip for generic PDF type chip."))
-                    }
-                    mediaChip(pdfExportPolicyChipText())
-                        .fixedSize()
-                        .help(pdfExportPolicyChipTooltip())
-                        .accessibilityLabel(pdfExportPolicyAccessibilityLabel())
-                } else if item.mediaType == .video {
-                    if let type = item.detectedVideoContentType {
-                        videoContentTypeChip(type)
-                            .transition(.opacity.combined(with: .scale(scale: 0.9)))
-                            .fixedSize()
-                            .help(type.tooltipLabel)
-                    } else {
-                        mediaChip(String(localized: "video", comment: "Results row: generic video chip when content type was not classified (e.g. Smart Quality off)."))
-                            .help(String(localized: "Video file", comment: "Tooltip for generic video type chip."))
-                    }
-                    if item.videoIsHDR {
-                        hdrBadge
-                            .transition(.opacity.combined(with: .scale(scale: 0.9)))
-                            .fixedSize()
-                            .help(String(localized: "HDR source — preserved with HEVC so highlights and color stay intact.", comment: "Tooltip for HDR badge."))
-                    }
-                    if let secs = item.videoDuration {
-                        mediaChip(formattedDuration(secs))
-                            .help(String(localized: "Duration", comment: "Tooltip for video duration chip."))
-                    }
-                    mediaChip(videoExportPolicyChipText())
-                        .fixedSize()
-                        .help(videoExportPolicyChipTooltip())
-                        .accessibilityLabel(videoExportPolicyAccessibilityLabel())
-                } else if item.mediaType == .audio {
-                    mediaChip(String(localized: "audio", comment: "Results row: generic audio type chip."))
-                        .help(String(localized: "Audio file", comment: "Tooltip for generic audio type chip."))
-                    if let secs = item.videoDuration {
-                        mediaChip(formattedDuration(secs))
-                            .help(String(localized: "Duration", comment: "Tooltip for audio duration chip."))
-                    }
-                    mediaChip(audioExportPolicyChipText())
-                        .fixedSize()
-                        .help(audioExportPolicyChipTooltip())
-                        .accessibilityLabel(audioExportPolicyAccessibilityLabel())
-                }
-
-                VStack(alignment: .leading, spacing: 1) {
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text(rowTitle)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-                        if let preset = appliedPreset {
-                            presetBadge(preset).fixedSize(horizontal: true, vertical: false)
-                        }
-                    }
-                    if case .pending = item.status {
-                        Text(pendingOutputLastPathComponent())
-                            .font(.system(size: 9, design: .monospaced))
-                            .foregroundStyle(.tertiary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                    } else if case .downloading = item.status {
-                        Text(pendingOutputLastPathComponent())
-                            .font(.system(size: 9, design: .monospaced))
-                            .foregroundStyle(.tertiary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                    }
-                }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .animation(.easeInOut(duration: 0.2), value: item.detectedContentType)
@@ -141,7 +59,9 @@ struct ResultsRowView: View {
                 .animation(.easeInOut(duration: 0.2), value: pdfExportPolicyChipText())
 
                 sizeInfo
+                    .fixedSize()
                 statusChip
+                    .fixedSize()
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 9)
@@ -376,6 +296,9 @@ struct ResultsRowView: View {
         if item.mediaType == .image, item.usedFirstFrameOnly, case .done = item.status {
             base += ", " + String(localized: "First frame only", comment: "VoiceOver: first-frame-only chip.")
         }
+        if item.mediaType == .image, let resize = item.imageResize, case .done = item.status {
+            base += ", " + resizeDescription(resize)
+        }
         if item.mediaType == .image, showsImageFormatConversionChip {
             base += ", " + imageFormatConversionAccessibilityLabel()
         }
@@ -476,11 +399,155 @@ struct ResultsRowView: View {
         )
     }
 
+    private static let titleMinWidth: CGFloat = 90
+
+    /// Type chip first; with `compact`, only that one (duration, codec, format and similar drop out).
+    @ViewBuilder
+    private func chips(compact: Bool) -> some View {
+        // Content-type / media-type chip
+        if item.mediaType == .image {
+            if let type = item.detectedContentType {
+                contentTypeChip(type)
+                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                    .fixedSize()
+                    .help(type.tooltipLabel)
+            } else {
+                mediaChip(String(localized: "image", comment: "Results row: generic image chip until Smart Quality classifies (photo / graphic / mixed)."))
+                    .help(String(localized: "Image file", comment: "Tooltip for generic image type chip."))
+            }
+            if !compact {
+                if item.usedFirstFrameOnly, case .done = item.status {
+                    mediaChip(String(localized: "First frame", comment: "Results row: multi-frame source was compressed as a single frame."))
+                        .fixedSize()
+                        .help(String(localized: "Animation or other frames were omitted; only the first frame was compressed.", comment: "Tooltip: first-frame-only chip."))
+                        .accessibilityLabel(String(localized: "First frame only", comment: "VoiceOver: first-frame-only chip."))
+                }
+                if let resize = item.imageResize, case .done = item.status {
+                    mediaChip(String.localizedStringWithFormat(
+                        String(localized: "%lld px", comment: "Results row chip: image was resized to this width in pixels."),
+                        Int64(resize.outputWidth)
+                    ))
+                    .fixedSize()
+                    .help(resizeDescription(resize))
+                    .accessibilityLabel(resizeDescription(resize))
+                }
+                if showsImageFormatConversionChip {
+                    mediaChip(imageFormatConversionChipLabel())
+                        .fixedSize()
+                        .help(String(localized: "Saved in a different format than the original — not a same-file recompress.", comment: "Tooltip: format conversion chip."))
+                        .accessibilityLabel(imageFormatConversionAccessibilityLabel())
+                }
+            }
+        } else if item.mediaType == .pdf {
+            if let pages = item.pageCount {
+                mediaChip("\(pages)p")
+                    .help(String(localized: "\(pages) pages", comment: "Tooltip: PDF page count."))
+            } else {
+                mediaChip(String(localized: "pdf", comment: "Results row: generic PDF chip until page count is known."))
+                    .help(String(localized: "PDF document", comment: "Tooltip for generic PDF type chip."))
+            }
+            if !compact {
+                mediaChip(pdfExportPolicyChipText())
+                    .fixedSize()
+                    .help(pdfExportPolicyChipTooltip())
+                    .accessibilityLabel(pdfExportPolicyAccessibilityLabel())
+            }
+        } else if item.mediaType == .video {
+            if let type = item.detectedVideoContentType {
+                videoContentTypeChip(type)
+                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                    .fixedSize()
+                    .help(type.tooltipLabel)
+            } else {
+                mediaChip(String(localized: "video", comment: "Results row: generic video chip when content type was not classified (e.g. Smart Quality off)."))
+                    .help(String(localized: "Video file", comment: "Tooltip for generic video type chip."))
+            }
+            if !compact {
+                if item.videoIsHDR {
+                    hdrBadge
+                        .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                        .fixedSize()
+                        .help(String(localized: "HDR source — preserved with HEVC so highlights and color stay intact.", comment: "Tooltip for HDR badge."))
+                }
+                if let secs = item.videoDuration {
+                    mediaChip(formattedDuration(secs))
+                        .help(String(localized: "Duration", comment: "Tooltip for video duration chip."))
+                }
+                mediaChip(videoExportPolicyChipText())
+                    .fixedSize()
+                    .help(videoExportPolicyChipTooltip())
+                    .accessibilityLabel(videoExportPolicyAccessibilityLabel())
+            }
+        } else if item.mediaType == .audio {
+            mediaChip(String(localized: "audio", comment: "Results row: generic audio type chip."))
+                .help(String(localized: "Audio file", comment: "Tooltip for generic audio type chip."))
+            if !compact {
+                if let secs = item.videoDuration {
+                    mediaChip(formattedDuration(secs))
+                        .help(String(localized: "Duration", comment: "Tooltip for audio duration chip."))
+                }
+                mediaChip(audioExportPolicyChipText())
+                    .fixedSize()
+                    .help(audioExportPolicyChipTooltip())
+                    .accessibilityLabel(audioExportPolicyAccessibilityLabel())
+            }
+        }
+    }
+
+    private func titleBlock(minWidth: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(rowTitle)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(minWidth: minWidth, idealWidth: minWidth, maxWidth: .infinity, alignment: .leading)
+                if let preset = appliedPreset {
+                    presetBadge(preset).fixedSize(horizontal: true, vertical: false)
+                }
+            }
+            if case .pending = item.status {
+                Text(pendingOutputLastPathComponent())
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            } else if case .downloading = item.status {
+                Text(pendingOutputLastPathComponent())
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+        }
+    }
+
     // MARK: Size diff
+
+    private func resizeDescription(_ resize: ImageResizeInfo) -> String {
+        String.localizedStringWithFormat(
+            String(localized: "Resized from %lld to %lld px wide (width limit)", comment: "Results row tooltip / VoiceOver: image downscaled to the width limit. Arguments are the original and new widths in pixels."),
+            Int64(resize.originalWidth), Int64(resize.outputWidth)
+        )
+    }
 
     @ViewBuilder
     private var sizeInfo: some View {
         switch item.status {
+        case .done(_, let orig, let out) where out >= orig && item.imageResize != nil:
+            // Resized to the width limit but the file didn't shrink — the dimensions are the result.
+            if let resize = item.imageResize {
+                HStack(spacing: 5) {
+                    Text(verbatim: "\(resize.originalWidth) px")
+                    Image(systemName: "arrow.right")
+                        .imageScale(.small)
+                    Text(verbatim: "\(resize.outputWidth) px")
+                        .fontWeight(.medium)
+                }
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .help("\(bytes(orig)) → \(bytes(out))")
+            }
+
         case .done(_, let orig, let out):
             HStack(spacing: 5) {
                 Text(bytes(orig))
@@ -722,6 +789,8 @@ struct ResultsRowView: View {
 
     private func mediaChip(_ label: String) -> some View {
         Text(label)
+            .lineLimit(1)
+            .fixedSize()
             .font(.system(size: 9, weight: .semibold).lowercaseSmallCaps())
             .foregroundStyle(Color.secondary)
             .padding(.horizontal, 5)
@@ -743,6 +812,8 @@ struct ResultsRowView: View {
     @ViewBuilder
     private func contentTypeChip(_ type: ContentType) -> some View {
         Text(type.label)
+            .lineLimit(1)
+            .fixedSize()
             .font(.system(size: 9, weight: .semibold).lowercaseSmallCaps())
             .foregroundStyle(Color.secondary)
             .padding(.horizontal, 5)
@@ -756,6 +827,8 @@ struct ResultsRowView: View {
     @ViewBuilder
     private func videoContentTypeChip(_ type: VideoContentType) -> some View {
         Text(type.label)
+            .lineLimit(1)
+            .fixedSize()
             .font(.system(size: 9, weight: .semibold).lowercaseSmallCaps())
             .foregroundStyle(Color.secondary)
             .padding(.horizontal, 5)

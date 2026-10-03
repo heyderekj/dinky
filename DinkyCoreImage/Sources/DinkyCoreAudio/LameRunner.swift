@@ -1,3 +1,4 @@
+import DinkyCoreShared
 import Foundation
 
 public enum LameRunnerError: LocalizedError, Sendable {
@@ -30,29 +31,9 @@ public enum LameRunner: Sendable {
         // `-q 2`: good tradeoff; `-b`: CBR for predictable sizing (matches tier labels).
         let args = ["-q", "2", "-b", "\(bitrateKbps)", wavURL.path, mp3URL.path]
 
-        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
-            let p = Process()
-            p.executableURL = lameBinary
-            p.arguments = args
-            let errPipe = Pipe()
-            p.standardError = errPipe
-            p.standardOutput = Pipe()
-            p.terminationHandler = { proc in
-                let stderr =
-                    String(data: errPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-                if proc.terminationStatus == 0 {
-                    cont.resume()
-                } else {
-                    cont.resume(
-                        throwing: LameRunnerError.processFailed(proc.terminationStatus, stderr)
-                    )
-                }
-            }
-            do {
-                try p.run()
-            } catch {
-                cont.resume(throwing: error)
-            }
+        let out = try await SubprocessRunner.run(lameBinary, arguments: args)
+        guard out.status == 0 else {
+            throw LameRunnerError.processFailed(out.status, out.stderr)
         }
 
         guard FileManager.default.fileExists(atPath: mp3URL.path) else {

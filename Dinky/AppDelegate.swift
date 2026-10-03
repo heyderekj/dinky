@@ -4,11 +4,19 @@ import UserNotifications
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var globalPasteHotkeyObserver: NSObjectProtocol?
+    private var dockPresenceObserver: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         migratePDFMaxFileSizeIfNeeded()
+        // Builds preferences + the content model now, so watch folders start on a headless
+        // launch too — SwiftUI would otherwise not create them until a window is shown.
+        _ = DinkyRootModel.shared
         DiagnosticsReporter.shared.startMonitoring()
         UNUserNotificationCenter.current().delegate = self
+        // Suppression first, so the launch-time policy check ignores the window it's about to hide.
+        DockPresenceManager.scheduleSuppressInitialWindowIfNeeded()
+        DockPresenceManager.applyFromDefaults()
+        DockPresenceManager.startTrackingWindows()
         GlobalHotkeyManager.shared.syncFromDefaults()
         globalPasteHotkeyObserver = NotificationCenter.default.addObserver(
             forName: .dinkyGlobalPasteHotkeyChanged,
@@ -17,6 +25,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ) { _ in
             GlobalHotkeyManager.shared.syncFromDefaults()
         }
+        dockPresenceObserver = NotificationCenter.default.addObserver(
+            forName: .dinkyDockPresenceChanged,
+            object: nil,
+            queue: .main
+        ) { _ in
+            MainActor.assumeIsolated { DockPresenceManager.applyFromDefaults() }
+        }
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        DockPresenceManager.showMainWindow()
+        // Handled: AppKit's default reopen would have SwiftUI open a second window alongside it.
+        return false
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -50,19 +71,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func application(_ application: NSApplication, open urls: [URL]) {
         let accepted = acceptedURLs(from: urls)
         guard !accepted.isEmpty else { return }
-        NSApp.activate(ignoringOtherApps: true)
-        NotificationCenter.default.post(name: .dinkyOpenFiles, object: accepted)
+        DockPresenceManager.cancelInitialWindowSuppression()
+        DockPresenceManager.showMainWindow {
+            NotificationCenter.default.post(name: .dinkyOpenFiles, object: accepted)
+        }
     }
 
     // MARK: - Clipboard Compress menu command
 
-    @objc func compressFromClipboard(_ sender: Any?) {
-        NotificationCenter.default.post(name: .dinkyPasteClipboard, object: nil)
+    @MainActor @objc func compressFromClipboard(_ sender: Any?) {
+        DockPresenceManager.showMainWindow {
+            NotificationCenter.default.post(name: .dinkyPasteClipboard, object: nil)
+        }
     }
 
     // MARK: - Right-click → Services → Compress with Dinky
 
-    @objc func compressWithDinky(
+    @MainActor @objc func compressWithDinky(
         _ pasteboard: NSPasteboard,
         userData: String,
         error: AutoreleasingUnsafeMutablePointer<NSString?>
@@ -73,8 +98,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ]
         guard let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: opts) as? [URL],
               !urls.isEmpty else { return }
-        NSApp.activate(ignoringOtherApps: true)
-        NotificationCenter.default.post(name: .dinkyOpenFiles, object: urls)
+        DockPresenceManager.cancelInitialWindowSuppression()
+        DockPresenceManager.showMainWindow {
+            NotificationCenter.default.post(name: .dinkyOpenFiles, object: urls)
+        }
     }
 
     // MARK: - Helpers

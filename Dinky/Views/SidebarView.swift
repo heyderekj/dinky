@@ -747,45 +747,34 @@ struct SidebarView: View {
 
         settingsSubHeader(icon: "wand.and.stars", "Quality")
         if prefs.smartQuality {
-            settingsHelperText(String(localized: "Smart quality is on — encoder strength is picked per file automatically.", comment: "Sidebar images: smart quality active, quality section placeholder."))
+            settingsHelperText(String(localized: "Smart quality is on — format, AVIF chroma, and encoder strength are picked per file automatically.", comment: "Sidebar images: smart quality active, quality section placeholder."))
         } else {
             VStack(alignment: .leading, spacing: 8) {
-                Text(String(localized: "Images", comment: "Sidebar quality subsection label."))
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
                 ContentTypeChipPicker(contentTypeHintRaw: Binding(
                     get: { prefs.contentTypeHintRaw }, set: { prefs.contentTypeHintRaw = $0 }
                 ))
-                if prefs.pdfOutputMode == .flattenPages {
-                    Text(String(localized: "PDF", comment: "Sidebar quality subsection label."))
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .textCase(.uppercase)
-                        .padding(.top, 2)
-                    QualityChipPicker(
-                        options: pdfFlattenQualityChipOptions,
-                        selected: Binding(get: { prefs.pdfQualityRaw }, set: { prefs.pdfQualityRaw = $0 })
-                    )
+                if !prefs.autoFormat, selectedFormat == .avif {
+                    settingsControlLabel(String(localized: "AVIF chroma", comment: "Sidebar: AVIF chroma subsampling control label."))
+                    ChromaSubsamplingChipPicker(selection: Binding(
+                        get: { prefs.chromaSubsampling },
+                        set: { prefs.chromaSubsampling = $0 }
+                    ))
                 }
-                Text(String(localized: "Video", comment: "Sidebar quality subsection label."))
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-                    .padding(.top, 2)
-                QualityChipPicker(
-                    options: VideoQuality.allCases.map { ($0.displayName, $0.rawValue, $0.description) },
-                    selected: Binding(get: { prefs.videoQualityRaw }, set: { prefs.videoQualityRaw = $0 })
-                )
-                Text(String(localized: "Audio", comment: "Sidebar quality subsection label."))
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-                    .padding(.top, 2)
-                QualityChipPicker(
-                    options: AudioConversionQualityTier.allCases.map { ($0.displayName, $0.rawValue, "") },
-                    selected: Binding(get: { prefs.audioQualityTierRaw }, set: { prefs.audioQualityTierRaw = $0 })
-                )
+                if !prefs.autoFormat, selectedFormat == .webp {
+                    Toggle(String(localized: "Lossless WebP", comment: "Sidebar: lossless WebP toggle."), isOn: Binding(
+                        get: { prefs.webpLossless }, set: { prefs.webpLossless = $0 }
+                    ))
+                    .toggleStyle(.switch)
+                    .font(.system(size: 11))
+                    settingsHelperText(String(localized: "Smallest lossless file for graphics with sharp edges.", comment: "Sidebar: lossless WebP helper."))
+                }
+                if !prefs.autoFormat, selectedFormat == .png {
+                    settingsControlLabel(String(localized: "PNG mode", comment: "Sidebar: PNG output mode control label."))
+                    PNGOutputModeChipPicker(selection: Binding(
+                        get: { prefs.pngOutputMode },
+                        set: { prefs.pngOutputMode = $0 }
+                    ))
+                }
             }
             .transition(.asymmetric(
                 insertion: .move(edge: .top).combined(with: .opacity.animation(.easeInOut(duration: 0.15).delay(0.1))),
@@ -1458,6 +1447,86 @@ struct FormatChipPicker: View {
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
                 .animation(.easeInOut(duration: 0.15), value: activeDesc)
+        }
+    }
+}
+
+struct ChromaSubsamplingChipPicker: View {
+    @Binding var selection: ChromaSubsampling
+
+    private func detailText(for mode: ChromaSubsampling) -> String {
+        switch mode {
+        case .auto:
+            return String(localized: "Photo → 4:2:0, graphic → 4:4:4, mixed → 4:2:2. Follows Smart Quality content type.", comment: "Chroma chip picker: Auto detail.")
+        case .yuv420:
+            return String(localized: "Smallest AVIF files. Color is sampled at quarter resolution — fine for photos, risky for colored text or UI on gradients.", comment: "Chroma chip picker: 4:2:0 detail.")
+        case .yuv422:
+            return String(localized: "Balanced chroma — half the vertical color detail of 4:4:4. Good when you want smaller files without full 4:2:0 softness.", comment: "Chroma chip picker: 4:2:2 detail.")
+        case .yuv444:
+            return String(localized: "Full color on every pixel — no chroma subsampling. Best for screenshots, logos, and product shots with colored type.", comment: "Chroma chip picker: 4:4:4 detail.")
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: 4),
+                    GridItem(.flexible(), spacing: 4),
+                ],
+                spacing: 4
+            ) {
+                ForEach(ChromaSubsampling.allCases) { mode in
+                    let active = selection == mode
+                    chipCell(mode.displayName, active: active)
+                        .onTapGesture { selection = mode }
+                        .accessibilityLabel(mode.displayName)
+                        .accessibilityAddTraits(active ? .isSelected : [])
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(String(localized: "AVIF chroma subsampling", comment: "Accessibility: AVIF chroma picker group."))
+
+            Text(detailText(for: selection))
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+                .animation(.easeInOut(duration: 0.15), value: selection)
+        }
+    }
+}
+
+struct PNGOutputModeChipPicker: View {
+    @Binding var selection: PNGOutputMode
+
+    private func detailText(for mode: PNGOutputMode) -> String {
+        switch mode {
+        case .lossless:
+            return String(localized: "Full 24-bit color preserved, then oxipng re-packs the file. Safest when you need true lossless PNG.", comment: "PNG mode chip picker: lossless detail.")
+        case .optimized:
+            return String(localized: "Builds a ≤256-color palette for flat, opaque graphics, then oxipng. Falls back to lossless if palette isn’t smaller.", comment: "PNG mode chip picker: optimized detail.")
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 4) {
+                ForEach(PNGOutputMode.allCases) { mode in
+                    let active = selection == mode
+                    chipCell(mode.displayName, active: active)
+                        .onTapGesture { selection = mode }
+                        .accessibilityLabel(mode.displayName)
+                        .accessibilityAddTraits(active ? .isSelected : [])
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(String(localized: "PNG output mode", comment: "Accessibility: PNG mode picker group."))
+
+            Text(detailText(for: selection))
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+                .animation(.easeInOut(duration: 0.15), value: selection)
         }
     }
 }

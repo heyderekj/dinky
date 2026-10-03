@@ -292,6 +292,7 @@ private struct BehaviorPreferencesPane: View {
                     set: { newValue in
                         LaunchAtLoginManager.setEnabled(newValue)
                         launchAtLoginEnabled = LaunchAtLoginManager.isEnabled
+                        NotificationCenter.default.post(name: .dinkyDockPresenceChanged, object: nil)
                     }
                 ))
                 if LaunchAtLoginManager.requiresApproval {
@@ -308,6 +309,22 @@ private struct BehaviorPreferencesPane: View {
                             .foregroundStyle(Color.accentColor)
                     }
                 }
+
+                Toggle(String(localized: "Hide from Dock and App Switcher", comment: "Settings UI."), isOn: Binding(
+                    get: { prefs.hideFromDockAndAppSwitcher },
+                    set: { newValue in
+                        guard launchAtLoginEnabled else { return }
+                        prefs.hideFromDockAndAppSwitcher = newValue
+                        NotificationCenter.default.post(name: .dinkyDockPresenceChanged, object: nil)
+                    }
+                ))
+                .disabled(!launchAtLoginEnabled)
+                .accessibilityHint(launchAtLoginEnabled
+                    ? ""
+                    : String(localized: "Turn on Open at login first.", comment: "VoiceOver: hide-from-Dock toggle disabled reason."))
+                Text(S.behaviorHideFromDockFootnote)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
 
                 Toggle(String(localized: "Always confirm before compressing", comment: "Settings UI."), isOn: Binding(
                     get: { prefs.confirmBeforeEveryCompression },
@@ -373,6 +390,19 @@ private struct OriginalsPreferencesPane: View {
                     Text(String(localized: "Source files are never moved or deleted — even when Filename = Replace original (the original is only displaced when output would overwrite it).", comment: "Settings UI."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                } else {
+                    Text(String(localized: "Originals are only moved once a smaller file has been saved. If a file can't be made smaller, the original stays where it is.", comment: "Settings UI: originals are never touched when the result is discarded."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if case .explicit(let watchAction) = prefs.watchOriginalsPolicy, watchAction != prefs.originalsAction {
+                    Text(String.localizedStringWithFormat(
+                        String(localized: "Watch folders use their own setting: %@.", comment: "Settings UI: shown under Original Files when watch folders override it. Argument is the watch setting, e.g. “Move to Trash”."),
+                        Self.label(for: watchAction)
+                    ))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    PreferencesRelatedTabLink(title: String(localized: "Watch settings…", comment: "Settings UI: link to Watch tab."), tab: .watch)
                 }
                 if prefs.originalsAction == .trash {
                     Text(String(localized: "Permanent once the trash is emptied.", comment: "Settings UI."))
@@ -407,6 +437,14 @@ private struct OriginalsPreferencesPane: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    static func label(for action: OriginalsAction) -> String {
+        switch action {
+        case .keep: return String(localized: "Stay where they are", comment: "Settings UI.")
+        case .trash: return String(localized: "Move to Trash", comment: "Settings UI.")
+        case .backup: return String(localized: "Move to Backup folder", comment: "Settings UI.")
+        }
     }
 
     private func pickOriginalsBackupFolder() {
@@ -603,7 +641,7 @@ private struct AboutPreferencesPane: View {
             }
 
             Section {
-                Text(String(localized: "Dinky includes advanced local tools for pro users: a `dinky` command-line tool and optional local HTTP mode (`dinky serve`) for automation and AI agents.", comment: "Settings UI."))
+                Text(String(localized: "Dinky includes advanced local tools for pro users: a `dinky` command-line tool and optional local HTTP mode (`dinky serve`) for automation and AI agents. It only answers apps on this Mac that know its token.", comment: "Settings UI."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Text(String(localized: "Quirky but straightforward: give Dinky file paths, get smaller files back. Everything runs on your Mac.", comment: "Settings UI."))
@@ -742,6 +780,28 @@ private struct OutputTab: View {
                 }
             } header: {
                 Text(String(localized: "Save Location", comment: "Settings UI."))
+            }
+
+            Section {
+                HStack {
+                    TextField(
+                        String(localized: "None", comment: "Settings UI: placeholder when no output subfolder is set."),
+                        text: Binding(
+                            get: { prefs.outputSubfolder },
+                            set: { prefs.outputSubfolder = $0 }
+                        )
+                    )
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 200)
+                }
+                Text(String(
+                    localized: "Compressed files go into a folder with this name inside the save location. Leave empty to save alongside the originals.",
+                    comment: "Settings UI: explains the output subfolder field."
+                ))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            } header: {
+                Text(String(localized: "Subfolder", comment: "Settings UI."))
             }
 
             Section {
@@ -1180,30 +1240,12 @@ private struct PresetsTab: View {
         Section(String(localized: "Compression", comment: "Settings UI.")) {
             let liveForQuality = prefs.savedPresets.first(where: { $0.id == snapshot.id }) ?? snapshot
             Toggle(String(localized: "Smart quality", comment: "Settings UI."), isOn: binding(\.smartQuality, snapshot: snapshot))
-            if !liveForQuality.smartQuality {
-                if includedMediaTypes(for: snapshot).count > 1 {
-                    Picker(String(localized: "Manual compression", comment: "Settings UI."), selection: $presetMediaSettingsTab) {
-                        ForEach(mediaSettingsTabsShown(for: snapshot), id: \.self) { tab in
-                            Text(tab.mediaType.presetAppliesToSegmentLabel).tag(tab)
-                        }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.segmented)
-                    .frame(maxWidth: .infinity)
-                    .accessibilityLabel(String(localized: "Manual compression by media type", comment: "VoiceOver label for segmented media picker."))
-                }
-                switch effectiveMediaTab(for: snapshot) {
-                case .image:
-                    EmptyView()
-                case .video:
-                    presetManualCompressionVideoControls(snapshot)
-                case .audio:
-                    presetManualCompressionAudioControls(snapshot)
-                case .pdf:
-                    presetManualCompressionPDFControls(snapshot)
-                }
-            } else {
+            if liveForQuality.smartQuality {
                 Text(String(localized: "Adjusts compression from each file: image encoding from content, video strength from resolution and bitrate, PDF tier from the document.", comment: "Settings UI."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text(String(localized: "Set fixed quality tiers and encoder options per media type in Media below.", comment: "Settings UI: manual compression pointer."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -1265,6 +1307,13 @@ private struct PresetsTab: View {
                     Button(String(localized: "Choose…", comment: "Settings UI.")) { pickPresetCustomFolder(for: snapshot) }
                         .buttonStyle(.bordered)
                 }
+            }
+            HStack {
+                Text(String(localized: "Subfolder", comment: "Settings UI.")).foregroundStyle(.secondary)
+                TextField(
+                    String(localized: "None", comment: "Settings UI: placeholder when no output subfolder is set."),
+                    text: binding(\.outputSubfolder, snapshot: snapshot)
+                )
             }
             Picker(String(localized: "Filename", comment: "Settings UI."), selection: binding(\.filenameHandlingRaw, snapshot: snapshot)) {
                 Text(String(localized: "Append \"-dinky\" suffix", comment: "Settings UI.")).tag("appendSuffix")
@@ -1387,37 +1436,6 @@ private struct PresetsTab: View {
         }
     }
 
-    /// Fixed PDF tier when Smart quality is off (flatten mode). Output mode lives under Media.
-    @ViewBuilder
-    private func presetManualCompressionPDFControls(_ snapshot: CompressionPreset) -> some View {
-        let live = prefs.savedPresets.first(where: { $0.id == snapshot.id }) ?? snapshot
-        VStack(alignment: .leading, spacing: 8) {
-            if PDFOutputMode(rawValue: live.pdfOutputModeRaw) == .flattenPages {
-                QualityChipPicker(
-                    options: pdfFlattenChipOptionsForPreset(snapshot),
-                    selected: binding(\.pdfQualityRaw, snapshot: snapshot)
-                )
-                .onAppear { snapPresetPdfFlattenQuality(snapshot) }
-            } else {
-                Text(String(localized: "Low / Medium / High apply when Smallest file (flatten) is selected under Media.", comment: "Settings UI."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    /// Manual video controls when Smart quality is off. Codec, resolution cap, and audio live under Media.
-    @ViewBuilder
-    private func presetManualCompressionVideoControls(_ snapshot: CompressionPreset) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(String(localized: "Output resolution and codec live under Media.", comment: "Settings UI."))
-                    .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
     @ViewBuilder
     private func presetImageControls(_ snapshot: CompressionPreset) -> some View {
         let live = prefs.savedPresets.first(where: { $0.id == snapshot.id }) ?? snapshot
@@ -1432,9 +1450,31 @@ private struct PresetsTab: View {
 
             settingsSubHeader(icon: "wand.and.stars", String(localized: "Quality", comment: "Settings UI: Media image subsection."))
             if live.smartQuality {
-                settingsHelperText(String(localized: "Picks encoder strength per image from content (photo vs. graphic). Turn off Smart quality under Compression to choose Photo, Graphic, or Mixed.", comment: "Settings UI."))
+                settingsHelperText(String(localized: "Picks format, AVIF chroma, and encoder strength per image from content. Turn off Smart quality under Compression for manual Photo, Graphic, or Mixed tiers and advanced encoder options.", comment: "Settings UI."))
             } else {
                 ContentTypeChipPicker(contentTypeHintRaw: binding(\.contentTypeHintRaw, snapshot: snapshot))
+
+                if !live.autoFormat, live.format == .avif {
+                    settingsControlLabel(String(localized: "AVIF chroma", comment: "Settings UI: AVIF chroma control label."))
+                    ChromaSubsamplingChipPicker(selection: Binding(
+                        get: { ChromaSubsampling(rawValue: live.chromaSubsamplingRaw) ?? .auto },
+                        set: { set(\.chromaSubsamplingRaw, to: $0.rawValue, for: snapshot) }
+                    ))
+                }
+
+                if !live.autoFormat, live.format == .webp {
+                    Toggle(String(localized: "Lossless WebP", comment: "Settings UI."), isOn: binding(\.webpLossless, snapshot: snapshot))
+                        .font(.system(size: 12))
+                    settingsHelperText(String(localized: "Uses cwebp lossless mode instead of lossy quality tiers.", comment: "Settings UI."))
+                }
+
+                if !live.autoFormat, live.format == .png {
+                    settingsControlLabel(String(localized: "PNG mode", comment: "Settings UI: PNG output mode control label."))
+                    PNGOutputModeChipPicker(selection: Binding(
+                        get: { PNGOutputMode(rawValue: live.pngOutputModeRaw) ?? .lossless },
+                        set: { set(\.pngOutputModeRaw, to: $0.rawValue, for: snapshot) }
+                    ))
+                }
             }
 
             SettingsSectionDivider()
@@ -1672,12 +1712,6 @@ private struct PresetsTab: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func presetManualCompressionAudioControls(_ snapshot: CompressionPreset) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            presetAudioControls(snapshot)
-        }
-    }
-
     private func addPreset() {
         let count = prefs.savedPresets.count + 1
         let preset = CompressionPreset(name: String(localized: "Preset \(count)", comment: "Default name for new preset; argument is number."), from: prefs, format: .webp)
@@ -1819,6 +1853,17 @@ private struct PresetsTab: View {
 private struct WatchFoldersTab: View {
     @EnvironmentObject var prefs: DinkyPreferences
 
+    private var anyWatchFolderActive: Bool {
+        prefs.folderWatchEnabled || prefs.savedPresets.contains(where: \.watchFolderEnabled)
+    }
+
+    private var backupFolderIsInsideWatchedFolder: Bool {
+        let backup = prefs.originalsBackupDestinationURL().path
+        return WatchPipelineRegistry(prefs: prefs).watchedRootPaths.contains {
+            WatchPaths.path(backup, isUnder: $0)
+        }
+    }
+
     var body: some View {
         Form {
             Section {
@@ -1838,7 +1883,7 @@ private struct WatchFoldersTab: View {
                         Button(String(localized: "Choose…", comment: "Settings UI.")) { pickGlobalWatchFolder() }
                             .buttonStyle(.bordered)
                     }
-                    Text(String(localized: "The global folder uses whatever settings are in the main window (sidebar). Presets can add separate watched folders in their own settings.", comment: "Settings UI."))
+                    Text(String(localized: "The global folder uses the preset selected in the main window when it covers the file type, otherwise the sidebar settings. Presets can add separate watched folders in their own settings.", comment: "Settings UI."))
                     .font(.caption)
                         .foregroundStyle(.secondary)
 
@@ -1846,6 +1891,37 @@ private struct WatchFoldersTab: View {
                 }
             } header: {
                 Text(String(localized: "Global", comment: "Settings UI."))
+            }
+
+            Section {
+                Picker(String(localized: "After compressing, watch-folder originals:", comment: "Settings UI."), selection: Binding(
+                    get: { prefs.watchOriginalsPolicy },
+                    set: { prefs.watchOriginalsPolicy = $0 }
+                )) {
+                    Text(String.localizedStringWithFormat(
+                        String(localized: "Same as Original Files (currently: %@)", comment: "Settings UI: watch originals follow the general setting. Argument is that setting, e.g. “Stay where they are”."),
+                        OriginalsPreferencesPane.label(for: prefs.originalsAction)
+                    )).tag(WatchOriginalsPolicy.followGeneral)
+                    Text(String(localized: "Stay where they are", comment: "Settings UI.")).tag(WatchOriginalsPolicy.explicit(.keep))
+                    Text(String(localized: "Move to Trash", comment: "Settings UI.")).tag(WatchOriginalsPolicy.explicit(.trash))
+                    Text(String(localized: "Move to Backup folder", comment: "Settings UI.")).tag(WatchOriginalsPolicy.explicit(.backup))
+                }
+                .pickerStyle(.radioGroup)
+                .labelsHidden()
+                .accessibilityLabel(String(localized: "After compressing, watch-folder originals:", comment: "Settings UI."))
+                Text(String(localized: "Applies to files a watch folder picked up (global or preset). Pick Move to Trash to keep a watch folder as an inbox that empties itself. Originals are only moved once a smaller file has been saved.", comment: "Settings UI."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if prefs.effectiveWatchOriginalsAction == .backup {
+                    if backupFolderIsInsideWatchedFolder {
+                        Label(String(localized: "The Backup folder is inside a watched folder. Dinky won't compress what's in it, but a Backup folder elsewhere keeps things tidier.", comment: "Settings UI: warning when the originals backup folder sits inside a watch folder."), systemImage: "exclamationmark.triangle")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    PreferencesRelatedTabLink(title: String(localized: "Backup folder…", comment: "Settings UI."), tab: .originals)
+                }
+            } header: {
+                Text(String(localized: "Originals", comment: "Settings UI."))
             }
 
             Section {
@@ -1865,6 +1941,17 @@ private struct WatchFoldersTab: View {
                 }
             } header: {
                 Text(String(localized: "Presets", comment: "Settings UI."))
+            }
+
+            if anyWatchFolderActive {
+                Section {
+                    Text(S.watchFolderBackgroundModeCaption)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    PreferencesRelatedTabLink(title: S.watchFolderBackgroundModeLinkTitle, tab: .behavior)
+                } header: {
+                    Text(String(localized: "Background", comment: "Settings UI: watch folder background running section."))
+                }
             }
         }
         .formStyle(.grouped)

@@ -16,6 +16,22 @@ public struct CompressionPreset: Codable, Identifiable, Sendable {
     public var saveLocationRaw: String
     public var filenameHandlingRaw: String
     public var customSuffix: String
+    /// Optional folder created inside the destination for this preset's results, e.g.
+    /// `compressed-webp`. Empty means write straight into the destination.
+    public var outputSubfolder: String
+
+    /// Trims a user-typed subfolder name down to a single safe path component. Returns nil when
+    /// nothing usable is left, so callers fall back to writing directly into the destination.
+    public static func sanitizedOutputSubfolder(_ raw: String) -> String? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        // One level only: a typed "/" (or "..") must not let output escape the destination.
+        let component = trimmed
+            .components(separatedBy: CharacterSet(charactersIn: "/\\"))
+            .first { !$0.isEmpty && $0 != "." && $0 != ".." }
+        guard let component, !component.isEmpty else { return nil }
+        return String(component.prefix(100))
+    }
     public var collisionNamingStyleRaw: String
     public var collisionCustomPattern: String
     // Advanced
@@ -32,6 +48,12 @@ public struct CompressionPreset: Codable, Identifiable, Sendable {
     public var presetCustomFolderPath: String
     public var presetCustomFolderBookmark: Data
     public var contentTypeHintRaw: String
+    /// ``ChromaSubsampling`` raw value for AVIF (`auto` default).
+    public var chromaSubsamplingRaw: String
+    /// When true, WebP output uses `cwebp -lossless` instead of lossy quality tiers.
+    public var webpLossless: Bool
+    /// ``PNGOutputMode`` raw value (`lossless` default).
+    public var pngOutputModeRaw: String
     public var presetMediaScopeRaw: String
     public var pdfOutputModeRaw: String
     public var pdfQualityRaw: String
@@ -72,6 +94,7 @@ public struct CompressionPreset: Codable, Identifiable, Sendable {
         saveLocationRaw: String,
         filenameHandlingRaw: String,
         customSuffix: String,
+        outputSubfolder: String = "",
         collisionNamingStyleRaw: String,
         collisionCustomPattern: String,
         stripMetadata: Bool,
@@ -85,6 +108,9 @@ public struct CompressionPreset: Codable, Identifiable, Sendable {
         presetCustomFolderPath: String,
         presetCustomFolderBookmark: Data,
         contentTypeHintRaw: String,
+        chromaSubsamplingRaw: String = ChromaSubsampling.auto.rawValue,
+        webpLossless: Bool = false,
+        pngOutputModeRaw: String = PNGOutputMode.lossless.rawValue,
         presetMediaScopeRaw: String,
         pdfOutputModeRaw: String,
         pdfQualityRaw: String,
@@ -119,6 +145,7 @@ public struct CompressionPreset: Codable, Identifiable, Sendable {
         self.saveLocationRaw = saveLocationRaw
         self.filenameHandlingRaw = filenameHandlingRaw
         self.customSuffix = customSuffix
+        self.outputSubfolder = outputSubfolder
         self.collisionNamingStyleRaw = collisionNamingStyleRaw
         self.collisionCustomPattern = collisionCustomPattern
         self.stripMetadata = stripMetadata
@@ -132,6 +159,9 @@ public struct CompressionPreset: Codable, Identifiable, Sendable {
         self.presetCustomFolderPath = presetCustomFolderPath
         self.presetCustomFolderBookmark = presetCustomFolderBookmark
         self.contentTypeHintRaw = contentTypeHintRaw
+        self.chromaSubsamplingRaw = chromaSubsamplingRaw
+        self.webpLossless = webpLossless
+        self.pngOutputModeRaw = pngOutputModeRaw
         self.presetMediaScopeRaw = presetMediaScopeRaw
         self.pdfOutputModeRaw = pdfOutputModeRaw
         self.pdfQualityRaw = pdfQualityRaw
@@ -170,6 +200,7 @@ public struct CompressionPreset: Codable, Identifiable, Sendable {
             saveLocationRaw: source.saveLocationRaw,
             filenameHandlingRaw: source.filenameHandlingRaw,
             customSuffix: source.customSuffix,
+            outputSubfolder: source.outputSubfolder,
             collisionNamingStyleRaw: source.collisionNamingStyleRaw,
             collisionCustomPattern: source.collisionCustomPattern,
             stripMetadata: source.stripMetadata,
@@ -183,6 +214,9 @@ public struct CompressionPreset: Codable, Identifiable, Sendable {
             presetCustomFolderPath: source.presetCustomFolderPath,
             presetCustomFolderBookmark: source.presetCustomFolderBookmark,
             contentTypeHintRaw: source.contentTypeHintRaw,
+            chromaSubsamplingRaw: source.chromaSubsamplingRaw,
+            webpLossless: source.webpLossless,
+            pngOutputModeRaw: source.pngOutputModeRaw,
             presetMediaScopeRaw: source.presetMediaScopeRaw,
             pdfOutputModeRaw: source.pdfOutputModeRaw,
             pdfQualityRaw: source.pdfQualityRaw,
@@ -223,6 +257,7 @@ public struct CompressionPreset: Codable, Identifiable, Sendable {
         saveLocationRaw = try c.decodeIfPresent(String.self, forKey: .saveLocationRaw) ?? "sameFolder"
         filenameHandlingRaw = try c.decodeIfPresent(String.self, forKey: .filenameHandlingRaw) ?? "appendSuffix"
         customSuffix = try c.decodeIfPresent(String.self, forKey: .customSuffix) ?? "-dinky"
+        outputSubfolder = try c.decodeIfPresent(String.self, forKey: .outputSubfolder) ?? ""
         collisionNamingStyleRaw = try c.decodeIfPresent(String.self, forKey: .collisionNamingStyleRaw)
             ?? CollisionNamingStyle.finderDuplicate.rawValue
         collisionCustomPattern = try c.decodeIfPresent(String.self, forKey: .collisionCustomPattern) ?? "_v{n}"
@@ -238,6 +273,11 @@ public struct CompressionPreset: Codable, Identifiable, Sendable {
         presetCustomFolderPath = try c.decodeIfPresent(String.self, forKey: .presetCustomFolderPath) ?? ""
         presetCustomFolderBookmark = try c.decodeIfPresent(Data.self, forKey: .presetCustomFolderBookmark) ?? Data()
         contentTypeHintRaw = try c.decodeIfPresent(String.self, forKey: .contentTypeHintRaw) ?? "auto"
+        chromaSubsamplingRaw = try c.decodeIfPresent(String.self, forKey: .chromaSubsamplingRaw)
+            ?? ChromaSubsampling.auto.rawValue
+        webpLossless = try c.decodeIfPresent(Bool.self, forKey: .webpLossless) ?? false
+        pngOutputModeRaw = try c.decodeIfPresent(String.self, forKey: .pngOutputModeRaw)
+            ?? PNGOutputMode.lossless.rawValue
         presetMediaScopeRaw = try c.decodeIfPresent(String.self, forKey: .presetMediaScopeRaw) ?? PresetMediaScope.all.rawValue
         pdfOutputModeRaw = try c.decodeIfPresent(String.self, forKey: .pdfOutputModeRaw) ?? "flattenPages"
         pdfQualityRaw = try c.decodeIfPresent(String.self, forKey: .pdfQualityRaw) ?? "medium"

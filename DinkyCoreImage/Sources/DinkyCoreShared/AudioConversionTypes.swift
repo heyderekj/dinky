@@ -32,6 +32,14 @@ public enum AudioConversionFormat: String, CaseIterable, Codable, Sendable, Iden
         }
     }
 
+    /// Stores audio without loss (so converting a lossy file to it only makes it bigger).
+    public var isLossless: Bool {
+        switch self {
+        case .alacM4A, .wav, .aiff, .flac: return true
+        case .aacM4A, .mp3: return false
+        }
+    }
+
     /// Abbreviated label for chip grids where horizontal space is tight.
     public var chipLabel: String {
         switch self {

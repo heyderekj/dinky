@@ -6,8 +6,9 @@ info:
     dinkyfiles.com is a static marketing site: there is no public HTTP API here (paths below are empty).
 
     Separately, the Dinky *product* in the open-source repository includes an optional local-only `dinky serve`
-    command (loopback HTTP on the user's Mac) for images. That interface is not hosted on dinkyfiles.com; see
-    the repo file `docs/local-cli.md` for the JSON schema (`dinky.image.compress/1.0.0`) and example requests.
+    command (HTTP on 127.0.0.1 / [::1] of the user's Mac only, bearer-token protected, browser Origin requests
+    refused) for images. That interface is not hosted on dinkyfiles.com; see the repo file `docs/local-cli.md`
+    for authentication, the JSON schema (`dinky.image.compress/1.0.0`), and example requests.
 
     This document exists for machine-readable discovery of the *website* (RFC 9727 service-desc, empty paths).
 paths: {}

@@ -47,33 +47,169 @@ struct DinkyServePdfCompressBody: Codable {
     var autoGrayscaleMono: Bool?
 }
 
+struct DinkyServeOptions: Equatable, Sendable {
+    enum TokenSource: Equatable, Sendable { case generated, environment, flag }
+    var port: UInt16 = 17381
+    /// Pinned token from `--token` / `DINKY_SERVE_TOKEN`; `nil` means generate one at launch.
+    var token: String?
+    var tokenSource: TokenSource = .generated
+}
+
 public enum DinkyServeCommand {
+    static let usage = "dinky serve [--port <n>] [--token <value>]   (or set DINKY_SERVE_TOKEN)"
+
     public static func runBlocking(args: [String]) -> Never {
-        var port: UInt16 = 17381
-        var i = 0
-        while i < args.count {
-            if args[i] == "--port", i + 1 < args.count, let p = UInt16(args[i + 1]) {
-                port = p
-                i += 2
-            } else {
-                i += 1
+        let options: DinkyServeOptions
+        do {
+            options = try parseArgs(args)
+        } catch let e as DinkyCLIParseError {
+            die("dinky: \(e.message)")
+        } catch {
+            die("dinky: \(error.localizedDescription)")
+        }
+        let port = options.port
+        let token = options.token ?? DinkyServeRequestGuard.makeToken()
+        guard let nwPort = NWEndpoint.Port(rawValue: port) else { die("dinky: invalid --port (use 1-65535)") }
+
+        let queue = DispatchQueue(label: "dinky.serve", qos: .userInitiated, attributes: .concurrent)
+        let events = DispatchQueue(label: "dinky.serve.listen")
+        let v4: NWListener
+        do {
+            v4 = try NWListener(using: loopbackParameters(.ipv4(.loopback), port: nwPort))
+        } catch {
+            die("dinky serve: could not listen on 127.0.0.1:\(port) (\(error))")
+        }
+        let v6 = try? NWListener(using: loopbackParameters(.ipv6(.loopback), port: nwPort))
+        for listener in [v4, v6].compactMap({ $0 }) {
+            listener.newConnectionHandler = { receiveHTTP(connection: $0, queue: queue, port: port, token: token) }
+        }
+
+        let v4Ready = DispatchSemaphore(value: 0)
+        v4.stateUpdateHandler = { state in
+            switch state {
+            case .ready: v4Ready.signal()
+            case .failed(let e), .waiting(let e): die(listenFailure(e, host: "127.0.0.1", port: port))
+            default: break
             }
         }
-        let parameters = NWParameters.tcp
-        parameters.allowLocalEndpointReuse = true
-        guard let listener = try? NWListener(using: parameters, on: NWEndpoint.Port(rawValue: port) ?? 17381) else {
-            FileHandle.standardError.write(Data("dinky serve: could not open listener on port \(port)\n".utf8))
-            exit(1)
+        let v6Settled = DispatchSemaphore(value: 0)
+        if let v6 {
+            v6.stateUpdateHandler = { state in
+                switch state {
+                case .ready:
+                    v6Settled.signal()
+                case .failed(let e), .waiting(let e):
+                    // Someone else holding [::1]:port would receive tokens from clients that try `localhost` over IPv6 first.
+                    if case .posix(.EADDRINUSE) = e { die(listenFailure(e, host: "[::1]", port: port)) }
+                    warn("dinky serve: warning: [::1]:\(port) unavailable (\(e)); serving on 127.0.0.1 only.")
+                    v6.cancel()
+                    v6Settled.signal()
+                default:
+                    break
+                }
+            }
+            v6.start(queue: events)
+        } else {
+            warn("dinky serve: warning: IPv6 loopback unavailable; serving on 127.0.0.1 only.")
         }
-        let queue = DispatchQueue(label: "dinky.serve", qos: .userInitiated, attributes: .concurrent)
-        listener.newConnectionHandler = { receiveHTTP(connection: $0, queue: queue) }
-        listener.start(queue: queue)
-        let banner = "dinky: listening on port \(port) (POST /v1/compress, /v1/video/compress, /v1/pdf/compress; GET /v1/health) — local only. Ctrl-C to stop.\n"
-        FileHandle.standardError.write(Data(banner.utf8))
-        dispatchMain()
+        v4.start(queue: events)
+        if v4Ready.wait(timeout: .now() + 5) == .timedOut {
+            die("dinky serve: timed out opening 127.0.0.1:\(port)")
+        }
+        if let v6, v6Settled.wait(timeout: .now() + 2) == .timedOut { v6.cancel() }
+        let ipv6Up = v6?.state == .ready
+        FileHandle.standardError.write(Data(banner(port: port, ipv6: ipv6Up, token: token, source: options.tokenSource).utf8))
+        withExtendedLifetime((v4, v6)) { dispatchMain() }
     }
 
-    private static func receiveHTTP(connection: NWConnection, queue: DispatchQueue) {
+    static func parseArgs(
+        _ args: [String],
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) throws -> DinkyServeOptions {
+        var o = DinkyServeOptions()
+        var flagToken: String?
+        var i = 0
+        let n = args.count
+        while i < n {
+            let a = args[i]
+            switch a {
+            case "-h", "--help":
+                throw DinkyCLIParseError(message: "usage: \(usage)")
+            case "--port":
+                i += 1
+                guard i < n, let p = UInt16(args[i]), p > 0 else {
+                    throw DinkyCLIParseError(message: "invalid --port (use 1-65535)")
+                }
+                o.port = p
+            case "--token":
+                i += 1
+                guard i < n else { throw DinkyCLIParseError(message: "missing value for --token") }
+                flagToken = args[i]
+            default:
+                throw DinkyCLIParseError(message: "unknown option: \(a)")
+            }
+            i += 1
+        }
+        let tokenRule = "at least 16 characters from A-Z a-z 0-9 . _ ~ + / = -"
+        if let t = flagToken {
+            guard DinkyServeRequestGuard.isValidToken(t) else {
+                throw DinkyCLIParseError(message: "--token must be \(tokenRule)")
+            }
+            o.token = t
+            o.tokenSource = .flag
+        } else if let t = environment[DinkyServeRequestGuard.tokenEnvironmentKey], !t.isEmpty {
+            guard DinkyServeRequestGuard.isValidToken(t) else {
+                throw DinkyCLIParseError(message: "\(DinkyServeRequestGuard.tokenEnvironmentKey) must be \(tokenRule)")
+            }
+            o.token = t
+            o.tokenSource = .environment
+        }
+        return o
+    }
+
+    /// Startup banner (stderr). A pinned token is never echoed.
+    static func banner(port: UInt16, ipv6: Bool, token: String, source: DinkyServeOptions.TokenSource) -> String {
+        let urls = ipv6 ? "http://127.0.0.1:\(port) and http://[::1]:\(port)" : "http://127.0.0.1:\(port)"
+        let bearer: String
+        switch source {
+        case .generated: bearer = "\(token)  (new each launch; set DINKY_SERVE_TOKEN to keep one)"
+        case .environment: bearer = "<your DINKY_SERVE_TOKEN>"
+        case .flag: bearer = "<your --token>"
+        }
+        return """
+        dinky serve: listening on \(urls) (this Mac only). Ctrl-C to stop.
+        dinky serve: POST /v1/compress, /v1/video/compress, /v1/pdf/compress (Content-Type: application/json); GET /v1/health
+        dinky serve: Authorization: Bearer \(bearer)
+
+        """
+    }
+
+    /// Binds one loopback address only; the port must live in the endpoint (`NWListener(using:on:)` rejects it).
+    private static func loopbackParameters(_ host: NWEndpoint.Host, port: NWEndpoint.Port) -> NWParameters {
+        let parameters = NWParameters.tcp
+        parameters.allowLocalEndpointReuse = true
+        parameters.requiredInterfaceType = .loopback
+        parameters.requiredLocalEndpoint = .hostPort(host: host, port: port)
+        return parameters
+    }
+
+    private static func listenFailure(_ error: NWError, host: String, port: UInt16) -> String {
+        if case .posix(.EADDRINUSE) = error {
+            return "dinky serve: port \(port) is already in use on \(host) (another dinky serve?). Stop it or use --port <n>."
+        }
+        return "dinky serve: could not listen on \(host):\(port) (\(error))"
+    }
+
+    private static func warn(_ message: String) {
+        FileHandle.standardError.write(Data("\(message)\n".utf8))
+    }
+
+    private static func die(_ message: String) -> Never {
+        warn(message)
+        exit(1)
+    }
+
+    private static func receiveHTTP(connection: NWConnection, queue: DispatchQueue, port: UInt16, token: String) {
         connection.start(queue: queue)
         let acc = RecvBuffer()
         @Sendable
@@ -90,11 +226,11 @@ public enum DinkyServeCommand {
                     return
                 }
                 if !acc.isEmpty, let s = acc.utf8String(), s.contains("\r\n\r\n") {
-                    handleRawHTTP(s, connection: connection, queue: queue)
+                    handleRawHTTP(s, connection: connection, queue: queue, port: port, token: token)
                     return
                 }
                 if isComplete, !acc.isEmpty, let s = acc.utf8String() {
-                    handleRawHTTP(s, connection: connection, queue: queue)
+                    handleRawHTTP(s, connection: connection, queue: queue, port: port, token: token)
                     return
                 }
                 if !isComplete { recv() }
@@ -103,41 +239,42 @@ public enum DinkyServeCommand {
         recv()
     }
 
-    private static func handleRawHTTP(_ raw: String, connection: NWConnection, queue: DispatchQueue) {
-        guard let firstSub = raw.split(separator: "\r\n", omittingEmptySubsequences: true).first else {
+    private static func handleRawHTTP(_ raw: String, connection: NWConnection, queue: DispatchQueue, port: UInt16, token: String) {
+        let headText: Substring
+        let body: String
+        if let blank = raw.range(of: "\r\n\r\n") {
+            headText = raw[..<blank.lowerBound]
+            body = String(raw[blank.upperBound...])
+        } else {
+            headText = raw[...]
+            body = ""
+        }
+        guard let head = DinkyServeRequestHead.parse(String(headText)) else {
             send(connection: connection, status: 400, body: "{\"error\":\"bad request\"}")
             return
         }
-        let firstLine = String(firstSub)
-        let parts = firstLine.split(separator: " ").map(String.init)
-        guard parts.count >= 2 else { send(connection: connection, status: 400, body: "{\"error\":\"bad request\"}"); return }
-        let method = parts[0]
-        let path = parts[1]
-        let headerAndBody = raw.split(separator: "\r\n\r\n", maxSplits: 1)
-        let body: String
-        if headerAndBody.count == 2 {
-            body = String(headerAndBody[1])
-        } else {
-            body = ""
+        if let rejection = DinkyServeRequestGuard.check(head, port: port, token: token) {
+            send(connection: connection, status: rejection.status, body: rejection.body, headers: rejection.headers)
+            return
         }
-        if method == "GET", path == "/v1/health" || path.hasPrefix("/v1/health?") {
+        if head.isHealthCheck {
             let b = "{\"ok\":true,\"schema\":\"\(dinkyImageServeInfoSchema)\"}\n"
             send(connection: connection, status: 200, body: b)
             return
         }
-        if method == "POST", path == "/v1/compress" {
+        if head.method == "POST", head.target == "/v1/compress" {
             Task {
                 await handleCompressPOST(body: body, connection: connection, queue: queue)
             }
             return
         }
-        if method == "POST", path == "/v1/video/compress" {
+        if head.method == "POST", head.target == "/v1/video/compress" {
             Task {
                 await handleVideoCompressPOST(body: body, connection: connection, queue: queue)
             }
             return
         }
-        if method == "POST", path == "/v1/pdf/compress" {
+        if head.method == "POST", head.target == "/v1/pdf/compress" {
             Task {
                 await handlePdfCompressPOST(body: body, connection: connection, queue: queue)
             }
@@ -308,10 +445,26 @@ public enum DinkyServeCommand {
         }
     }
 
-    private static func send(connection: NWConnection, status: Int, body: String) {
-        let r = "HTTP/1.1 \(status) OK\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: \(body.utf8.count)\r\nConnection: close\r\n\r\n\(body)"
+    private static func send(connection: NWConnection, status: Int, body: String, headers: [String: String] = [:]) {
+        let extra = headers.sorted { $0.key < $1.key }.map { "\($0.key): \($0.value)\r\n" }.joined()
+        let r = "HTTP/1.1 \(status) \(reasonPhrase(status))\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: \(body.utf8.count)\r\n\(extra)Connection: close\r\n\r\n\(body)"
         let data = Data(r.utf8)
         connection.send(content: data, isComplete: true, completion: .contentProcessed { _ in connection.cancel() })
+    }
+
+    private static func reasonPhrase(_ status: Int) -> String {
+        switch status {
+        case 200: "OK"
+        case 400: "Bad Request"
+        case 401: "Unauthorized"
+        case 403: "Forbidden"
+        case 404: "Not Found"
+        case 415: "Unsupported Media Type"
+        case 422: "Unprocessable Content"
+        case 500: "Internal Server Error"
+        case 503: "Service Unavailable"
+        default: "Error"
+        }
     }
 }
 
