@@ -175,7 +175,8 @@ public enum DinkyCompressCommand {
 
             let goals = CompressionGoals(
                 maxWidth: opts.maxWidth,
-                maxFileSizeKB: opts.maxFileSizeKB
+                maxFileSizeKB: opts.maxFileSizeKB,
+                scalePercent: opts.scalePercent
             )
             let chroma = ChromaSubsampling(rawValue: opts.chromaSubsamplingRaw) ?? .auto
             let pngMode = PNGOutputMode(rawValue: opts.pngOutputModeRaw) ?? .lossless

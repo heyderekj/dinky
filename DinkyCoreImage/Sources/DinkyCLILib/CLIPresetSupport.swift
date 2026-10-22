@@ -188,6 +188,9 @@ public enum DinkyCLIPresetSupport: Sendable {
         if !explicit.contains("maxWidth") {
             o.maxWidth = p.maxWidthEnabled ? p.maxWidth : nil
         }
+        if !explicit.contains("scale") {
+            o.scalePercent = p.resizePercentEnabled ? p.resizePercent : nil
+        }
         if !explicit.contains("maxSizeKb") {
             o.maxFileSizeKB = p.maxFileSizeEnabled ? p.maxFileSizeKB : nil
         }

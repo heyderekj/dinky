@@ -15,6 +15,10 @@ let settingsWidthPresets: [(String, Int)] = [
     ("1920 px", 1920), ("2560 px", 2560), ("3840 px", 3840)
 ]
 
+let settingsScalePercentPresets: [(String, Int)] = [
+    ("25%", 25), ("50%", 50), ("75%", 75)
+]
+
 let settingsSizePresets: [(String, Int)] = [
     ("0.5 MB", 512), ("1 MB", 1024), ("2 MB", 2048),
     ("5 MB", 5120), ("10 MB", 10240)
@@ -119,6 +123,27 @@ func settingsChipGrid(
                 )
                 .contentShape(Rectangle())
                 .onTapGesture { onSelect(value) }
+        }
+    }
+}
+
+// MARK: - Percentage resize
+
+/// Percentage chips plus a field (sidebar + Settings presets tab). Scales width and height together.
+struct ScalePercentControls: View {
+    @Binding var percent: Int
+    var fieldWidth: CGFloat = 52
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            settingsChipGrid(presets: settingsScalePercentPresets, current: percent, fixedColumnCount: 3) { percent = $0 }
+            HStack(spacing: 6) {
+                TextField("50", value: Binding(
+                    get: { percent }, set: { percent = CompressionGoals.clampedScalePercent($0) }
+                ), format: .number)
+                .textFieldStyle(.roundedBorder).frame(width: fieldWidth)
+                Text(verbatim: "%").foregroundStyle(.secondary)
+            }
         }
     }
 }

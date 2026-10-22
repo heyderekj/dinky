@@ -12,9 +12,10 @@ struct BatchCompletionFileRow: Identifiable, Equatable, Codable {
     let outputSize: Int64
     /// Whether this row can still be reverted (undo snapshot present on the queue item).
     let canUndo: Bool
-    /// Pixel widths when an image was downscaled to fit a width limit (optional so older history decodes).
+    /// Pixel sizes when an image was resized by the scale or width limit (optional so older history decodes).
     var resizedFromWidth: Int? = nil
     var resizedToWidth: Int? = nil
+    var resizedToHeight: Int? = nil
 }
 
 /// One row in the batch summary file list (compressed, skipped, failed, or no gain).
@@ -50,7 +51,8 @@ enum BatchSummaryListRow: Identifiable, Equatable, Codable {
                         outputSize: out,
                         canUndo: item.undoSnapshot != nil,
                         resizedFromWidth: item.imageResize?.originalWidth,
-                        resizedToWidth: item.imageResize?.outputWidth
+                        resizedToWidth: item.imageResize?.outputWidth,
+                        resizedToHeight: item.imageResize?.outputHeight
                     )
                 )
             case .skipped(let savedPercent, let threshold):
@@ -203,7 +205,7 @@ struct BatchCompletionSummarySheet: View {
                     SummaryStatRow(
                         icon: "arrow.down.right.and.arrow.up.left",
                         text: String.localizedStringWithFormat(
-                            String(localized: "%lld resized to fit the width limit", comment: "Batch summary; argument is the number of images downscaled to the width limit."),
+                            String(localized: "%lld resized", comment: "Batch summary; argument is the number of images resized by the scale or width limit."),
                             Int64(resizedCount(summary))
                         )
                     )
@@ -593,10 +595,16 @@ struct BatchCompletionSummarySheet: View {
             row.sourceName
         )
         let helpText = "\(row.sourcePath)\n→ \(row.outputPath)"
-        let resizedLabel: String? = row.resizedToWidth.map {
-            String.localizedStringWithFormat(
+        let resizedLabel: String? = row.resizedToWidth.map { width in
+            if let height = row.resizedToHeight {
+                return String.localizedStringWithFormat(
+                    String(localized: "Resized to %1$lld×%2$lld px", comment: "Batch summary per file: image resized to these pixel dimensions (width, height)."),
+                    Int64(width), Int64(height)
+                )
+            }
+            return String.localizedStringWithFormat(
                 String(localized: "Resized to %lld px", comment: "Batch summary per file: image downscaled to this width in pixels."),
-                Int64($0)
+                Int64(width)
             )
         }
         let a11yMetrics: String = {

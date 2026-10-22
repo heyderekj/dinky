@@ -51,7 +51,7 @@ final class CompressionItem: ObservableObject, Identifiable {
     @Published var videoIsHDR: Bool = false
     /// True when a multi-frame source (e.g. GIF) was compressed using only the first frame.
     @Published var usedFirstFrameOnly: Bool = false
-    /// Set when an image was downscaled to fit a width limit.
+    /// Set when an image was resized by the percentage scale or width limit.
     @Published var imageResize: ImageResizeInfo? = nil
 
     var forceCompress: Bool = false
@@ -133,8 +133,8 @@ final class CompressionItem: ObservableObject, Identifiable {
         case .done:
             if savedPercent <= 0, let resize = imageResize {
                 return String.localizedStringWithFormat(
-                    String(localized: "Resized to %lld px wide", comment: "Result status when an image was downscaled to the width limit but the file didn't get smaller. Argument is the new width in pixels."),
-                    Int64(resize.outputWidth)
+                    String(localized: "Resized to %1$lld×%2$lld px", comment: "Result status when an image was resized (scale or width limit) but the file didn't get smaller. Arguments are the new width and height in pixels."),
+                    Int64(resize.outputWidth), Int64(resize.outputHeight)
                 )
             }
             return String(format: "%.1f%% smaller", savedPercent)
