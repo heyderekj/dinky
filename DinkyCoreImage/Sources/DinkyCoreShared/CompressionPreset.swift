@@ -10,6 +10,9 @@ public struct CompressionPreset: Codable, Identifiable, Sendable {
     // Limits
     public var maxWidthEnabled: Bool
     public var maxWidth: Int
+    /// Scale images by a percentage of their original width and height (before the max width cap).
+    public var resizePercentEnabled: Bool
+    public var resizePercent: Int
     public var maxFileSizeEnabled: Bool
     public var maxFileSizeKB: Int
     // Output
@@ -89,6 +92,8 @@ public struct CompressionPreset: Codable, Identifiable, Sendable {
         autoFormat: Bool,
         maxWidthEnabled: Bool,
         maxWidth: Int,
+        resizePercentEnabled: Bool = false,
+        resizePercent: Int = 50,
         maxFileSizeEnabled: Bool,
         maxFileSizeKB: Int,
         saveLocationRaw: String,
@@ -140,6 +145,8 @@ public struct CompressionPreset: Codable, Identifiable, Sendable {
         self.autoFormat = autoFormat
         self.maxWidthEnabled = maxWidthEnabled
         self.maxWidth = maxWidth
+        self.resizePercentEnabled = resizePercentEnabled
+        self.resizePercent = resizePercent
         self.maxFileSizeEnabled = maxFileSizeEnabled
         self.maxFileSizeKB = maxFileSizeKB
         self.saveLocationRaw = saveLocationRaw
@@ -195,6 +202,8 @@ public struct CompressionPreset: Codable, Identifiable, Sendable {
             autoFormat: source.autoFormat,
             maxWidthEnabled: source.maxWidthEnabled,
             maxWidth: source.maxWidth,
+            resizePercentEnabled: source.resizePercentEnabled,
+            resizePercent: source.resizePercent,
             maxFileSizeEnabled: source.maxFileSizeEnabled,
             maxFileSizeKB: source.maxFileSizeKB,
             saveLocationRaw: source.saveLocationRaw,
@@ -252,6 +261,8 @@ public struct CompressionPreset: Codable, Identifiable, Sendable {
         autoFormat = try c.decodeIfPresent(Bool.self, forKey: .autoFormat) ?? false
         maxWidthEnabled = try c.decodeIfPresent(Bool.self, forKey: .maxWidthEnabled) ?? false
         maxWidth = try c.decodeIfPresent(Int.self, forKey: .maxWidth) ?? 1920
+        resizePercentEnabled = try c.decodeIfPresent(Bool.self, forKey: .resizePercentEnabled) ?? false
+        resizePercent = try c.decodeIfPresent(Int.self, forKey: .resizePercent) ?? 50
         maxFileSizeEnabled = try c.decodeIfPresent(Bool.self, forKey: .maxFileSizeEnabled) ?? false
         maxFileSizeKB = try c.decodeIfPresent(Int.self, forKey: .maxFileSizeKB) ?? 2048
         saveLocationRaw = try c.decodeIfPresent(String.self, forKey: .saveLocationRaw) ?? "sameFolder"

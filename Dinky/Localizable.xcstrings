@@ -169,12 +169,6 @@
         }
       }
     },
-    "%lld px" : {
-      "comment" : "Results row chip: image was resized to this width in pixels."
-    },
-    "%lld resized to fit the width limit" : {
-      "comment" : "Batch summary; argument is the number of images downscaled to the width limit."
-    },
     "-dinky" : {
       "comment" : "Settings UI.",
       "localizations" : {
@@ -251,36 +245,6 @@
           }
         }
       }
-    },
-    "Applies to files a watch folder picked up (global or preset). Pick Move to Trash to keep a watch folder as an inbox that empties itself. Originals are only moved once a smaller file has been saved." : {
-      "comment" : "Settings UI."
-    },
-    "Originals are only moved once a smaller file has been saved. If a file can't be made smaller, the original stays where it is." : {
-      "comment" : "Settings UI: originals are never touched when the result is discarded."
-    },
-    "Resized from %lld to %lld px wide (width limit)" : {
-      "comment" : "Results row tooltip / VoiceOver: image downscaled to the width limit. Arguments are the original and new widths in pixels."
-    },
-    "Resized to %lld px" : {
-      "comment" : "Batch summary per file: image downscaled to this width in pixels."
-    },
-    "Resized to %lld px wide" : {
-      "comment" : "Result status when an image was downscaled to the width limit but the file didn't get smaller. Argument is the new width in pixels."
-    },
-    "Same as Original Files (currently: %@)" : {
-      "comment" : "Settings UI: watch originals follow the general setting. Argument is that setting, e.g. “Stay where they are”."
-    },
-    "The Backup folder is inside a watched folder. Dinky won't compress what's in it, but a Backup folder elsewhere keeps things tidier." : {
-      "comment" : "Settings UI: warning when the originals backup folder sits inside a watch folder."
-    },
-    "The global folder uses the preset selected in the main window when it covers the file type, otherwise the sidebar settings. Presets can add separate watched folders in their own settings." : {
-      "comment" : "Settings UI."
-    },
-    "Watch folders use their own setting: %@." : {
-      "comment" : "Settings UI: shown under Original Files when watch folders override it. Argument is the watch setting, e.g. “Move to Trash”."
-    },
-    "Watch settings…" : {
-      "comment" : "Settings UI: link to Watch tab."
     },
     "—" : {
       "comment" : "Em dash when download size unknown.",
@@ -865,6 +829,16 @@
         }
       }
     },
+    "%@ → %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ → %2$@"
+          }
+        }
+      }
+    },
     "%@ from the chips; compression strength adapts per file." : {
       "comment" : "Simple outcome: images, smart on, manual format; argument is format name."
     },
@@ -967,6 +941,9 @@
     "%1$@ vs %2$@" : {
       "comment" : "Batch summary zero-gain; original vs attempted size."
     },
+    "%1$lld×%2$lld px" : {
+      "comment" : "Results row chip: image was resized to these pixel dimensions (width, height)."
+    },
     "%lld failed" : {
       "comment" : "Batch summary; argument is failure count."
     },
@@ -1049,6 +1026,9 @@
           }
         }
       }
+    },
+    "%lld resized to fit the width limit" : {
+      "comment" : "Batch summary; argument is the number of images downscaled to the width limit."
     },
     "%lld scanned PDFs made searchable." : {
       "comment" : "Batch summary OCR line (plural)."
@@ -1135,6 +1115,7 @@
       }
     },
     "%lld%%" : {
+      "comment" : "Preset summary: uniform percentage resize.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1605,6 +1586,9 @@
           }
         }
       }
+    },
+    "50" : {
+
     },
     "1920" : {
       "comment" : "A placeholder text for the maximum width input field in the sidebar.",
@@ -3137,6 +3121,9 @@
           }
         }
       }
+    },
+    "Applies to files a watch folder picked up (global or preset). Pick Move to Trash to keep a watch folder as an inbox that empties itself. Originals are only moved once a smaller file has been saved." : {
+      "comment" : "Settings UI."
     },
     "Applies to images, videos, and PDFs. Skip files where savings fall below this threshold." : {
       "comment" : "Settings UI.",
@@ -17942,7 +17929,7 @@
       "comment" : "Simple outcome: PDF OCR technical append."
     },
     "Off" : {
-      "comment" : "Settings UI.",
+      "comment" : "Accessibility value: toggle off.\nSettings UI.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -19373,6 +19360,9 @@
     "Originals" : {
       "comment" : "Settings UI."
     },
+    "Originals are only moved once a smaller file has been saved. If a file can't be made smaller, the original stays where it is." : {
+      "comment" : "Settings UI: originals are never touched when the result is discarded."
+    },
     "Output" : {
       "comment" : "Outcome map row title; matches Output scope tab.\nSettings UI.\nSettings UI: Media PDF subsection.\nVoiceOver: Output scope.",
       "localizations" : {
@@ -20152,6 +20142,9 @@
           }
         }
       }
+    },
+    "Percent of the original width and height. Max width still applies after scaling." : {
+      "comment" : "Settings UI.\nSidebar: percentage resize helper."
     },
     "Permanent once the trash is emptied." : {
       "comment" : "Settings UI.",
@@ -23346,6 +23339,9 @@
         }
       }
     },
+    "Resize by percentage" : {
+      "comment" : "Settings UI.\nSidebar: percentage resize toggle."
+    },
     "Resize to a maximum width" : {
       "comment" : "A toggle that enables or disables resizing images to a maximum width.",
       "isCommentAutoGenerated" : true,
@@ -23423,6 +23419,18 @@
           }
         }
       }
+    },
+    "Resized from %1$lld×%2$lld to %3$lld×%4$lld px" : {
+      "comment" : "Results row tooltip / VoiceOver: image resized by the scale or width limit. Arguments are the original width and height, then the new width and height, in pixels."
+    },
+    "Resized to %1$lld×%2$lld px" : {
+      "comment" : "Batch summary per file: image resized to these pixel dimensions (width, height)."
+    },
+    "Resized to %lld px" : {
+      "comment" : "Batch summary per file: image downscaled to this width in pixels."
+    },
+    "Resized to %lld px wide" : {
+      "comment" : "Result status when an image was downscaled to the width limit but the file didn't get smaller. Argument is the new width in pixels."
     },
     "Restore the original and remove this compressed file." : {
       "comment" : "Tooltip for batch summary row Undo."
@@ -23677,6 +23685,9 @@
     },
     "Run compression on queued files (%@)" : {
       "comment" : "Toolbar: Compress Now help; argument is shortcut."
+    },
+    "Same as Original Files (currently: %@)" : {
+      "comment" : "Settings UI: watch originals follow the general setting. Argument is that setting, e.g. “Stay where they are”."
     },
     "Same folder as original" : {
       "comment" : "Settings UI.",
@@ -24074,6 +24085,9 @@
     },
     "Saves where you chose in Settings; optionally reveals the folder when done." : {
       "comment" : "Outcome map friendly: output."
+    },
+    "Scale" : {
+      "comment" : "Settings UI: Media image subsection.\nSidebar: percentage resize section title."
     },
     "Scan-like PDFs can be made searchable with OCR first." : {
       "comment" : "Outcome map friendly: PDF OCR sentence append."
@@ -27049,6 +27063,9 @@
     "That's in the neighborhood of a full HD feature film or more." : {
       "comment" : "Batch summary savings perspective; rough size analogy."
     },
+    "The Backup folder is inside a watched folder. Dinky won't compress what's in it, but a Backup folder elsewhere keeps things tidier." : {
+      "comment" : "Settings UI: warning when the originals backup folder sits inside a watch folder."
+    },
     "The compressed file is no longer at its saved location." : {
       "comment" : "Undo error."
     },
@@ -27209,6 +27226,9 @@
           }
         }
       }
+    },
+    "The global folder uses the preset selected in the main window when it covers the file type, otherwise the sidebar settings. Presets can add separate watched folders in their own settings." : {
+      "comment" : "Settings UI."
     },
     "The global folder uses whatever settings are in the main window (sidebar). Presets can add separate watched folders in their own settings." : {
       "comment" : "Settings UI.",
@@ -29979,6 +29999,9 @@
     "Watch folders" : {
       "comment" : "Sidebar footer: open Watch settings."
     },
+    "Watch folders use their own setting: %@." : {
+      "comment" : "Settings UI: shown under Original Files when watch folders override it. Argument is the watch setting, e.g. “Move to Trash”."
+    },
     "Watch folders use this preset only for matching file types. Other files use the global sidebar settings." : {
       "comment" : "Settings UI.",
       "localizations" : {
@@ -30055,6 +30078,9 @@
           }
         }
       }
+    },
+    "Watch settings…" : {
+      "comment" : "Settings UI: link to Watch tab."
     },
     "Watch this folder" : {
       "comment" : "Settings UI.",

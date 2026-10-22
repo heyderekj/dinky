@@ -1,3 +1,4 @@
+import DinkyCoreImage
 import DinkyCoreShared
 import Foundation
 
@@ -65,6 +66,15 @@ public enum DinkyCompressArgParser {
                     guard i < n, let w = Int(args[i]) else { throw DinkyCLIParseError(message: "invalid --max-width") }
                     o.maxWidth = w
                     explicit.insert("maxWidth")
+                case "--scale":
+                    i += 1
+                    guard i < n,
+                          let pct = Int(args[i].hasSuffix("%") ? String(args[i].dropLast()) : args[i]),
+                          CompressionGoals.scalePercentRange.contains(pct) else {
+                        throw DinkyCLIParseError(message: "invalid --scale (expected 1-100 percent)")
+                    }
+                    o.scalePercent = pct
+                    explicit.insert("scale")
                 case "--max-size-kb":
                     i += 1
                     guard i < n, let k = Int(args[i]) else { throw DinkyCLIParseError(message: "invalid --max-size-kb") }
