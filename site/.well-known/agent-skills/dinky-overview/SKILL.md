@@ -5,7 +5,7 @@ description: Context for the Dinky macOS compression app (images, PDFs, videos).
 
 # Dinky — overview
 
-Use this skill when answering questions about **Dinky**, a tiny native macOS app that compresses **images** (WebP, AVIF, lossless PNG, HEIC), **PDFs** (preserve structure or flatten), and **video** (MP4 with H.264 or HEVC).
+Use this skill when answering questions about **Dinky**, a tiny native macOS app that compresses **images** (WebP, AVIF, lossless PNG, HEIC, JPEG), **PDFs** (preserve structure or flatten), and **video** (MP4 with H.264 or HEVC).
 
 ## Facts
 

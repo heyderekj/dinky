@@ -278,7 +278,7 @@
     }
     async function compress(row, fmt) {
       const out = $('[data-out]', row);
-      out.textContent = mb(Number(row.dataset.size) * Number(row.dataset.factor) * ({ AVIF: 0.75, PNG: 2.9, HEIC: 1.15, Low: 0.7, High: 1.45 }[fmt.split(' · ').pop()] || 1));
+      out.textContent = mb(Number(row.dataset.size) * Number(row.dataset.factor) * ({ AVIF: 0.75, PNG: 2.9, HEIC: 1.15, JPEG: 1.4, Low: 0.7, High: 1.45 }[fmt.split(' · ').pop()] || 1));
       row.removeAttribute('tabindex');
       row.removeAttribute('role');
       row.removeAttribute('aria-haspopup');

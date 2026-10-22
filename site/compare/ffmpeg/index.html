@@ -54,7 +54,7 @@
             "name": "Can Dinky replace FFmpeg?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "For image compression yes: dinky compress handles WebP, AVIF, HEIC, and PNG from the command line or GUI. For video it depends — Dinky provides GUI presets via AVFoundation but lacks FFmpeg's full filter graph and codec surface. FFmpeg remains the right pick for complex video pipelines, arbitrary encoding flags, and server automation."
+              "text": "For image compression yes: dinky compress handles WebP, AVIF, HEIC, JPEG, and PNG from the command line or GUI. For video it depends — Dinky provides GUI presets via AVFoundation but lacks FFmpeg's full filter graph and codec surface. FFmpeg remains the right pick for complex video pipelines, arbitrary encoding flags, and server automation."
             }
           },
           {
@@ -62,7 +62,7 @@
             "name": "Does Dinky have a CLI?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Yes. dinky compress processes one or more image files from the shell and outputs WebP, AVIF, HEIC, or PNG. It supports --format, --quality, --output-dir, --max-width, --max-size-kb, --strip-metadata, --json for machine-readable output, and parallel jobs via -j. dinky serve also exposes a local HTTP endpoint for CI integration."
+              "text": "Yes. dinky compress processes one or more image files from the shell and outputs WebP, AVIF, HEIC, JPEG, or PNG. It supports --format, --quality, --output-dir, --max-width, --scale, --max-size-kb, --strip-metadata, --json for machine-readable output, and parallel jobs via -j. dinky serve also exposes a local HTTP endpoint for CI integration."
             }
           },
           {
@@ -139,7 +139,7 @@
             </tr>
             <tr>
               <th scope="row">Image compression</th>
-              <td class="col-dinky">GUI or CLI — WebP, AVIF, HEIC, PNG with smart quality</td>
+              <td class="col-dinky">GUI or CLI — WebP, AVIF, HEIC, JPEG, PNG with smart quality</td>
               <td>Possible via CLI; not a dedicated image optimizer</td>
             </tr>
             <tr>

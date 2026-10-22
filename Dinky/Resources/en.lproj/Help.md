@@ -58,13 +58,13 @@ The sidebar on the right of the main window is where you tell Dinky **what** to 
 
 Three plain-language choices: **Image**, **Video**, **PDF**. Pick one per category and drop. Dinky figures out a sensible encoder, quality, and size.
 
-**Still images:** Dinky **converts** to WebP, AVIF, lossless PNG, or HEIC — new files with that extension, not an in-place JPEG recompress. **Auto** picks AVIF for most photos and WebP for graphics; turn off **Auto** in the full sidebar or use **Settings → Presets** to lock one format.
+**Still images:** Dinky **converts** to WebP, AVIF, lossless PNG, HEIC, or JPEG — new files with that extension. **Auto** picks AVIF for most photos and WebP for graphics, never JPEG; turn off **Auto** in the full sidebar or use **Settings → Presets** to lock one format.
 
 ### Full sidebar
 
 Toggle **Settings → General → Use simple sidebar** off (or flip individual sections on) to expose every control:
 
-- **Images** — format (Auto, WebP, AVIF, lossless PNG, or HEIC), content hint (photo / illustration / screenshot), max width, max file size. With **Smart quality** off and a fixed format, you also get AVIF chroma, lossless WebP, or optimized PNG options in the sidebar.
+- **Images** — format (Auto, WebP, AVIF, lossless PNG, HEIC, or JPEG), content hint (photo / illustration / screenshot), max width, scale by percentage, max file size. With **Smart quality** off and a fixed format, you also get AVIF chroma, lossless WebP, or optimized PNG options in the sidebar.
 - **Videos** — codec family (H.264 / HEVC / AV1), quality tier, strip audio.
 - **PDFs** — preserve text & links, or flatten to images for the smallest possible file.
 
@@ -176,8 +176,11 @@ You used *Smallest file (flatten pages)*. Switch the preset's PDF output to *Pre
 **Right-click "Compress with Dinky" isn't showing up.**
 Open Dinky once after installing so macOS registers the Service. If it still doesn't appear, enable it in **System Settings → Keyboard → Keyboard Shortcuts → Services → Files and Folders**.
 
-**Why doesn't Dinky output JPEG?**
-WebP and AVIF are strictly better than JPEG — same visual quality, smaller file, and supported everywhere that matters. If your platform requires a `.jpg`, try WebP first; it's accepted almost universally now. If you hit a place that genuinely rejects it, get in touch and let us know.
+**When should I pick JPEG?**
+When something on the other end can't open WebP or AVIF — some older apps (FileMaker, for one) and upload forms still want a `.jpg`. Pick **JPEG** in the sidebar, or right-click a file and choose **Compress as JPEG**. Transparent areas turn white, since JPEG has no transparency. Otherwise WebP or AVIF will get you a smaller file at the same quality.
+
+**How do I make images half the size?**
+Turn on **Scale** in the full sidebar (or in a preset) and pick 25%, 50%, or 75%, or type any percentage up to 100%. Width and height shrink together, so portrait and landscape images keep their shape. If **Max width** is on too, it still applies after scaling.
 
 ---
 
