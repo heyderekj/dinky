@@ -35,7 +35,7 @@ def slug(q: str) -> str:
 faq = []
 def tag(m: re.Match) -> str:
     open_tag, body = m.group(1), m.group(2)
-    q = text(re.search(r'<h3 class="faq-q"[^>]*>(.*?)</h3>', body, re.S).group(1))
+    q = text(re.search(r'<(h3|summary) class="faq-q"[^>]*>(.*?)</\1>', body, re.S).group(2))
     a = text(re.search(r'<p class="faq-a"[^>]*>(.*?)</p>', body, re.S).group(1))
     # Keep an id the page already uses (other links point at it); otherwise make one from the question.
     existing = re.search(r'\sid="([^"]+)"', open_tag)
@@ -46,7 +46,8 @@ def tag(m: re.Match) -> str:
     return open_tag + body
 
 
-page = re.sub(r'(<div (?:id="[^"]*" )?class="faq-item[^"]*"[^>]*>)(.*?</p>\s*)(?=</div>)', tag, page, flags=re.S)
+# FAQ items are <div> (older pages) or <details> with a <summary> question (family design).
+page = re.sub(r'(<(?:div|details) (?:id="[^"]*" )?class="faq-item[^"]*"[^>]*>)(.*?</p>\s*)(?=</(?:div|details)>)', tag, page, flags=re.S)
 page_path.write_text(page)
 
 # The compare pages (site/compare/<tool>/), so "how does it compare?" has real answers. Title, summary and

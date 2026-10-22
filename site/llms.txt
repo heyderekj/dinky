@@ -1,10 +1,10 @@
 # Dinky
 
-> A tiny macOS compression app for images, videos, audio, and PDFs. Converts stills to WebP, AVIF, lossless PNG, or HEIC; exports video to smaller MP4 (H.264 or HEVC) with optional FPS cap; cross-converts AAC, ALAC, WAV, AIFF, FLAC, and MP3; shrinks PDFs. Drag and drop, get smaller files back. Free, open source, and entirely local — files never leave your machine.
+> A tiny macOS compression app for images, videos, audio, and PDFs. Converts stills to WebP, AVIF, lossless PNG, HEIC, or JPEG; exports video to smaller MP4 (H.264 or HEVC) with optional FPS cap; cross-converts AAC, ALAC, WAV, AIFF, FLAC, and MP3; shrinks PDFs. Drag and drop, get smaller files back. Free, open source, and entirely local — files never leave your machine.
 
 ## What it does
 
-- **Images** — JPG, PNG, WebP, AVIF, HEIC/HEIF, TIFF, BMP → WebP, AVIF, lossless PNG, or HEIC
+- **Images** — JPG, PNG, WebP, AVIF, HEIC/HEIF, TIFF, BMP → WebP, AVIF, lossless PNG, HEIC, or JPEG
 - **Videos** — common formats (e.g. MP4, MOV) → MP4 with H.264 or HEVC and quality presets; optional FPS cap (lower output frame rate when the source is higher)
 - **Audio** — AAC (M4A), ALAC, WAV, AIFF, FLAC, MP3 cross-convert via macOS `afconvert`; MP3 encode via bundled **lame**
 - **PDFs** — **Flatten (default)** rasterizes pages (PDFKit + JPEG) for reliable size wins; **Preserve (best-effort)** uses bundled **qpdf** (with lossless stream coalescing + resource cleanup) then PDFKit — only keeps output when smaller. **Scan OCR (optional)**: Vision text layer on scan-like PDFs before flatten/preserve. **Target file size**: set a ceiling (e.g. 10 MB) and Dinky steps down quality tiers until the output fits. **Image downsampling**: opt-in mixed-mode rasterizes image-heavy pages at 144 DPI while keeping text/link pages selectable — high-impact on 300 DPI scan PDFs
@@ -17,6 +17,7 @@
 - **Originals** — keep, move to Trash, or move to a Backup folder (global setting; watch folders can override it)
 - **Batch speed** — Fast (one at a time), Faster (up to three parallel), or Fastest (up to eight)
 - Max width resizing (common web presets or custom value)
+- Scale by percentage (1–100% of the original width and height; keeps proportions)
 - Max file size targeting via binary search on quality (images); step-down quality targeting for PDFs
 - Smart quality: detects photos vs graphics (UI, illustrations, logos, screenshots) via Vision framework + EXIF, adjusts quality per content type
 - Finder Quick Actions — compress without opening the app
@@ -49,7 +50,7 @@
 
 ## Comparison
 
-- vs **ImageOptim**: ImageOptim is same-format (lossless) — a JPEG stays a JPEG. Dinky **converts** stills to WebP/AVIF/HEIC/PNG for larger wins; use ImageOptim when you must keep the original extension.
+- vs **ImageOptim**: ImageOptim is same-format (lossless) — a JPEG stays a JPEG. Dinky **converts** stills to WebP/AVIF/HEIC/PNG for larger wins, and can write JPEG when a platform needs `.jpg`; use ImageOptim for lossless optimization inside the original format.
 - vs **TinyPNG**: TinyPNG uploads images to their servers. Dinky is 100% local.
 - vs **Squoosh**: Browser-based, one image at a time. Dinky is native, batch, offline.
 - vs **Optimage**: Similar feature set but Optimage costs $15 and weighs 62 MB. Dinky is free and 35 MB.

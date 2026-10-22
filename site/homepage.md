@@ -12,11 +12,11 @@ A tiny macOS app that shrinks images, videos, audio, and PDFs. Drag, drop, get s
 
 ## Highlights
 
-- **Honest compression** — still images **convert** to WebP, AVIF, HEIC, or lossless PNG (new files; not same-extension JPEG/PNG squeeze like ImageOptim); PDFs offer flatten vs best-effort preserve with clear tradeoffs ([comparison pages](https://dinkyfiles.com/compare/imageoptim/) cover ImageOptim, TinyPNG, HandBrake, Acrobat, and more)
+- **Honest compression** — still images **convert** to WebP, AVIF, HEIC, JPEG, or lossless PNG (new files; not same-extension JPEG/PNG squeeze like ImageOptim); PDFs offer flatten vs best-effort preserve with clear tradeoffs ([comparison pages](https://dinkyfiles.com/compare/imageoptim/) cover ImageOptim, TinyPNG, HandBrake, Acrobat, and more)
 - **Drag and drop** — images, videos, audio, or PDFs on the window, Dock, or file picker
 - **Clipboard compress** — paste a copied image with ⌘⇧V; the hotkey works system-wide, even when Dinky isn't focused
 - **Compress from a URL** — drop or paste a direct media link and Dinky downloads it (max 500 MB) before compressing
-- **Images** — WebP, AVIF, lossless PNG, or HEIC; Smart Quality (photo vs. graphic); max width and target file size
+- **Images** — WebP, AVIF, lossless PNG, HEIC, or JPEG; Smart Quality (photo vs. graphic); max width, scale by percentage, and target file size
 - **Videos** — MP4 export with codec and quality presets; optional FPS cap
 - **Audio** — AAC (M4A), ALAC, WAV, AIFF, FLAC, MP3; cross-convert via macOS `afconvert`; MP3 encode via bundled LAME
 - **PDFs** — preserve or flatten; optional on-device OCR on scans, then compress
