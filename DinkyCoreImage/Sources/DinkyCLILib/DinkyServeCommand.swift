@@ -12,6 +12,8 @@ struct DinkyServeCompressBody: Codable {
     var outputDir: String?
     var maxWidth: Int?
     var maxSizeKB: Int?
+    /// Percent of the original width and height (1–100).
+    var scalePercent: Int?
     var quality: Int?
     var smartQuality: Bool?
     var stripMetadata: Bool?
@@ -298,6 +300,7 @@ public enum DinkyServeCommand {
         if let dir = msg.outputDir { o.outputDir = URL(fileURLWithPath: dir, isDirectory: true) }
         o.maxWidth = msg.maxWidth
         o.maxFileSizeKB = msg.maxSizeKB
+        o.scalePercent = msg.scalePercent
         o.quality = msg.quality
         if let sq = msg.smartQuality { o.smartQuality = sq }
         if o.quality != nil { o.smartQuality = false }

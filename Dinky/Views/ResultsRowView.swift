@@ -424,8 +424,8 @@ struct ResultsRowView: View {
                 }
                 if let resize = item.imageResize, case .done = item.status {
                     mediaChip(String.localizedStringWithFormat(
-                        String(localized: "%lld px", comment: "Results row chip: image was resized to this width in pixels."),
-                        Int64(resize.outputWidth)
+                        String(localized: "%1$lld×%2$lld px", comment: "Results row chip: image was resized to these pixel dimensions (width, height)."),
+                        Int64(resize.outputWidth), Int64(resize.outputHeight)
                     ))
                     .fixedSize()
                     .help(resizeDescription(resize))
@@ -525,8 +525,9 @@ struct ResultsRowView: View {
 
     private func resizeDescription(_ resize: ImageResizeInfo) -> String {
         String.localizedStringWithFormat(
-            String(localized: "Resized from %lld to %lld px wide (width limit)", comment: "Results row tooltip / VoiceOver: image downscaled to the width limit. Arguments are the original and new widths in pixels."),
-            Int64(resize.originalWidth), Int64(resize.outputWidth)
+            String(localized: "Resized from %1$lld×%2$lld to %3$lld×%4$lld px", comment: "Results row tooltip / VoiceOver: image resized by the scale or width limit. Arguments are the original width and height, then the new width and height, in pixels."),
+            Int64(resize.originalWidth), Int64(resize.originalHeight),
+            Int64(resize.outputWidth), Int64(resize.outputHeight)
         )
     }
 
@@ -534,13 +535,13 @@ struct ResultsRowView: View {
     private var sizeInfo: some View {
         switch item.status {
         case .done(_, let orig, let out) where out >= orig && item.imageResize != nil:
-            // Resized to the width limit but the file didn't shrink — the dimensions are the result.
+            // Resized (scale or width limit) but the file didn't shrink — the dimensions are the result.
             if let resize = item.imageResize {
                 HStack(spacing: 5) {
-                    Text(verbatim: "\(resize.originalWidth) px")
+                    Text(verbatim: "\(resize.originalWidth)×\(resize.originalHeight)")
                     Image(systemName: "arrow.right")
                         .imageScale(.small)
-                    Text(verbatim: "\(resize.outputWidth) px")
+                    Text(verbatim: "\(resize.outputWidth)×\(resize.outputHeight) px")
                         .fontWeight(.medium)
                 }
                 .font(.system(.caption, design: .monospaced))

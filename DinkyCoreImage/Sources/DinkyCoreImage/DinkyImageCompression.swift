@@ -149,24 +149,15 @@ private func heicTranscodeToPNGIfNeeded(source: URL) throws -> URL {
     }
 }
 
-/// Downscale so display pixel width is `maxWidth` (same semantics as former `sips --resampleWidth`).
-private func resizeImageMaxWidthUsingImageIO(source: URL, maxWidth: Int) throws -> (URL, ImageResizeInfo?) {
-    guard maxWidth > 0 else { throw DinkyImageCompressionError.imageResizeFailed }
+/// Resample to the display pixel size `goals` asks for (percentage scale, then max width).
+/// Returns the source unchanged when the goals don't change its dimensions.
+private func resizeImageUsingImageIO(source: URL, goals: CompressionGoals) throws -> (URL, ImageResizeInfo?) {
     let cgImage = try cgImageDecodedOrientedFullSize(url: source)
 
     let w = cgImage.width
     let h = cgImage.height
     guard w > 0, h > 0 else { throw DinkyImageCompressionError.imageResizeFailed }
-
-    let outW: Int
-    let outH: Int
-    if w <= maxWidth {
-        outW = w
-        outH = h
-    } else {
-        outW = maxWidth
-        outH = max(1, Int((Double(h) * Double(maxWidth) / Double(w)).rounded()))
-    }
+    guard let (outW, outH) = goals.outputPixelSize(width: w, height: h) else { return (source, nil) }
 
     let tmpURL = FileManager.default.temporaryDirectory
         .appendingPathComponent("dinky_resize_io_\(UUID().uuidString)")
@@ -201,10 +192,7 @@ private func resizeImageMaxWidthUsingImageIO(source: URL, maxWidth: Int) throws 
         try? FileManager.default.removeItem(at: tmpURL)
         throw DinkyImageCompressionError.imageResizeFailed
     }
-    let info = w > maxWidth
-        ? ImageResizeInfo(originalWidth: w, originalHeight: h, outputWidth: outW, outputHeight: outH)
-        : nil
-    return (tmpURL, info)
+    return (tmpURL, ImageResizeInfo(originalWidth: w, originalHeight: h, outputWidth: outW, outputHeight: outH))
 }
 
 /// HEIC or JPEG output via ImageIO (decoded pixels only; no EXIF/XMP copied from source).
@@ -428,7 +416,7 @@ public actor DinkyImageCompression {
         if format == .webp,
            sourceHasMultipleFrames,
            goals.maxFileSizeKB == nil,
-           goals.maxWidth == nil,
+           !goals.changesDimensions,
            isGIF {
             let tEncodeAnim = CFAbsoluteTimeGetCurrent()
             let q: Int = {
@@ -481,7 +469,7 @@ public actor DinkyImageCompression {
 
         // Step 2: maybe resize
         let tResize = CFAbsoluteTimeGetCurrent()
-        let (workURL, resize) = try maybeResize(source: encoderInputURL, maxWidth: goals.maxWidth)
+        let (workURL, resize) = try maybeResize(source: encoderInputURL, goals: goals)
         DinkyImageCorePhaseLog.logPhase("image.resize", startedAt: tResize)
         report(0.33)
         let isTempWork = workURL != encoderInputURL
@@ -591,15 +579,16 @@ public actor DinkyImageCompression {
 
     // MARK: - Resize (ImageIO only; oriented dimensions, no `sips`)
 
-    private func maybeResize(source: URL, maxWidth: Int?) throws -> (URL, ImageResizeInfo?) {
-        guard let maxWidth else { return (source, nil) }
+    private func maybeResize(source: URL, goals: CompressionGoals) throws -> (URL, ImageResizeInfo?) {
+        guard goals.changesDimensions else { return (source, nil) }
 
-        guard let size = orientedPixelSize(url: source), Int(size.width) > maxWidth else {
+        // Cheap header check first so images already within the goals skip a full decode.
+        guard let size = orientedPixelSize(url: source),
+              goals.outputPixelSize(width: Int(size.width), height: Int(size.height)) != nil else {
             return (source, nil)
         }
 
-        let (url, info) = try resizeImageMaxWidthUsingImageIO(source: source, maxWidth: maxWidth)
-        return (url, info)
+        return try resizeImageUsingImageIO(source: source, goals: goals)
     }
 
     // MARK: - Quality binary search for file-size target

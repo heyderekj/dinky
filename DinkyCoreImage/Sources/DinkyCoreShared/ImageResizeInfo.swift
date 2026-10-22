@@ -1,6 +1,6 @@
 import Foundation
 
-/// Pixel dimensions before and after an image was downscaled to fit a width limit.
+/// Pixel dimensions before and after an image was resized (percentage scale and/or width limit).
 public struct ImageResizeInfo: Codable, Equatable, Hashable, Sendable {
     public let originalWidth: Int
     public let originalHeight: Int

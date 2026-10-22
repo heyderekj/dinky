@@ -44,6 +44,7 @@ dinky compress-image <file>... [options]
 - `-f, --format` `auto|webp|avif|png|heic|jpeg` (default: `auto`; `jpg` also works)
 - `-o, --output-dir` — output directory (default: next to each input, or from preset save location)
 - `-w, --max-width` — max width in pixels
+- `--scale` — resize width and height to a percentage of the original (`1...100`, e.g. `--scale 50`). Scaling runs before `--max-width`, which still caps the result
 - `--max-size-kb` — target max file size (KB)
 - `-q, --quality` `0...100` — disables smart quality when set
 - `--smart-quality` / `--no-smart-quality`

@@ -7,6 +7,8 @@ public struct DinkyCompressOptions: Sendable {
     public var quality: Int?
     public var maxWidth: Int?
     public var maxFileSizeKB: Int?
+    /// Percent of the original width and height (1–100); nil leaves images unscaled.
+    public var scalePercent: Int?
     public var stripMetadata: Bool
     public var outputDir: URL?
     public var smartQuality: Bool
@@ -24,6 +26,7 @@ public struct DinkyCompressOptions: Sendable {
         quality: Int? = nil,
         maxWidth: Int? = nil,
         maxFileSizeKB: Int? = nil,
+        scalePercent: Int? = nil,
         stripMetadata: Bool = true,
         outputDir: URL? = nil,
         smartQuality: Bool = true,
@@ -40,6 +43,7 @@ public struct DinkyCompressOptions: Sendable {
         self.quality = quality
         self.maxWidth = maxWidth
         self.maxFileSizeKB = maxFileSizeKB
+        self.scalePercent = scalePercent
         self.stripMetadata = stripMetadata
         self.outputDir = outputDir
         self.smartQuality = smartQuality

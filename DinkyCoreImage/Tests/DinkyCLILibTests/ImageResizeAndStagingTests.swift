@@ -43,6 +43,30 @@ final class ImageResizeAndStagingTests: XCTestCase {
         XCTAssertNil(r.resize)
     }
 
+    func testPercentScaleResizesBothAxes() async throws {
+        let src = try writePNG(named: "scaled", width: 400, height: 200)
+        let out = workDir.appendingPathComponent("scaled-out.webp")
+        let r = try await compress(src, format: .webp, output: out, goals: CompressionGoals(scalePercent: 50))
+        XCTAssertEqual(r.resize, ImageResizeInfo(originalWidth: 400, originalHeight: 200, outputWidth: 200, outputHeight: 100))
+        XCTAssertEqual(try pixelSize(r.outputURL), CGSize(width: 200, height: 100))
+    }
+
+    func testMaxWidthCapsScaledImage() async throws {
+        let src = try writePNG(named: "capped", width: 4000, height: 2000)
+        let out = workDir.appendingPathComponent("capped-out.webp")
+        let goals = CompressionGoals(maxWidth: 1000, scalePercent: 50)
+        let r = try await compress(src, format: .webp, output: out, goals: goals)
+        // 50% → 2000×1000, then the width cap keeps the shape at 1000×500.
+        XCTAssertEqual(try pixelSize(r.outputURL), CGSize(width: 1000, height: 500))
+    }
+
+    func testFullScaleIsNotResized() async throws {
+        let src = try writePNG(named: "full", width: 300, height: 300)
+        let out = workDir.appendingPathComponent("full-out.webp")
+        let r = try await compress(src, format: .webp, output: out, goals: CompressionGoals(scalePercent: 100))
+        XCTAssertNil(r.resize)
+    }
+
     /// Replace original with the same format: the source must be byte-identical afterwards and the
     /// result staged elsewhere, so a "no gain" result can be thrown away safely.
     func testOutputOverSourceIsStaged() async throws {
@@ -59,10 +83,14 @@ final class ImageResizeAndStagingTests: XCTestCase {
     // MARK: - Helpers
 
     private func compress(_ source: URL, format: CompressionFormat, output: URL, maxWidth: Int?) async throws -> DinkyImageCompressionResult {
+        try await compress(source, format: format, output: output, goals: CompressionGoals(maxWidth: maxWidth))
+    }
+
+    private func compress(_ source: URL, format: CompressionFormat, output: URL, goals: CompressionGoals) async throws -> DinkyImageCompressionResult {
         try await DinkyImageCompression(binDirectory: bin).compress(
             source: source,
             format: format,
-            goals: CompressionGoals(maxWidth: maxWidth),
+            goals: goals,
             stripMetadata: true,
             outputURL: output,
             parallelCompressionLimit: 1

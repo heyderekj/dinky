@@ -18,7 +18,7 @@ struct CompressionResult {
     /// Duration in seconds when the job was audio (or reuse for display).
     var audioDurationSeconds: Double? = nil
     var usedFirstFrameOnly: Bool = false
-    /// Set when an image was downscaled to fit a width limit.
+    /// Set when an image was resized by the percentage scale or width limit.
     var imageResize: ImageResizeInfo? = nil
     /// Where an image encoded to a temp file belongs (the source's own path) if it's kept.
     var stagedDestinationURL: URL? = nil
@@ -56,7 +56,7 @@ enum CompressionError: LocalizedError {
             return String(localized: "Could not encode this image as HEIC.", comment: "Error when HEIC export fails.")
         case .jpegEncodeFailed:
             return String(localized: "Could not encode this image as JPEG.", comment: "Error when JPEG export fails.")
-        case .imageResizeFailed: return "Could not resize this image for the width limit."
+        case .imageResizeFailed: return "Could not resize this image."
         case .imageReadFailed:
             return String(localized: "Could not read image data from this file.", comment: "Error when ImageIO fails to read source.")
         case .imageWriteFailed:
