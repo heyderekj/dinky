@@ -28,7 +28,7 @@ public enum DinkyCLIHelp {
           CLI flags override preset fields. Presets must include the command’s media type in scope.
 
         compress-image options:
-          -f, --format auto|webp|avif|png|heic   (default: auto)
+          -f, --format auto|webp|avif|png|heic|jpeg   (default: auto)
           -o, --output-dir <path>
           -w, --max-width <px>      --max-size-kb <k>
           --scale <pct>            (resize to 1-100% of the original width and height)

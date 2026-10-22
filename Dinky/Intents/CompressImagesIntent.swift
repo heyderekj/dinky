@@ -89,7 +89,7 @@ struct CompressImagesIntent: AppIntent {
 }
 
 enum CompressionFormatEntity: String, AppEnum {
-    case webp, avif, png, heic
+    case webp, avif, png, heic, jpeg
 
     static var typeDisplayRepresentation = TypeDisplayRepresentation(
         name: LocalizedStringResource("Format", comment: "Shortcuts: format type name.")
@@ -99,6 +99,7 @@ enum CompressionFormatEntity: String, AppEnum {
         .avif: DisplayRepresentation(title: LocalizedStringResource("AVIF", comment: "Image format name.")),
         .png: DisplayRepresentation(title: LocalizedStringResource("PNG", comment: "Image format name.")),
         .heic: DisplayRepresentation(title: LocalizedStringResource("HEIC", comment: "Image format name.")),
+        .jpeg: DisplayRepresentation(title: LocalizedStringResource("JPEG", comment: "Image format name.")),
     ]
 
     var compressionFormat: CompressionFormat {
@@ -107,6 +108,7 @@ enum CompressionFormatEntity: String, AppEnum {
         case .avif: return .avif
         case .png:  return .png
         case .heic: return .heic
+        case .jpeg: return .jpeg
         }
     }
 }

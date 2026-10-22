@@ -139,6 +139,7 @@ enum S {
     static let avif = "AVIF"
     static let png  = "PNG"
     static let heic = "HEIC"
+    static let jpeg = "JPEG"
 
     /// Shown in About, Settings, and linked with `mailto:`.
     static let supportEmail = "derek@testamentmade.com"

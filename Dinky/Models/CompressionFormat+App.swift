@@ -9,6 +9,7 @@ extension CompressionFormat {
         case .avif: return S.avif
         case .png:  return S.png
         case .heic: return S.heic
+        case .jpeg: return S.jpeg
         }
     }
 }

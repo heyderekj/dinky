@@ -276,7 +276,7 @@ public enum DinkyCompressCommand {
             let ct = classified ?? ContentClassifier.classify(sourceURL)
             return ct == .photo ? .avif : .webp
         }
-        guard let c = CompressionFormat(rawValue: f) else {
+        guard let c = CompressionFormat(rawValue: f == "jpg" ? "jpeg" : f) else {
             throw DinkyCLIParseError(message: "unknown --format: \(from)")
         }
         return c

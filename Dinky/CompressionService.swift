@@ -34,6 +34,7 @@ enum CompressionError: LocalizedError {
     case videoExportSessionUnavailable
     case heicTranscodeFailed
     case heicEncodeFailed
+    case jpegEncodeFailed
     case imageResizeFailed
     case imageReadFailed
     case imageWriteFailed
@@ -53,6 +54,8 @@ enum CompressionError: LocalizedError {
         case .heicTranscodeFailed: return "Could not read or convert this HEIC/HEIF image."
         case .heicEncodeFailed:
             return String(localized: "Could not encode this image as HEIC.", comment: "Error when HEIC export fails.")
+        case .jpegEncodeFailed:
+            return String(localized: "Could not encode this image as JPEG.", comment: "Error when JPEG export fails.")
         case .imageResizeFailed: return "Could not resize this image."
         case .imageReadFailed:
             return String(localized: "Could not read image data from this file.", comment: "Error when ImageIO fails to read source.")

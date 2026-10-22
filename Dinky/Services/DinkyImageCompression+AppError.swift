@@ -10,6 +10,7 @@ extension DinkyImageCompressionError {
         case .outputMissing:            return .outputMissing
         case .heicTranscodeFailed:      return .heicTranscodeFailed
         case .heicEncodeFailed:         return .heicEncodeFailed
+        case .jpegEncodeFailed:         return .jpegEncodeFailed
         case .imageResizeFailed:         return .imageResizeFailed
         case .imageReadFailed:          return .imageReadFailed
         case .imageWriteFailed:         return .imageWriteFailed
