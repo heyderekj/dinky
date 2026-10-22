@@ -30,7 +30,7 @@
     Slinky: {
       app: [['About Slinky', '', 'about'], ['Check for Updates…', '', 'upToDate'], '-', ['Lock Slinky', '⌃⌘L', 'lock'], '-', ['Settings…', '⌘,'], '-', ['Hide Slinky', '⌘H', 'hide'], ['Quit Slinky', '⌘Q']],
       file: [['Add Item…', '⌘N', 'add-item'], ['New Project…', '⇧⌘N', 'new-project'], ['Import…', '⇧⌘I', 'import'], '-', ['Quick Access', '⌥⌘K', 'quick-access'], '-', ['Close Window', '⌘W', 'minimize']],
-      view: [['Show Sidebar', '⌃⌘S', 'toggle-sidebar'], '-', ['Enter Full Screen', '⌃⌘F', 'fullscreen']],
+      view: [['All Items', '⌘1'], ['Keys & Tokens', '⌘2'], ['Recovery Codes', '⌘3'], ['Recovery Keys', '⌘4'], ['Health', '⌘5'], ['Recently Deleted', '⌘6'], ['Activity', '⌘7'], '-', ['Show Sidebar', '⌃⌘S', 'toggle-sidebar'], '-', ['Enter Full Screen', '⌃⌘F', 'fullscreen']],
       help: [['Slinky Help', '', 'help']],
       extra: [['Open Slinky', '', 'restore'], ['Quick Access', '⌥⌘K', 'quick-access'], '-', ['Recently Copied', '', null, true], ['  STRIPE_SECRET_KEY'], ['  GITHUB_TOKEN'], '-', ['Lock Slinky', '⌃⌘L', 'lock']],
     },
