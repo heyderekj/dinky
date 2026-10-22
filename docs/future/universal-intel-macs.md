@@ -2,6 +2,10 @@
 
 **Status:** Backlog — not started. Derek has no reliable way to **smoke-test on real Intel hardware**, so shipping a universal DMG would be risky without borrowing a machine or CI on Intel.
 
+**Starting point:** [PR #18](https://github.com/heyderekj/dinky/pull/18) (closed, October 2026) did most of the work: universal `bin/` and `lib/` payloads, `tools/vendor_universal_binaries.sh` to rebuild them from Homebrew bottles, `Resources/lib` lookup before the Homebrew fallbacks, and a `generic/platform=macOS` release build. It was tested on an Intel Mac. It was closed only because of the size cost and the lack of Intel hardware here. Rebase it instead of starting over.
+
+Binky went universal in the same pass, because it ships no helper binaries and only its own executable needed a second slice.
+
 **Context:** Current distributed builds are **Apple Silicon (arm64) only**; Intel users see a **slashed app icon** in Finder (architecture mismatch). Site and README already state Apple Silicon + macOS 15. See [`CLAUDE.md`](../../CLAUDE.md) for bundle-size philosophy before expanding support.
 
 ## What it would take (high level)
