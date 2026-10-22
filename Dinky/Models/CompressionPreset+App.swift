@@ -11,6 +11,8 @@ extension CompressionPreset {
             autoFormat: prefs.autoFormat,
             maxWidthEnabled: prefs.maxWidthEnabled,
             maxWidth: prefs.maxWidth,
+            resizePercentEnabled: prefs.resizePercentEnabled,
+            resizePercent: prefs.resizePercent,
             maxFileSizeEnabled: prefs.maxFileSizeEnabled,
             maxFileSizeKB: prefs.maxFileSizeKB,
             saveLocationRaw: "sameFolder",
@@ -62,6 +64,8 @@ extension CompressionPreset {
         prefs.autoFormat = autoFormat
         prefs.maxWidthEnabled = maxWidthEnabled
         prefs.maxWidth = maxWidth
+        prefs.resizePercentEnabled = resizePercentEnabled
+        prefs.resizePercent = resizePercent
         prefs.maxFileSizeEnabled = maxFileSizeEnabled
         prefs.maxFileSizeKB = maxFileSizeKB
         prefs.saveLocationRaw = saveLocationRaw
@@ -101,6 +105,11 @@ extension CompressionPreset {
         prefs.audioQualityTierRaw = audioQualityTierRaw
         prefs.pdfEnableOCR = pdfEnableOCR
         prefs.pdfOCRLanguages = pdfOCRLanguages
+    }
+
+    /// e.g. `50%`, formatted for the current locale.
+    var resizePercentSummary: String {
+        resizePercent.formatted(.percent)
     }
 
     /// Finder-style unique name among existing presets: `Name copy`, `Name copy 2`, …

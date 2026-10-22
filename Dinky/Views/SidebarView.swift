@@ -137,6 +137,7 @@ struct SidebarView: View {
         .modifier(SidebarMeasuredHeight(height: contentHeight))
         .adaptiveGlass(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .animation(.easeInOut(duration: 0.2), value: prefs.maxWidthEnabled)
+        .animation(.easeInOut(duration: 0.2), value: prefs.resizePercentEnabled)
         .animation(.easeInOut(duration: 0.2), value: prefs.maxFileSizeEnabled)
         .animation(.easeInOut(duration: 0.2), value: prefs.openFolderWhenDone)
         .animation(.easeInOut(duration: 0.2), value: prefs.stripMetadata)
@@ -808,6 +809,26 @@ struct SidebarView: View {
 
         SettingsSectionDivider()
 
+        settingsSubHeader(icon: "percent", String(localized: "Scale", comment: "Sidebar: percentage resize section title."))
+        Toggle(String(localized: "Resize by percentage", comment: "Sidebar: percentage resize toggle."), isOn: Binding(
+            get: { prefs.resizePercentEnabled }, set: { prefs.resizePercentEnabled = $0 }
+        )).toggleStyle(.switch).font(.system(size: 11))
+        if prefs.resizePercentEnabled {
+            VStack(alignment: .leading, spacing: 8) {
+                ScalePercentControls(
+                    percent: Binding(get: { prefs.resizePercent }, set: { prefs.resizePercent = $0 })
+                )
+                .font(.system(size: 11))
+                settingsHelperText(String(localized: "Percent of the original width and height. Max width still applies after scaling.", comment: "Sidebar: percentage resize helper."))
+            }
+            .transition(.asymmetric(
+                insertion: .move(edge: .top).combined(with: .opacity.animation(.easeInOut(duration: 0.15).delay(0.1))),
+                removal:   .move(edge: .top).combined(with: .opacity.animation(.easeIn(duration: 0.08)))
+            ))
+        }
+
+        SettingsSectionDivider()
+
         settingsSubHeader(icon: "gauge.with.dots.needle.67percent", "Max file size")
         Toggle("Target a smaller file size", isOn: Binding(
             get: { prefs.maxFileSizeEnabled }, set: { prefs.maxFileSizeEnabled = $0 }
@@ -1261,6 +1282,9 @@ struct SidebarView: View {
                     summaryRow("photo",   preset.autoFormat ? "Auto" : preset.format.displayName)
                     summaryRow("arrow.left.and.right",
                                preset.maxWidthEnabled ? "Max \(preset.maxWidth) px" : "No width limit")
+                    if preset.resizePercentEnabled {
+                        summaryRow("percent", preset.resizePercentSummary)
+                    }
                     if preset.maxFileSizeEnabled {
                         let mb = Double(preset.maxFileSizeKB) / 1024.0
                         summaryRow("gauge.medium", "Max \(mb < 1 ? String(format: "%.1f", mb) : String(format: "%.4g", mb)) MB")

@@ -1002,6 +1002,9 @@ private struct PresetsTab: View {
             if preset.maxWidthEnabled {
                 parts.append(String(localized: "max \(preset.maxWidth) px", comment: "Preset list: max width pixels."))
             }
+            if preset.resizePercentEnabled {
+                parts.append(preset.resizePercentSummary)
+            }
             if preset.maxFileSizeEnabled {
                 let mb = Double(preset.maxFileSizeKB) / 1024.0
                 let mbStr = mb < 1 ? String(format: "%.1f", mb) : String(format: "%.4g", mb)
@@ -1494,6 +1497,18 @@ private struct PresetsTab: View {
                     Text(String(localized: "px", comment: "Unit abbreviation for pixels.")).foregroundStyle(.secondary)
                 }
                 settingsHelperText(String(localized: "Try 1920 for web, 1280 for social, 640 for email.", comment: "Settings UI."))
+            }
+
+            SettingsSectionDivider()
+
+            settingsSubHeader(icon: "percent", String(localized: "Scale", comment: "Settings UI: Media image subsection."))
+            Toggle(String(localized: "Resize by percentage", comment: "Settings UI."), isOn: binding(\.resizePercentEnabled, snapshot: snapshot))
+            if live.resizePercentEnabled {
+                ScalePercentControls(
+                    percent: binding(\.resizePercent, snapshot: snapshot),
+                    fieldWidth: 64
+                )
+                settingsHelperText(String(localized: "Percent of the original width and height. Max width still applies after scaling.", comment: "Settings UI."))
             }
 
             SettingsSectionDivider()
