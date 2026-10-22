@@ -198,9 +198,12 @@ HTTP **200** if all files OK, **422** if any failed (image/video/PDF). **503** i
   "outputDir": "/path/to/out",
   "quality": 80,
   "smartQuality": false,
-  "stripMetadata": true
+  "stripMetadata": true,
+  "scalePercent": 50
 }
 ```
+
+`format` takes the same values as `--format` (`auto`, `webp`, `avif`, `png`, `heic`, `jpeg`). `scalePercent` (1–100) shrinks width and height together, like `--scale`; `maxWidth` and `maxSizeKB` work as in the CLI.
 
 ### Example: video POST
 
