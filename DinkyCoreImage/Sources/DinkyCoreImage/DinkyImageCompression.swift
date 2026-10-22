@@ -23,15 +23,16 @@ private let defaultQuality: [CompressionFormat: Int] = [
     .webp: 82,
     .avif: 75,
     .heic: 78,
+    .jpeg: 80,
 ]
 
 // Smart Quality: per-content-type quality for each format.
 // Graphics (UI, screenshots, illustrations, logos) get higher quality to keep
 // edges crisp. Photos stay at our tuned defaults. Mixed lands in between.
 private let qualityByContent: [ContentType: [CompressionFormat: Int]] = [
-    .photo:   [.webp: 82, .avif: 75, .heic: 78],
-    .graphic: [.webp: 92, .avif: 88, .heic: 88],
-    .mixed:   [.webp: 87, .avif: 82, .heic: 83],
+    .photo:   [.webp: 82, .avif: 75, .heic: 78, .jpeg: 80],
+    .graphic: [.webp: 92, .avif: 88, .heic: 88, .jpeg: 90],
+    .mixed:   [.webp: 87, .avif: 82, .heic: 83, .jpeg: 85],
 ]
 
 // Floor for the binary-search target-size mode. Graphics shouldn't
@@ -100,10 +101,10 @@ private func imageSourceHasMultipleFrames(url: URL) -> Bool {
     return CGImageSourceGetCount(src) > 1
 }
 
-/// Decode non-PNG sources when needed; skip when output is HEIC (ImageIO reads HEIC directly).
+/// Decode non-PNG sources when needed; skip when output is HEIC or JPEG (ImageIO reads HEIC directly).
 private func encoderInputURLForImageCompression(source: URL, outputFormat: CompressionFormat) throws -> URL {
     let ext = source.pathExtension.lowercased()
-    if outputFormat == .heic, ext == "heic" || ext == "heif" {
+    if outputFormat == .heic || outputFormat == .jpeg, ext == "heic" || ext == "heif" {
         return source
     }
     if outputFormat == .png {
@@ -206,19 +207,29 @@ private func resizeImageMaxWidthUsingImageIO(source: URL, maxWidth: Int) throws 
     return (tmpURL, info)
 }
 
-/// HEIC output via ImageIO (decoded pixels only; no EXIF/XMP copied from source).
-private func runHeicEncode(source: URL, quality: Int, output: URL) throws {
-    let cgImage: CGImage
+/// HEIC or JPEG output via ImageIO (decoded pixels only; no EXIF/XMP copied from source).
+private func runImageIOEncode(
+    source: URL,
+    quality: Int,
+    output: URL,
+    type: UTType,
+    failure: DinkyImageCompressionError
+) throws {
+    var cgImage: CGImage
     do {
         cgImage = try cgImageDecodedOrientedFullSize(url: source)
     } catch {
-        throw DinkyImageCompressionError.heicEncodeFailed
+        throw failure
+    }
+    // JPEG has no alpha: put transparent pixels on white instead of letting them turn black.
+    if type == .jpeg, let flattened = cgImageFlattenedOnWhite(cgImage) {
+        cgImage = flattened
     }
     if FileManager.default.fileExists(atPath: output.path) {
         try? FileManager.default.removeItem(at: output)
     }
-    guard let dest = CGImageDestinationCreateWithURL(output as CFURL, UTType.heic.identifier as CFString, 1, nil) else {
-        throw DinkyImageCompressionError.heicEncodeFailed
+    guard let dest = CGImageDestinationCreateWithURL(output as CFURL, type.identifier as CFString, 1, nil) else {
+        throw failure
     }
     let q = max(0, min(100, quality))
     let props: [CFString: Any] = [
@@ -227,8 +238,31 @@ private func runHeicEncode(source: URL, quality: Int, output: URL) throws {
     CGImageDestinationAddImage(dest, cgImage, props as CFDictionary)
     guard CGImageDestinationFinalize(dest) else {
         try? FileManager.default.removeItem(at: output)
-        throw DinkyImageCompressionError.heicEncodeFailed
+        throw failure
     }
+}
+
+/// Opaque copy of `image` composited over white, or nil when it has no alpha to flatten.
+private func cgImageFlattenedOnWhite(_ image: CGImage) -> CGImage? {
+    switch image.alphaInfo {
+    case .none, .noneSkipFirst, .noneSkipLast: return nil
+    default: break
+    }
+    let colorSpace = image.colorSpace.flatMap { $0.model == .rgb ? $0 : nil } ?? CGColorSpaceCreateDeviceRGB()
+    guard let ctx = CGContext(
+        data: nil,
+        width: image.width,
+        height: image.height,
+        bitsPerComponent: 8,
+        bytesPerRow: 0,
+        space: colorSpace,
+        bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+    ) else { return nil }
+    let rect = CGRect(x: 0, y: 0, width: image.width, height: image.height)
+    ctx.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+    ctx.fill(rect)
+    ctx.draw(image, in: rect)
+    return ctx.makeImage()
 }
 
 /// Animated GIF → animated WebP via ImageIO (`CGImageDestination`, no bundled encoder).
@@ -715,7 +749,9 @@ public actor DinkyImageCompression {
         case .png:
             try await runOxipng(source: source, strip: strip, output: output)
         case .heic:
-            try runHeicEncode(source: source, quality: quality, output: output)
+            try runImageIOEncode(source: source, quality: quality, output: output, type: .heic, failure: .heicEncodeFailed)
+        case .jpeg:
+            try runImageIOEncode(source: source, quality: quality, output: output, type: .jpeg, failure: .jpegEncodeFailed)
         }
     }
 

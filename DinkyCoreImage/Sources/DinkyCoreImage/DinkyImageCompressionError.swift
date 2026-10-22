@@ -7,6 +7,7 @@ public enum DinkyImageCompressionError: LocalizedError, Sendable {
     case outputMissing
     case heicTranscodeFailed
     case heicEncodeFailed
+    case jpegEncodeFailed
     case imageResizeFailed
     case imageReadFailed
     case imageWriteFailed
@@ -23,6 +24,8 @@ public enum DinkyImageCompressionError: LocalizedError, Sendable {
             return "Could not read or convert this HEIC/HEIF image."
         case .heicEncodeFailed:
             return "Could not encode this image as HEIC."
+        case .jpegEncodeFailed:
+            return "Could not encode this image as JPEG."
         case .imageResizeFailed:
             return "Could not resize this image for the width limit."
         case .imageReadFailed:

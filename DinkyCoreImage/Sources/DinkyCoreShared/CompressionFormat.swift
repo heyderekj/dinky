@@ -6,6 +6,7 @@ public enum CompressionFormat: String, CaseIterable, Identifiable, Codable, Send
     case avif = "avif"
     case png = "png"
     case heic = "heic"
+    case jpeg = "jpeg"
 
     public var id: String { rawValue }
 
@@ -15,6 +16,7 @@ public enum CompressionFormat: String, CaseIterable, Identifiable, Codable, Send
         case .avif: return "avif"
         case .png: return "png"
         case .heic: return "heic"
+        case .jpeg: return "jpg"
         }
     }
 
@@ -23,7 +25,7 @@ public enum CompressionFormat: String, CaseIterable, Identifiable, Codable, Send
         case .webp: return "cwebp"
         case .avif: return "avifenc"
         case .png: return "oxipng"
-        case .heic: return "imageio"
+        case .heic, .jpeg: return "imageio"
         }
     }
 
@@ -33,6 +35,7 @@ public enum CompressionFormat: String, CaseIterable, Identifiable, Codable, Send
         case .avif: return [.jpeg, .png, .tiff, .heic, .heif]
         case .png: return [.jpeg, .png, .webP, .tiff, .heic, .heif, .gif]
         case .heic: return [.jpeg, .png, .webP, .tiff, .heic, .heif]
+        case .jpeg: return [.jpeg, .png, .webP, .tiff, .heic, .heif, .gif]
         }
     }
 }

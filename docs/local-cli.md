@@ -41,7 +41,7 @@ dinky compress-image <file>... [options]
 
 ### Flags (images)
 
-- `-f, --format` `auto|webp|avif|png|heic` (default: `auto`)
+- `-f, --format` `auto|webp|avif|png|heic|jpeg` (default: `auto`; `jpg` also works)
 - `-o, --output-dir` — output directory (default: next to each input, or from preset save location)
 - `-w, --max-width` — max width in pixels
 - `--max-size-kb` — target max file size (KB)
