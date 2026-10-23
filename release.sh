@@ -147,6 +147,8 @@ if [ "$OLD_MARKETING" != "$VERSION" ]; then
   echo "→ Updating site/index.html…"
   sed -i '' "s/v$OLD_MARKETING · Requires/v$VERSION · Requires/g" site/index.html
   sed -i '' "s/v$OLD_MARKETING · Apple Silicon/v$VERSION · Apple Silicon/g" site/index.html
+  # Hero and footer lines: "v2.16.0 · macOS 15 Sequoia · Apple silicon".
+  sed -i '' "s/v$OLD_MARKETING · macOS/v$VERSION · macOS/g" site/index.html
   sed -i '' "s/v$OLD_MARKETING\/Dinky-$OLD_MARKETING.dmg/v$VERSION\/Dinky-$VERSION.dmg/g" site/index.html
   sed -i '' "s/\"softwareVersion\": \"$OLD_MARKETING\"/\"softwareVersion\": \"$VERSION\"/g" site/index.html
 
