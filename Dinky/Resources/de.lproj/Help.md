@@ -173,8 +173,11 @@ Sie haben *Flatten (am kleinsten)* verwendet. Schalten Sie die PDF-Ausgabe der V
 **Rechtsklick „Mit Dinky komprimieren“ wird nicht angezeigt.**
 Öffnen Sie Dinky nach der Installation einmal, damit macOS den Dienst registriert. Wenn es immer noch nicht angezeigt wird, aktivieren Sie es unter **Systemeinstellungen → Tastatur → Tastaturkürzel → Dienste → Dateien und Ordner**.
 
-**Warum gibt Dinky kein JPEG aus?**
-WebP und AVIF sind deutlich besser als JPEG – gleiche visuelle Qualität, kleinere Datei und werden überall dort unterstützt, wo es darauf ankommt. Wenn Ihre Plattform eine „.jpg“-Datei erfordert, versuchen Sie es zuerst mit WebP. Mittlerweile wird es fast überall akzeptiert. Wenn Sie auf eine Stelle stoßen, die dies wirklich ablehnt, nehmen Sie Kontakt mit uns auf und lassen Sie es uns wissen.
+**Wann sollte ich JPEG wählen?**
+Wenn die Gegenseite WebP oder AVIF nicht öffnen kann – manche ältere Apps (zum Beispiel FileMaker) und Upload-Formulare verlangen noch eine `.jpg`. Wählen Sie **JPEG** in der Seitenleiste oder klicken Sie eine Datei mit der rechten Maustaste an und wählen Sie **Als JPEG komprimieren**. Transparente Bereiche werden weiß, da JPEG keine Transparenz kennt. Ansonsten erhalten Sie mit WebP oder AVIF eine kleinere Datei bei gleicher Qualität.
+
+**Wie mache ich Bilder halb so groß?**
+Schalten Sie **Skalieren** in der vollständigen Seitenleiste (oder in einem Preset) ein und wählen Sie 25 %, 50 % oder 75 %, oder geben Sie einen beliebigen Prozentwert bis 100 % ein. Breite und Höhe werden gemeinsam verkleinert, sodass Hoch- und Querformatbilder ihre Form behalten. Ist **Max width** ebenfalls aktiv, gilt sie auch nach dem Skalieren.
 
 ---
 

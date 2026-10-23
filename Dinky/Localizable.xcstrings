@@ -837,7 +837,8 @@
             "value" : "%1$@ → %2$@"
           }
         }
-      }
+      },
+      "shouldTranslate" : false
     },
     "%@ from the chips; compression strength adapts per file." : {
       "comment" : "Simple outcome: images, smart on, manual format; argument is format name."
@@ -942,7 +943,8 @@
       "comment" : "Batch summary zero-gain; original vs attempted size."
     },
     "%1$lld×%2$lld px" : {
-      "comment" : "Results row chip: image was resized to these pixel dimensions (width, height)."
+      "comment" : "Results row chip: image was resized to these pixel dimensions (width, height).",
+      "shouldTranslate" : false
     },
     "%lld failed" : {
       "comment" : "Batch summary; argument is failure count."
@@ -1027,8 +1029,82 @@
         }
       }
     },
-    "%lld resized to fit the width limit" : {
-      "comment" : "Batch summary; argument is the number of images downscaled to the width limit."
+    "%lld resized" : {
+      "comment" : "Batch summary; argument is the number of images resized by the scale or width limit.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld verkleinert"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld redimensionadas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld redimensionnées"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld ridimensionate"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 件をリサイズ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld개 크기 조정됨"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld verkleind"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld redimensionadas"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уменьшено: %lld"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld yeniden boyutlandırıldı"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 个已调整大小"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 個已調整大小"
+          }
+        }
+      }
     },
     "%lld scanned PDFs made searchable." : {
       "comment" : "Batch summary OCR line (plural)."
@@ -1588,7 +1664,7 @@
       }
     },
     "50" : {
-
+      "shouldTranslate" : false
     },
     "1920" : {
       "comment" : "A placeholder text for the maximum width input field in the sidebar.",
@@ -6170,7 +6246,158 @@
       }
     },
     "Compress as HEIC" : {
-      "comment" : "Context menu."
+      "comment" : "Context menu.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als HEIC komprimieren"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprimir como HEIC"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compresser en tant que HEIC"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprimi come HEIC"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HEIC として圧縮"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HEIC으로 압축"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprimeren als HEIC"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compactar como HEIC"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сжать как HEIC"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HEIC olarak sıkıştır"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "压缩为 HEIC"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "壓縮為 HEIC"
+          }
+        }
+      }
+    },
+    "Compress as JPEG" : {
+      "comment" : "Context menu.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als JPEG komprimieren"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprimir como JPEG"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compresser en tant que JPEG"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprimi come JPEG"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JPEG として圧縮"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JPEG으로 압축"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprimeren als JPEG"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compactar como JPEG"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сжать как JPEG"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JPEG olarak sıkıştır"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "压缩为 JPEG"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "壓縮為 JPEG"
+          }
+        }
+      }
     },
     "Compress as PNG" : {
       "comment" : "Context menu.",
@@ -8129,6 +8356,83 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Could not encode this image as HEIC."
+          }
+        }
+      }
+    },
+    "Could not encode this image as JPEG." : {
+      "comment" : "Error when JPEG export fails.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Bild konnte nicht als JPEG kodiert werden."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo codificar esta imagen como JPEG."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d’encoder cette image en JPEG."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile codificare questa immagine come JPEG."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この画像を JPEG としてエンコードできませんでした。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 이미지를 JPEG으로 인코딩할 수 없습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kan deze afbeelding niet als JPEG coderen."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível codificar esta imagem como JPEG."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось закодировать это изображение в JPEG."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu görsel JPEG olarak kodlanamadı."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法将此图像编码为 JPEG。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法將此影像編碼為 JPEG。"
           }
         }
       }
@@ -15020,6 +15324,10 @@
     "Italiano" : {
 
     },
+    "JPEG" : {
+      "comment" : "Image format name.",
+      "shouldTranslate" : false
+    },
     "Keyboard shortcuts…" : {
       "comment" : "Settings UI.",
       "localizations" : {
@@ -17929,7 +18237,7 @@
       "comment" : "Simple outcome: PDF OCR technical append."
     },
     "Off" : {
-      "comment" : "Accessibility value: toggle off.\nSettings UI.",
+      "comment" : "Settings UI.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -20144,7 +20452,81 @@
       }
     },
     "Percent of the original width and height. Max width still applies after scaling." : {
-      "comment" : "Settings UI.\nSidebar: percentage resize helper."
+      "comment" : "Settings UI.\nSidebar: percentage resize helper.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prozent der ursprünglichen Breite und Höhe. Die maximale Breite gilt auch nach dem Skalieren."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Porcentaje del ancho y el alto originales. El ancho máximo se sigue aplicando después de escalar."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pourcentage de la largeur et de la hauteur d’origine. La largeur maximale s’applique toujours après la mise à l’échelle."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Percentuale della larghezza e dell’altezza originali. La larghezza massima si applica comunque dopo il ridimensionamento."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "元の幅と高さに対する割合です。縮小後も最大幅が適用されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "원본 너비와 높이에 대한 비율입니다. 배율 적용 후에도 최대 너비가 적용됩니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Percentage van de oorspronkelijke breedte en hoogte. De maximale breedte geldt ook na het schalen."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Porcentagem da largura e da altura originais. A largura máxima ainda se aplica após o redimensionamento."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Процент от исходной ширины и высоты. Максимальная ширина применяется и после масштабирования."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Orijinal genişlik ve yüksekliğin yüzdesi. Ölçeklemeden sonra da en büyük genişlik uygulanır."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "原始宽度和高度的百分比。缩放后仍会应用最大宽度。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "原始寬度和高度的百分比。縮放後仍會套用最大寬度。"
+          }
+        }
+      }
     },
     "Permanent once the trash is emptied." : {
       "comment" : "Settings UI.",
@@ -21692,7 +22074,158 @@
       }
     },
     "Re-compress as HEIC" : {
-      "comment" : "Context menu."
+      "comment" : "Context menu.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als HEIC erneut komprimieren"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volver a comprimir como HEIC"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recompresser en tant que HEIC"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ricomprimere come HEIC"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HEIC として再圧縮する"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HEIC으로 다시 압축"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opnieuw comprimeren als HEIC"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compactar novamente como HEIC"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пересжать как HEIC"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HEIC olarak yeniden sıkıştırın"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新压缩为 HEIC"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新壓縮為 HEIC"
+          }
+        }
+      }
+    },
+    "Re-compress as JPEG" : {
+      "comment" : "Context menu.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als JPEG erneut komprimieren"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volver a comprimir como JPEG"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recompresser en tant que JPEG"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ricomprimere come JPEG"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JPEG として再圧縮する"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JPEG으로 다시 압축"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opnieuw comprimeren als JPEG"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compactar novamente como JPEG"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пересжать как JPEG"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JPEG olarak yeniden sıkıştırın"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新压缩为 JPEG"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新壓縮為 JPEG"
+          }
+        }
+      }
     },
     "Re-compress as PNG" : {
       "comment" : "Context menu.",
@@ -23340,7 +23873,81 @@
       }
     },
     "Resize by percentage" : {
-      "comment" : "Settings UI.\nSidebar: percentage resize toggle."
+      "comment" : "Settings UI.\nSidebar: percentage resize toggle.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prozentual skalieren"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redimensionar por porcentaje"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redimensionner en pourcentage"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ridimensiona in percentuale"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "パーセントでサイズ変更"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "비율로 크기 조정"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Formaat wijzigen met percentage"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redimensionar por porcentagem"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить размер в процентах"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yüzdeyle yeniden boyutlandır"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按百分比调整大小"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按百分比調整大小"
+          }
+        }
+      }
     },
     "Resize to a maximum width" : {
       "comment" : "A toggle that enables or disables resizing images to a maximum width.",
@@ -23421,16 +24028,161 @@
       }
     },
     "Resized from %1$lld×%2$lld to %3$lld×%4$lld px" : {
-      "comment" : "Results row tooltip / VoiceOver: image resized by the scale or width limit. Arguments are the original width and height, then the new width and height, in pixels."
+      "comment" : "Results row tooltip / VoiceOver: image resized by the scale or width limit. Arguments are the original width and height, then the new width and height, in pixels.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verkleinert von %1$lld×%2$lld auf %3$lld×%4$lld px"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redimensionada de %1$lld×%2$lld a %3$lld×%4$lld px"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redimensionnée de %1$lld×%2$lld à %3$lld×%4$lld px"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ridimensionata da %1$lld×%2$lld a %3$lld×%4$lld px"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld×%2$lld から %3$lld×%4$lld px にリサイズ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld×%2$lld에서 %3$lld×%4$lld px로 크기 조정됨"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verkleind van %1$lld×%2$lld naar %3$lld×%4$lld px"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redimensionada de %1$lld×%2$lld para %3$lld×%4$lld px"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уменьшено с %1$lld×%2$lld до %3$lld×%4$lld px"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld×%2$lld boyutundan %3$lld×%4$lld px boyutuna getirildi"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已从 %1$lld×%2$lld 调整为 %3$lld×%4$lld px"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已從 %1$lld×%2$lld 調整為 %3$lld×%4$lld px"
+          }
+        }
+      }
     },
     "Resized to %1$lld×%2$lld px" : {
-      "comment" : "Batch summary per file: image resized to these pixel dimensions (width, height)."
+      "comment" : "Batch summary per file: image resized to these pixel dimensions (width, height).\nResult status when an image was resized (scale or width limit) but the file didn't get smaller. Arguments are the new width and height in pixels.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verkleinert auf %1$lld×%2$lld px"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redimensionada a %1$lld×%2$lld px"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redimensionnée en %1$lld×%2$lld px"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ridimensionata a %1$lld×%2$lld px"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld×%2$lld px にリサイズ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld×%2$lld px로 크기 조정됨"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verkleind naar %1$lld×%2$lld px"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redimensionada para %1$lld×%2$lld px"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уменьшено до %1$lld×%2$lld px"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld×%2$lld px olarak yeniden boyutlandırıldı"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已调整为 %1$lld×%2$lld px"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已調整為 %1$lld×%2$lld px"
+          }
+        }
+      }
     },
     "Resized to %lld px" : {
       "comment" : "Batch summary per file: image downscaled to this width in pixels."
-    },
-    "Resized to %lld px wide" : {
-      "comment" : "Result status when an image was downscaled to the width limit but the file didn't get smaller. Argument is the new width in pixels."
     },
     "Restore the original and remove this compressed file." : {
       "comment" : "Tooltip for batch summary row Undo."
@@ -24087,7 +24839,81 @@
       "comment" : "Outcome map friendly: output."
     },
     "Scale" : {
-      "comment" : "Settings UI: Media image subsection.\nSidebar: percentage resize section title."
+      "comment" : "Settings UI: Media image subsection.\nSidebar: percentage resize section title.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skalieren"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escala"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Échelle"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scala"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スケール"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "배율"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schaal"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escala"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Масштаб"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ölçek"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "缩放"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "縮放"
+          }
+        }
+      }
     },
     "Scan-like PDFs can be made searchable with OCR first." : {
       "comment" : "Outcome map friendly: PDF OCR sentence append."

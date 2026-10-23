@@ -173,8 +173,11 @@ Videonun yeniden kodlanması CPU açısından ağırdır. **Ayarlar → Genel** 
 **"Dinky ile Sıkıştır"a sağ tıklayınca görünmüyor.**
 MacOS'un Hizmeti kaydetmesi için kurulumdan sonra Dinky'yi bir kez açın. Hâlâ görünmüyorsa **Sistem Ayarları → Klavye → Klavye Kısayolları → Hizmetler → Dosyalar ve Klasörler** bölümünden etkinleştirin.
 
-**Dinky neden JPEG çıktısı vermiyor?**
-WebP ve AVIF, JPEG'den kesinlikle daha iyidir; aynı görsel kalite, daha küçük dosya ve önemli olan her yerde desteklenir. Platformunuz ".jpg" gerektiriyorsa önce WebP'yi deneyin; artık neredeyse evrensel olarak kabul ediliyor. Gerçekten reddeden bir yere rastlarsanız bizimle iletişime geçin ve bize bildirin.
+**JPEG’i ne zaman seçmeliyim?**
+Karşı taraf WebP veya AVIF açamıyorsa: bazı eski uygulamalar (örneğin FileMaker) ve yükleme formları hâlâ `.jpg` istiyor. Kenar çubuğunda **JPEG**’i seçin ya da bir dosyaya sağ tıklayıp **JPEG olarak sıkıştır** seçeneğini seçin. JPEG saydamlığı desteklemediği için saydam alanlar beyaz olur. Diğer durumlarda WebP veya AVIF aynı kalitede daha küçük bir dosya verir.
+
+**Görselleri nasıl yarı boyuta getiririm?**
+Tam kenar çubuğunda (veya bir ön ayarda) **Ölçek** seçeneğini açın ve %25, %50 ya da %75’i seçin veya %100’e kadar istediğiniz yüzdeyi yazın. Genişlik ve yükseklik birlikte küçülür, böylece dikey ve yatay görseller şeklini korur. **Max width** da açıksa ölçeklemeden sonra yine uygulanır.
 
 ---
 
