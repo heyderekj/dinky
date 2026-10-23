@@ -173,8 +173,11 @@ Vous avez utilisé *Aplatir (le plus petit)*. Basculez la sortie PDF du prérég
 **Cliquez avec le bouton droit sur "Compresser avec Dinky" n'apparaît pas.**
 Ouvrez Dinky une fois après l'installation pour que macOS enregistre le service. S'il n'apparaît toujours pas, activez-le dans **Paramètres système → Clavier → Raccourcis clavier → Services → Fichiers et dossiers**.
 
-**Pourquoi Dinky ne produit-il pas de fichiers JPEG ?**
-WebP et AVIF sont strictement meilleurs que JPEG : même qualité visuelle, fichier plus petit et pris en charge partout où cela compte. Si votre plate-forme nécessite un « .jpg », essayez d'abord WebP ; c'est maintenant accepté presque universellement. Si vous rencontrez un endroit qui le rejette sincèrement, contactez-nous et faites-le nous savoir.
+**Quand choisir JPEG ?**
+Quand le destinataire ne sait pas ouvrir le WebP ni l’AVIF : certaines anciennes apps (FileMaker, par exemple) et certains formulaires d’envoi exigent encore un `.jpg`. Choisissez **JPEG** dans la barre latérale, ou faites un clic droit sur un fichier et choisissez **Compresser en tant que JPEG**. Les zones transparentes deviennent blanches, car le JPEG ne gère pas la transparence. Sinon, le WebP ou l’AVIF vous donneront un fichier plus petit à qualité égale.
+
+**Comment réduire les images de moitié ?**
+Activez **Échelle** dans la barre latérale complète (ou dans un préréglage) et choisissez 25 %, 50 % ou 75 %, ou saisissez n’importe quel pourcentage jusqu’à 100 %. La largeur et la hauteur diminuent ensemble, donc les images en portrait et en paysage gardent leurs proportions. Si **Max width** est aussi activé, il s’applique toujours après la mise à l’échelle.
 
 ---
 

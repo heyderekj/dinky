@@ -173,8 +173,11 @@ Você usou *Achatar (menor)*. Mude a saída PDF da predefinição para *Preserva
 **Clique com o botão direito em "Compactar com Dinky" e não aparece.**
 Abra o Dinky uma vez após a instalação para que o macOS registre o serviço. Se ainda assim não aparecer, habilite-o em **Configurações do Sistema → Teclado → Atalhos de Teclado → Serviços → Arquivos e Pastas**.
 
-**Por que o Dinky não gera JPEG?**
-WebP e AVIF são estritamente melhores que JPEG – mesma qualidade visual, arquivo menor e suporte em todos os lugares importantes. Se a sua plataforma requer um `.jpg`, tente primeiro o WebP; é aceito quase universalmente agora. Se você encontrar um lugar que realmente o rejeita, entre em contato e nos avise.
+**Quando devo escolher JPEG?**
+Quando o outro lado não consegue abrir WebP nem AVIF: alguns apps mais antigos (como o FileMaker) e formulários de envio ainda exigem um `.jpg`. Escolha **JPEG** na barra lateral ou clique com o botão direito em um arquivo e escolha **Compactar como JPEG**. As áreas transparentes ficam brancas, já que o JPEG não tem transparência. Nos outros casos, WebP ou AVIF geram um arquivo menor com a mesma qualidade.
+
+**Como deixo as imagens com metade do tamanho?**
+Ative **Escala** na barra lateral completa (ou em um preset) e escolha 25%, 50% ou 75%, ou digite qualquer porcentagem até 100%. A largura e a altura diminuem juntas, então imagens na vertical e na horizontal mantêm o formato. Se **Max width** também estiver ativado, ele continua valendo depois do redimensionamento.
 
 ---
 

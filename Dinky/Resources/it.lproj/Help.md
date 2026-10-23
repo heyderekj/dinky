@@ -173,8 +173,11 @@ Hai utilizzato *Appiattisci (il più piccolo)*. Cambia l'output PDF della preimp
 **Il clic con il pulsante destro del mouse su "Comprimi con Dinky" non viene visualizzato.**
 Apri Dinky una volta dopo l'installazione in modo che macOS registri il servizio. Se ancora non viene visualizzato, abilitalo in **Impostazioni di sistema → Tastiera → Scorciatoie da tastiera → Servizi → File e cartelle**.
 
-**Perché Dinky non stampa JPEG?**
-WebP e AVIF sono decisamente migliori di JPEG: stessa qualità visiva, file più piccoli e supportati ovunque sia importante. Se la tua piattaforma richiede un `.jpg`, prova prima WebP; ora è accettato quasi universalmente. Se trovi un posto che lo rifiuta sinceramente, contattaci e faccelo sapere.
+**Quando conviene scegliere JPEG?**
+Quando dall’altra parte non si riesce ad aprire WebP o AVIF: alcune app meno recenti (FileMaker, per esempio) e alcuni moduli di caricamento vogliono ancora un `.jpg`. Scegli **JPEG** nella barra laterale, oppure fai clic destro su un file e scegli **Comprimi come JPEG**. Le aree trasparenti diventano bianche, perché il JPEG non supporta la trasparenza. Negli altri casi, WebP o AVIF ti danno un file più piccolo con la stessa qualità.
+
+**Come dimezzo le dimensioni delle immagini?**
+Attiva **Scala** nella barra laterale completa (o in un preset) e scegli 25%, 50% o 75%, oppure digita una percentuale qualsiasi fino al 100%. Larghezza e altezza si riducono insieme, così le immagini verticali e orizzontali mantengono le proporzioni. Se è attiva anche **Max width**, viene applicata comunque dopo il ridimensionamento.
 
 ---
 

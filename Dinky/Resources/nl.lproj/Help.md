@@ -173,8 +173,11 @@ Je hebt *Flatten (kleinste)* gebruikt. Schakel de PDF-uitvoer van de voorinstell
 **Klik met de rechtermuisknop op 'Comprimeren met Dinky' wordt niet weergegeven.**
 Open Dinky één keer na installatie, zodat macOS de service registreert. Als het nog steeds niet verschijnt, schakel het dan in **Systeeminstellingen → Toetsenbord → Sneltoetsen → Services → Bestanden en mappen**.
 
-**Waarom voert Dinky geen JPEG uit?**
-WebP en AVIF zijn absoluut beter dan JPEG: dezelfde visuele kwaliteit, kleiner bestand en overal ondersteund waar het ertoe doet. Als uw platform een ​​`.jpg` vereist, probeer dan eerst WebP; het wordt nu bijna universeel geaccepteerd. Als u een plaats tegenkomt die het echt afwijst, neem dan contact met ons op en laat het ons weten.
+**Wanneer kies ik JPEG?**
+Als de ontvanger geen WebP of AVIF kan openen: sommige oudere apps (FileMaker bijvoorbeeld) en uploadformulieren willen nog steeds een `.jpg`. Kies **JPEG** in de zijbalk, of klik met de rechtermuisknop op een bestand en kies **Comprimeren als JPEG**. Transparante delen worden wit, omdat JPEG geen transparantie kent. In andere gevallen geven WebP of AVIF een kleiner bestand bij dezelfde kwaliteit.
+
+**Hoe maak ik afbeeldingen half zo groot?**
+Zet **Schaal** aan in de volledige zijbalk (of in een voorinstelling) en kies 25%, 50% of 75%, of typ een willekeurig percentage tot 100%. Breedte en hoogte worden samen verkleind, dus staande en liggende afbeeldingen behouden hun vorm. Staat **Max width** ook aan, dan geldt die ook na het schalen.
 
 ---
 
