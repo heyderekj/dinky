@@ -36,7 +36,7 @@
 - macOS 15 Sequoia or later (liquid glass UI on macOS 26 Tahoe; frosted material fallback on Sequoia)
 - SwiftUI + AppKit; the app uses an in-tree Swift package for shared image code + optional `dinky` CLI (not a remote SPM dependency)
 - 35 MB installed
-- Image engines bundled: cwebp (Google), avifenc (AOM), oxipng (Rust/MIT)
+- Image engines bundled: cwebp (Google), avifenc (AOM), oxipng (Rust/MIT); HEIC and JPEG output use Apple's ImageIO (nothing extra bundled)
 - Audio: cross-convert via macOS **`afconvert`**; MP3 encode via bundled **`lame`**
 - PDF: flatten via PDFKit + ImageIO; preserve path via bundled **qpdf** + PDFKit; video via AVFoundation export
 - No cloud, no accounts, no in-app telemetry SDKs
