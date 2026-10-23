@@ -837,7 +837,8 @@
             "value" : "%1$@ → %2$@"
           }
         }
-      }
+      },
+      "shouldTranslate" : false
     },
     "%@ from the chips; compression strength adapts per file." : {
       "comment" : "Simple outcome: images, smart on, manual format; argument is format name."
@@ -942,7 +943,8 @@
       "comment" : "Batch summary zero-gain; original vs attempted size."
     },
     "%1$lld×%2$lld px" : {
-      "comment" : "Results row chip: image was resized to these pixel dimensions (width, height)."
+      "comment" : "Results row chip: image was resized to these pixel dimensions (width, height).",
+      "shouldTranslate" : false
     },
     "%lld failed" : {
       "comment" : "Batch summary; argument is failure count."
@@ -1662,7 +1664,7 @@
       }
     },
     "50" : {
-
+      "shouldTranslate" : false
     },
     "1920" : {
       "comment" : "A placeholder text for the maximum width input field in the sidebar.",
@@ -15323,7 +15325,8 @@
 
     },
     "JPEG" : {
-      "comment" : "Image format name."
+      "comment" : "Image format name.",
+      "shouldTranslate" : false
     },
     "Keyboard shortcuts…" : {
       "comment" : "Settings UI.",
