@@ -6,8 +6,13 @@
 # on the old version until you run `./release.sh X.Y.Z --bump-only` (then commit) or a full run.
 #
 # Usage:
+#   ./release.sh minor               # or patch / major: next version from the project (2.15.0 → 2.16.0)
 #   ./release.sh 1.2.3
 #   ./release.sh 1.2.3 --bump-only   # steps 1–2 only (no build, git, or gh)
+#
+# Run it from an up-to-date `main` (it checks, and fast-forwards if you're only behind). Before the
+# build it also checks create-dmg + gh, and warns about strings added since the last tag that have
+# no translations (fill them with tools/fill_xcstrings_translations.py).
 #
 # What it does:
 #   1. Bumps MARKETING_VERSION + CURRENT_PROJECT_VERSION in the Xcode project
@@ -49,7 +54,23 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$VERSION" ]; then
-  echo "Usage: ./release.sh <version> [--bump-only]  (e.g. ./release.sh 2.4.1 --bump-only)"
+  echo "Usage: ./release.sh <version|patch|minor|major> [--bump-only]  (e.g. ./release.sh minor)"
+  exit 1
+fi
+
+FILE_MARKETING=$(grep "MARKETING_VERSION" Dinky.xcodeproj/project.pbxproj | head -1 | sed 's/.*= //;s/;//')
+case "$VERSION" in
+  patch|minor|major)
+    IFS=. read -r V_MAJ V_MIN V_PAT <<< "$FILE_MARKETING"
+    case "$VERSION" in
+      patch) VERSION="$V_MAJ.$V_MIN.$((${V_PAT:-0} + 1))" ;;
+      minor) VERSION="$V_MAJ.$((V_MIN + 1)).0" ;;
+      major) VERSION="$((V_MAJ + 1)).0.0" ;;
+    esac
+    ;;
+esac
+if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "✗ Version must look like 2.16.0 (or be patch / minor / major); got '$VERSION'."
   exit 1
 fi
 
@@ -64,7 +85,44 @@ if [ -n "$(git status --porcelain)" ]; then
   exit 1
 fi
 
-FILE_MARKETING=$(grep "MARKETING_VERSION" Dinky.xcodeproj/project.pbxproj | head -1 | sed 's/.*= //;s/;//')
+if [ "$BUMP_ONLY" = false ]; then
+  # Releases go out from main, matching origin, so the tag and the pushed bump commit line up.
+  if [ "$(git rev-parse --abbrev-ref HEAD)" != "main" ]; then
+    echo "✗ Run releases from main (you're on $(git rev-parse --abbrev-ref HEAD))."
+    exit 1
+  fi
+  git fetch --quiet origin main --tags
+  if ! git merge-base --is-ancestor HEAD origin/main; then
+    echo "✗ Local main has commits that aren't on origin/main. Push or reset them first."
+    exit 1
+  fi
+  if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+    echo "→ Fast-forwarding main to origin/main…"
+    git merge --ff-only --quiet origin/main
+  fi
+  command -v create-dmg >/dev/null || { echo "✗ create-dmg missing: brew install create-dmg"; exit 1; }
+  gh auth status >/dev/null 2>&1 || { echo "✗ gh isn't signed in: gh auth login"; exit 1; }
+
+  # Strings added since the last release with no translation in some locale. A warning only:
+  # fill them with tools/fill_xcstrings_translations.py (or by hand) if they show up in the UI.
+  LAST_TAG=$(git tag -l 'v*' --sort=-version:refname | head -1 || true)
+  if [ -n "$LAST_TAG" ]; then
+    python3 - "$LAST_TAG" <<'PY' || true
+import json, subprocess, sys
+locales = ["de", "es", "fr", "it", "ja", "ko", "nl", "pt-BR", "ru", "tr", "zh-Hans", "zh-Hant"]
+old = json.loads(subprocess.check_output(["git", "show", f"{sys.argv[1]}:Dinky/Localizable.xcstrings"]))["strings"]
+new = json.load(open("Dinky/Localizable.xcstrings"))["strings"]
+missing = [k for k, v in new.items()
+           if k not in old and k.strip() and v.get("extractionState") != "stale"
+           and v.get("shouldTranslate", True)
+           and any(l not in v.get("localizations", {}) for l in locales)]
+if missing:
+    print(f"⚠︎ {len(missing)} strings added since {sys.argv[1]} aren't translated in every locale:")
+    for k in missing[:15]:
+        print(f"   {k!r}")
+PY
+  fi
+fi
 FILE_BUILD=$(grep "CURRENT_PROJECT_VERSION" Dinky.xcodeproj/project.pbxproj | head -1 | sed 's/.*= //;s/;//')
 OLD_MARKETING="$FILE_MARKETING"
 
@@ -113,6 +171,10 @@ if [ "$OLD_MARKETING" != "$VERSION" ]; then
 else
   echo "→ Site strings already match v$VERSION (skipping site sed)"
 fi
+
+# The site's Ask answers are built from the FAQ and Help.md; keep them in step with this release.
+echo "→ Regenerating site/ask.json…"
+python3 tools/make_ask_json.py
 
 if [ "$BUMP_ONLY" = true ]; then
   echo ""
@@ -183,7 +245,7 @@ sed -i '' "s/sha256 \".*\"/sha256 \"$CASK_SHASUM\"/" Casks/dinky.rb
 # ── 6. Optional bump commit, push, tag, release ─────────────────────────────
 
 echo "→ Committing version files (if changed by this run)…"
-git add Casks/dinky.rb Dinky.xcodeproj/project.pbxproj site/index.html site/llms.txt README.md
+git add Casks/dinky.rb Dinky.xcodeproj/project.pbxproj site/index.html site/llms.txt site/ask.json README.md
 [ -f site/homepage.md ] && git add site/homepage.md
 if compgen -G "site/compare/*/index.html" > /dev/null; then
   git add site/compare/*/index.html

@@ -19,3 +19,10 @@ Dinky is 35 MB installed (image/video encoders plus bundled **qpdf** and its dyl
 - Built by Derek Castelli — full-time freelance web designer (Webflow/Figma) at heyderekj.com
 - Compression engines: `cwebp`, `avifenc`, `oxipng` (CLI tools, not bundled)
 - GitHub: https://github.com/heyderekj/dinky
+
+## Releasing
+
+- `./release.sh minor` (or `patch` / `major` / `2.16.0`) from an up-to-date `main`. It bumps the version, updates the site's version lines and `site/ask.json`, builds, runs the CI tests, makes the DMG + zip, updates `Casks/dinky.rb`, then commits, tags, pushes and publishes the GitHub release. `--bump-only` stops after the version and site edits.
+- The site deploys from `main` (Cloudflare Pages), so copy for an unreleased feature goes live as soon as it merges. Merge site copy with or after the release.
+- New UI strings: `xcodebuild -exportLocalizations -project Dinky.xcodeproj -localizationPath /tmp/loc -exportLanguage en` pulls them into `Localizable.xcstrings`; `python3 tools/fill_xcstrings_translations.py` fills only the missing locales (Google Translate; if it's rate-limited it reports which strings failed). Mark labels that shouldn't change (format names, numbers) `"shouldTranslate": false`. `release.sh` warns about untranslated strings added since the last tag.
+- Help: `Dinky/Resources/en.lproj/Help.md` is the source; `tools/translate_help_md.py` rewrites the 12 locale copies. The site's Ask answers come from it via `tools/make_ask_json.py`.

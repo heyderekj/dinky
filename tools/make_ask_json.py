@@ -18,7 +18,8 @@ APPS = {
     'binky': dict(app='Binky', line='Binky sorts your files.', help='Binky/Resources/en.lproj/Help.md',
                   voice='Warm, plain and a bit playful about mess and calm. Keep it light; never oversell.'),
 }
-cfg = APPS[ROOT.name]
+# Which app this repo is, from its Xcode project (the folder name differs in worktrees and clones).
+cfg = next(c for c in APPS.values() if (ROOT / f'{c["app"]}.xcodeproj').exists())
 page_path = ROOT / 'site' / 'index.html'
 page = page_path.read_text()
 
