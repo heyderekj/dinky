@@ -67,13 +67,14 @@ Homebrew’s `qpdf` links to `libqpdf`, `jpeg-turbo`, and `openssl@3`. After cop
 brew install qpdf
 cp /opt/homebrew/bin/qpdf bin/
 cp /opt/homebrew/opt/qpdf/lib/libqpdf.*.dylib ../lib/
-cp /opt/homebrew/opt/jpeg-turbo/lib/libjpeg.*.dylib ../lib/
 cp /opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib ../lib/
 
 chmod +x bin/qpdf
 install_name_tool -change @rpath/libqpdf.30.dylib @loader_path/lib/libqpdf.30.3.2.dylib bin/qpdf
 # Xcode copies `bin/qpdf` into the app bundle’s `Resources/` root, so use `@loader_path/lib/…` (same folder as `cwebp`), not `../lib`.
 # Point libqpdf at vendored libjpeg + libcrypto (see `otool -L` on your copies).
+# libqpdf shares `lib/libjpeg.8.dylib` with cwebp/avifenc; don't vendor a second libjpeg.
+install_name_tool -change <libqpdf's libjpeg path> @loader_path/libjpeg.8.dylib ../lib/libqpdf.30.3.2.dylib
 ```
 
 Then re-sign in Xcode’s “Re-sign bundled binaries” phase (or `codesign -s - --force` on `qpdf` and each dylib).
