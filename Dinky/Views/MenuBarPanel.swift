@@ -29,7 +29,7 @@ struct MenuBarPanel: View {
                     close()
                     (NSApp.delegate as? AppDelegate)?.compressFromClipboard(nil)
                 }
-                MenuRow(icon: "rectangle.dashed.and.arrow.up.forward", title: String(localized: "Floating dropzone", comment: "Settings UI."),
+                MenuRow(icon: "tray.and.arrow.down", title: String(localized: "Floating dropzone", comment: "Settings UI."),
                         checked: prefs.floatingDropzoneEnabled) {
                     prefs.floatingDropzoneEnabled.toggle()
                     NotificationCenter.default.post(name: .dinkyFloatingDropzoneChanged, object: nil)
