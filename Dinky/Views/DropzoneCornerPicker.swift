@@ -1,140 +1,132 @@
 import SwiftUI
+import AppKit
+import ImageIO
 
-/// Settings: pick the floating dropzone's corner on a little screen. The chosen corner shows a
-/// mini dropzone (glass pill, file cards, brand ring); the others are click targets.
+/// Settings: pick the floating dropzone's corner, System Settings style — four small thumbnails of
+/// your own desktop, each with a tiny dropzone in its corner and its name underneath. The chosen one
+/// gets the accent ring.
 struct DropzoneCornerPicker: View {
     @Binding var corner: ScreenCorner
-    @AppStorage("reduceMotion") private var appReduceMotion = false
-    @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
-    @Environment(\.colorScheme) private var colorScheme
-    @State private var hovered: ScreenCorner?
+    @State private var wallpaper: NSImage?
 
-    private var reduceMotion: Bool { appReduceMotion || systemReduceMotion }
-    private static let screenSize = CGSize(width: 260, height: 156)
+    /// Reading order: the top row, then the bottom row.
+    private static let order: [ScreenCorner] = [.topLeft, .topRight, .bottomLeft, .bottomRight]
 
     var body: some View {
-        ZStack {
-            screen
-            ForEach(ScreenCorner.allCases) { c in
-                cornerTarget(c)
+        HStack(alignment: .top, spacing: 14) {
+            ForEach(Self.order) { c in
+                CornerTile(corner: c, isSelected: c == corner, wallpaper: wallpaper) { corner = c }
             }
         }
-        .frame(width: Self.screenSize.width, height: Self.screenSize.height)
-        .animation(reduceMotion ? .easeInOut(duration: 0.15) : .spring(response: 0.4, dampingFraction: 0.72), value: corner)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(String(localized: "Corner", comment: "Settings UI: where the floating dropzone appears."))
+        .task { wallpaper = await Self.loadWallpaper() }
     }
 
-    /// A tiny desktop: wallpaper, menu bar, Dock.
-    private var screen: some View {
-        ZStack(alignment: .top) {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(LinearGradient(
-                    colors: colorScheme == .dark
-                        ? [Color(red: 0.13, green: 0.16, blue: 0.28), Color(red: 0.22, green: 0.14, blue: 0.30)]
-                        : [Color(red: 0.78, green: 0.85, blue: 0.98), Color(red: 0.88, green: 0.80, blue: 0.96)],
-                    startPoint: .topLeading, endPoint: .bottomTrailing))
-            Rectangle()
-                .fill(.white.opacity(colorScheme == .dark ? 0.08 : 0.45))
-                .frame(height: 9)
-            VStack {
-                Spacer()
-                Capsule()
-                    .fill(.white.opacity(colorScheme == .dark ? 0.12 : 0.5))
-                    .frame(width: 90, height: 11)
-                    .padding(.bottom, 5)
-            }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Color.primary.opacity(0.12), lineWidth: 1))
-        .accessibilityHidden(true)
-    }
-
-    private func alignment(_ c: ScreenCorner) -> Alignment {
-        switch c {
-        case .bottomRight: return .bottomTrailing
-        case .bottomLeft:  return .bottomLeading
-        case .topRight:    return .topTrailing
-        case .topLeft:     return .topLeading
-        }
-    }
-
-    private func cornerTarget(_ c: ScreenCorner) -> some View {
-        let selected = c == corner
-        return Button {
-            corner = c
-        } label: {
-            ZStack {
-                if selected {
-                    MiniDropzone(fromLeft: c.isLeft, reduceMotion: reduceMotion)
-                        .transition(reduceMotion ? .opacity : .scale(scale: 0.4, anchor: unitPoint(c)).combined(with: .opacity))
-                } else {
-                    Capsule()
-                        .strokeBorder(style: StrokeStyle(lineWidth: 1.2, dash: [3, 3]))
-                        .foregroundStyle(Color.primary.opacity(hovered == c ? 0.45 : 0.18))
-                        .frame(width: 62, height: 20)
-                }
-            }
-            .frame(width: 84, height: 40)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .onHover { hovered = $0 ? c : (hovered == c ? nil : hovered) }
-        .padding(.top, c.isTop ? 12 : 0)
-        .padding(.bottom, c.isTop ? 0 : 18)
-        .padding(.horizontal, 4)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment(c))
-        .accessibilityLabel(c.displayName)
-        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
-    }
-
-    private func unitPoint(_ c: ScreenCorner) -> UnitPoint {
-        switch c {
-        case .bottomRight: return .bottomTrailing
-        case .bottomLeft:  return .bottomLeading
-        case .topRight:    return .topTrailing
-        case .topLeft:     return .topLeading
-        }
+    /// The main screen's wallpaper, downsampled; `nil` for wallpapers that aren't a still image.
+    private static func loadWallpaper() async -> NSImage? {
+        guard let screen = NSScreen.main,
+              let url = NSWorkspace.shared.desktopImageURL(for: screen) else { return nil }
+        let cg = await Task.detached(priority: .utility) { () -> CGImage? in
+            guard let src = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+            let options: [CFString: Any] = [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: 320,
+            ]
+            return CGImageSourceCreateThumbnailAtIndex(src, 0, options as CFDictionary)
+        }.value
+        return cg.map { NSImage(cgImage: $0, size: NSSize(width: $0.width, height: $0.height)) }
     }
 }
 
-/// The dropzone pill in miniature: glass, two file cards bobbing on it, a slowly turning ring.
-private struct MiniDropzone: View {
-    let fromLeft: Bool
-    let reduceMotion: Bool
+private struct CornerTile: View {
+    let corner: ScreenCorner
+    let isSelected: Bool
+    let wallpaper: NSImage?
+    let select: () -> Void
 
-    private static let ringColors: [Color] = [
-        DropZoneStyle.gradientColors[0], DropZoneStyle.gradientColors[1],
-        Color(red: 0.93, green: 0.38, blue: 0.78), DropZoneStyle.gradientColors[1], DropZoneStyle.gradientColors[0],
-    ]
+    @AppStorage("reduceMotion") private var appReduceMotion = false
+    @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
+
+    private static let size = CGSize(width: 84, height: 54)
 
     var body: some View {
-        TimelineView(.animation(paused: reduceMotion)) { context in
-            let t = reduceMotion ? 0 : context.date.timeIntervalSinceReferenceDate
-            ZStack {
-                Capsule()
-                    .fill(.regularMaterial)
-                Capsule()
-                    .strokeBorder(AngularGradient(colors: Self.ringColors, center: .center,
-                                                  angle: .degrees((t / 4).truncatingRemainder(dividingBy: 1) * 360)),
-                                  lineWidth: 1.4)
-                HStack(spacing: 5) {
-                    ZStack {
-                        ForEach(0..<2, id: \.self) { i in
-                            FinderStyleFileCard(type: i == 0 ? .image : .pdf, width: 9, height: 12, cornerRadius: 2)
-                                .rotationEffect(.degrees(Double(i) * 12 - 6 + sin(t * 2.4 + Double(i)) * 2))
-                                .offset(x: CGFloat(i) * 4 - 2, y: CGFloat(sin(t * 2.6 + Double(i) * 1.4)) * 0.8 - 2)
-                        }
-                    }
-                    .frame(width: 16)
-                    RoundedRectangle(cornerRadius: 1.5)
-                        .fill(Color.primary.opacity(0.55))
-                        .frame(width: 24, height: 3)
-                }
+        Button(action: select) {
+            VStack(spacing: 6) {
+                thumbnail
+                    .frame(width: Self.size.width, height: Self.size.height)
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.5)
+                    )
+                    .padding(3)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8.5, style: .continuous)
+                            .strokeBorder(Color.accentColor, lineWidth: 2.5)
+                            .opacity(isSelected ? 1 : 0)
+                    )
+                Text(corner.displayName)
+                    .font(.caption)
+                    .fontWeight(isSelected ? .semibold : .regular)
+                    .foregroundStyle(isSelected ? .primary : .secondary)
             }
-            .frame(width: 62, height: 20)
-            .shadow(color: DropZoneStyle.gradientColors[1].opacity(0.35), radius: 4, x: 0, y: 1)
+            .contentShape(Rectangle())
         }
-        .accessibilityHidden(true)
+        .buttonStyle(.plain)
+        .accessibilityLabel(corner.displayName)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+    }
+
+    private var thumbnail: some View {
+        ZStack {
+            if let wallpaper {
+                Image(nsImage: wallpaper)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                LinearGradient(colors: [Color(red: 0.36, green: 0.52, blue: 0.86), Color(red: 0.58, green: 0.42, blue: 0.82)],
+                               startPoint: .topLeading, endPoint: .bottomTrailing)
+            }
+            // Menu bar and Dock, just enough to read as a screen.
+            VStack(spacing: 0) {
+                Rectangle().fill(.ultraThinMaterial).frame(height: 5)
+                Spacer()
+                Capsule().fill(.ultraThinMaterial).frame(width: 34, height: 5).padding(.bottom, 3)
+            }
+            miniDropzone
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
+                .padding(.top, corner.isTop ? 8 : 0)
+                .padding(.bottom, corner.isTop ? 0 : 11)
+                .padding(.horizontal, 5)
+        }
+    }
+
+    /// The dropzone pill at tile scale: glass, a file card, a hint of the brand gradient.
+    private var miniDropzone: some View {
+        HStack(spacing: 3) {
+            RoundedRectangle(cornerRadius: 1, style: .continuous)
+                .fill(.white)
+                .frame(width: 5, height: 6.5)
+                .shadow(color: .black.opacity(0.2), radius: 0.5, y: 0.5)
+            Capsule()
+                .fill(LinearGradient(colors: DropZoneStyle.gradientColors, startPoint: .leading, endPoint: .trailing))
+                .frame(width: 13, height: 2.5)
+        }
+        .padding(.horizontal, 5)
+        .frame(height: 11)
+        .background(.regularMaterial, in: Capsule())
+        .shadow(color: .black.opacity(0.18), radius: 2, y: 1)
+        .scaleEffect(isSelected ? 1 : 0.85)
+        .opacity(isSelected ? 1 : 0.55)
+        .animation(appReduceMotion || systemReduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.6), value: isSelected)
+    }
+
+    private var alignment: Alignment {
+        switch corner {
+        case .bottomRight: return .bottomTrailing
+        case .bottomLeft:  return .bottomLeading
+        case .topRight:    return .topTrailing
+        case .topLeft:     return .topLeading
+        }
     }
 }
