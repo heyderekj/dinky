@@ -1,7 +1,6 @@
 import SwiftUI
 import AppKit
 import ImageIO
-import AVFoundation
 
 /// Settings: pick the floating dropzone's corner, System Settings style — four small thumbnails of
 /// your own desktop, each with a tiny dropzone in its corner and its name underneath. The chosen one
@@ -22,22 +21,11 @@ struct DropzoneCornerPicker: View {
         .task { wallpaper = await Self.loadWallpaper() }
     }
 
-    /// The wallpaper actually on screen, small. Aerials (the moving wallpapers) aren't reported by
-    /// `desktopImageURL` — it answers with the default picture — so look up the current Aerial's own
-    /// thumbnail (or a frame of its video) first. Best effort: anything missing falls through to
-    /// the desktop picture, then to a gradient.
+    /// The default wallpaper of the macOS version that's running, small. The same picture for
+    /// everyone on that version, and no guessing at Aerials or other moving wallpapers.
     private static func loadWallpaper() async -> NSImage? {
-        let cg = await Task.detached(priority: .utility) { () -> CGImage? in
-            if let aerial = currentAerial() {
-                if let image = downsampled(aerial.thumbnail) { return image }
-                if let frame = try? await AVAssetImageGenerator(asset: AVURLAsset(url: aerial.video))
-                    .image(at: CMTime(seconds: 2, preferredTimescale: 600)).image {
-                    return frame
-                }
-            }
-            guard let screen = await MainActor.run(body: { NSScreen.main }),
-                  let url = NSWorkspace.shared.desktopImageURL(for: screen) else { return nil }
-            return downsampled(url)
+        let cg = await Task.detached(priority: .utility) {
+            downsampled(URL(fileURLWithPath: "/System/Library/CoreServices/DefaultDesktop.heic"))
         }.value
         return cg.map { NSImage(cgImage: $0, size: NSSize(width: $0.width, height: $0.height)) }
     }
@@ -50,38 +38,6 @@ struct DropzoneCornerPicker: View {
             kCGImageSourceThumbnailMaxPixelSize: 320,
         ]
         return CGImageSourceCreateThumbnailAtIndex(src, 0, options as CFDictionary)
-    }
-
-    /// The Aerial set for all displays, from the Wallpaper store (`Store/Index.plist`: the first
-    /// choice's provider and its `assetID`).
-    nonisolated private static func currentAerial() -> (thumbnail: URL, video: URL)? {
-        let base = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/com.apple.wallpaper", isDirectory: true)
-        guard let data = try? Data(contentsOf: base.appendingPathComponent("Store/Index.plist")),
-              let root = try? PropertyListSerialization.propertyList(from: data, format: nil),
-              let choice = firstChoice(in: root),
-              (choice["Provider"] as? String)?.hasSuffix(".aerials") == true,
-              let configData = choice["Configuration"] as? Data,
-              let config = try? PropertyListSerialization.propertyList(from: configData, format: nil) as? [String: Any],
-              let id = config["assetID"] as? String else { return nil }
-        let aerials = base.appendingPathComponent("aerials", isDirectory: true)
-        return (aerials.appendingPathComponent("thumbnails/\(id).png"),
-                aerials.appendingPathComponent("videos/\(id).mov"))
-    }
-
-    /// Depth-first search for the first `Choices` entry; the store nests it under
-    /// display/space keys that differ between setups.
-    nonisolated private static func firstChoice(in node: Any) -> [String: Any]? {
-        if let dict = node as? [String: Any] {
-            if let choices = dict["Choices"] as? [[String: Any]], let first = choices.first { return first }
-            for key in ["AllSpacesAndDisplays", "Linked", "Desktop", "Content"] {
-                if let child = dict[key], let found = firstChoice(in: child) { return found }
-            }
-            for (_, child) in dict { if let found = firstChoice(in: child) { return found } }
-        } else if let array = node as? [Any] {
-            for child in array { if let found = firstChoice(in: child) { return found } }
-        }
-        return nil
     }
 }
 
