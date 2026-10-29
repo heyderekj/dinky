@@ -107,7 +107,9 @@ actor CompressionService {
             withIntermediateDirectories: true
         )
         do {
-            let r = try await imagePipeline.compress(
+            let threads = max(1, ProcessInfo.processInfo.activeProcessorCount / max(1, parallelCompressionLimit))
+            let r = try await DinkyImageCompression.$encoderThreads.withValue(threads) {
+                try await imagePipeline.compress(
                 source: source,
                 format: format,
                 goals: goals,
@@ -124,7 +126,8 @@ actor CompressionService {
                 webpLossless: webpLossless,
                 pngOutputMode: pngOutputMode,
                 progressHandler: progressHandler
-            )
+                )
+            }
             return CompressionResult(
                 outputURL: r.outputURL,
                 originalSize: r.originalSize,

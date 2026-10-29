@@ -54,6 +54,26 @@ private enum DinkyImageIOConstants {
             kCGImageSourceShouldCacheImmediately: true,
         ]
     }
+
+    /// Temp PNGs only feed the encoders, which decode them again; skip PNG's per-row filter
+    /// search (`IMAGEIO_PNG_FILTER_NONE`) — slightly bigger temp file, much faster write.
+    static var fastIntermediatePNG: [CFString: Any] {
+        [kCGImagePropertyPNGDictionary: [kCGImagePropertyPNGCompressionFilter: 0x08]]
+    }
+}
+
+/// Decode with EXIF orientation applied, at no more than `maxPixelSize` on the long side.
+private func cgImageDecodedOriented(url: URL, maxPixelSize: Int) throws -> CGImage {
+    guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+          CGImageSourceGetCount(src) > 0 else {
+        throw DinkyImageCompressionError.imageResizeFailed
+    }
+    var options = DinkyImageIOConstants.orientedFullImageDecode
+    options[kCGImageSourceThumbnailMaxPixelSize] = maxPixelSize
+    guard let cgImage = CGImageSourceCreateThumbnailAtIndex(src, 0, options as CFDictionary) else {
+        throw DinkyImageCompressionError.imageResizeFailed
+    }
+    return cgImage
 }
 
 /// Full-resolution decode with EXIF orientation applied (matches Smart Quality thumbnails).
@@ -130,7 +150,7 @@ private func decodeImageToPNG(source: URL) throws -> URL {
     guard let dest = CGImageDestinationCreateWithURL(tmpURL as CFURL, UTType.png.identifier as CFString, 1, nil) else {
         throw DinkyImageCompressionError.imageWriteFailed
     }
-    CGImageDestinationAddImage(dest, cgImage, nil)
+    CGImageDestinationAddImage(dest, cgImage, DinkyImageIOConstants.fastIntermediatePNG as CFDictionary)
     guard CGImageDestinationFinalize(dest) else {
         try? FileManager.default.removeItem(at: tmpURL)
         throw DinkyImageCompressionError.imageWriteFailed
@@ -152,12 +172,14 @@ private func heicTranscodeToPNGIfNeeded(source: URL) throws -> URL {
 /// Resample to the display pixel size `goals` asks for (percentage scale, then max width).
 /// Returns the source unchanged when the goals don't change its dimensions.
 private func resizeImageUsingImageIO(source: URL, goals: CompressionGoals) throws -> (URL, ImageResizeInfo?) {
-    let cgImage = try cgImageDecodedOrientedFullSize(url: source)
-
-    let w = cgImage.width
-    let h = cgImage.height
+    // Size from the header, then decode straight at (about) the output size: ImageIO can skip
+    // most of the work for JPEG and HEIC instead of decoding every pixel and throwing most away.
+    guard let oriented = orientedPixelSize(url: source) else { throw DinkyImageCompressionError.imageResizeFailed }
+    let w = Int(oriented.width)
+    let h = Int(oriented.height)
     guard w > 0, h > 0 else { throw DinkyImageCompressionError.imageResizeFailed }
     guard let (outW, outH) = goals.outputPixelSize(width: w, height: h) else { return (source, nil) }
+    let cgImage = try cgImageDecodedOriented(url: source, maxPixelSize: max(outW, outH))
 
     let tmpURL = FileManager.default.temporaryDirectory
         .appendingPathComponent("dinky_resize_io_\(UUID().uuidString)")
@@ -187,7 +209,7 @@ private func resizeImageUsingImageIO(source: URL, goals: CompressionGoals) throw
     guard let dest = CGImageDestinationCreateWithURL(tmpURL as CFURL, UTType.png.identifier as CFString, 1, nil) else {
         throw DinkyImageCompressionError.imageResizeFailed
     }
-    CGImageDestinationAddImage(dest, scaled, nil)
+    CGImageDestinationAddImage(dest, scaled, DinkyImageIOConstants.fastIntermediatePNG as CFDictionary)
     guard CGImageDestinationFinalize(dest) else {
         try? FileManager.default.removeItem(at: tmpURL)
         throw DinkyImageCompressionError.imageResizeFailed
@@ -326,8 +348,16 @@ private func compressAnimatedGIFToWebP(
     }
 }
 
-public actor DinkyImageCompression {
+/// Not an actor: it holds no mutable state, and actor isolation made every job queue behind the
+/// one before it for all the synchronous work (HEIC transcode, resize, ImageIO encodes, palette
+/// analysis). As a plain `Sendable` class, jobs run as parallel as "Batch speed" allows.
+public final class DinkyImageCompression: Sendable {
     private let binDir: URL
+
+    /// Threads one encode may use. Callers running several jobs at once set this to
+    /// cores ÷ jobs, so `oxipng` doesn't start a thread per core in every job while `cwebp` sits
+    /// single-threaded. Standalone use (the CLI) gets every core.
+    @TaskLocal public static var encoderThreads: Int = ProcessInfo.processInfo.activeProcessorCount
 
     public init(binDirectory: URL) {
         self.binDir = binDirectory
@@ -459,20 +489,21 @@ public actor DinkyImageCompression {
             )
         }
 
-        // Step 1: HEIC/HEIF → PNG when needed for CLI encoders; HEIC output uses the source file when already HEIC/HEIF.
-        let tHeic = CFAbsoluteTimeGetCurrent()
-        let encoderInputURL = try encoderInputURLForImageCompression(source: source, outputFormat: format)
-        DinkyImageCorePhaseLog.logPhase("image.heicTranscodeOrPassthrough", startedAt: tHeic)
-        report(0.22)
-        let encoderInputIsTemp = encoderInputURL != source
-        defer { if encoderInputIsTemp { try? FileManager.default.removeItem(at: encoderInputURL) } }
-
-        // Step 2: maybe resize
+        // Step 1: maybe resize, straight from the source (ImageIO reads HEIC itself). The result is
+        // a PNG every encoder reads, so a resized HEIC skips the separate HEIC → PNG pass.
         let tResize = CFAbsoluteTimeGetCurrent()
-        let (workURL, resize) = try maybeResize(source: encoderInputURL, goals: goals)
+        let (resizedURL, resize) = try maybeResize(source: source, goals: goals)
         DinkyImageCorePhaseLog.logPhase("image.resize", startedAt: tResize)
+        report(0.22)
+        let resizedIsTemp = resizedURL != source
+        defer { if resizedIsTemp { try? FileManager.default.removeItem(at: resizedURL) } }
+
+        // Step 2: HEIC/HEIF → PNG when needed for CLI encoders; HEIC output uses the source file when already HEIC/HEIF.
+        let tHeic = CFAbsoluteTimeGetCurrent()
+        let workURL = try encoderInputURLForImageCompression(source: resizedURL, outputFormat: format)
+        DinkyImageCorePhaseLog.logPhase("image.heicTranscodeOrPassthrough", startedAt: tHeic)
         report(0.33)
-        let isTempWork = workURL != encoderInputURL
+        let isTempWork = workURL != resizedURL
         defer { if isTempWork { try? FileManager.default.removeItem(at: workURL) } }
 
         // Step 3: compress — lossless formats skip quality targeting
@@ -770,6 +801,7 @@ public actor DinkyImageCompression {
             case .none:     args = ["-preset", "picture", "-m", "4", "-sharp_yuv", "-af", "-q", q]
             }
         }
+        if Self.encoderThreads >= 2 { args.append("-mt") }
         args += ["-metadata", strip ? "icc" : "all"]
         args += [source.path, "-o", output.path]
         try await run(binary, args: args)
@@ -805,7 +837,7 @@ public actor DinkyImageCompression {
         let binary = try binaryURL("oxipng")
         // Copy source to output first — oxipng optimizes in-place with --out
         try FileManager.default.copyItem(at: source, to: output)
-        var args = ["--opt", "max"]
+        var args = ["--opt", "max", "--threads", String(max(1, Self.encoderThreads))]
         if strip { args += ["--strip", "safe"] }
         args += ["--out", output.path, output.path]
         try await run(binary, args: args)
@@ -839,16 +871,22 @@ public actor DinkyImageCompression {
 
     /// Writes PNG-8 when the image is fully opaque and has ≤256 unique RGB colors.
     private func writePalettePNGIfApplicable(cgImage: CGImage) throws -> URL {
-        guard let rgba = readOpaqueRGBA(cgImage: cgImage) else {
+        guard let rgba = readRGBA(cgImage: cgImage) else {
             throw DinkyImageCompressionError.imageWriteFailed
         }
+        let pixelCount = cgImage.width * cgImage.height
         var colorToIndex: [RGBTriple: UInt8] = [:]
-        colorToIndex.reserveCapacity(min(256, rgba.count))
+        colorToIndex.reserveCapacity(256)
         var palette: [RGBTriple] = []
         palette.reserveCapacity(256)
         var indices = [UInt8]()
-        indices.reserveCapacity(rgba.count)
-        for px in rgba {
+        indices.reserveCapacity(pixelCount)
+        // One pass over the raw pixels; bails at the first transparent pixel or the 257th color
+        // instead of first copying every pixel into its own array.
+        for i in 0..<pixelCount {
+            let off = i * 4
+            guard rgba[off + 3] == 255 else { throw DinkyImageCompressionError.imageWriteFailed }
+            let px = RGBTriple(r: rgba[off], g: rgba[off + 1], b: rgba[off + 2])
             if let idx = colorToIndex[px] {
                 indices.append(idx)
             } else {
@@ -916,8 +954,8 @@ public actor DinkyImageCompression {
         let r, g, b: UInt8
     }
 
-    /// Returns nil when any pixel has alpha &lt; 255.
-    private func readOpaqueRGBA(cgImage: CGImage) -> [RGBTriple]? {
+    /// Premultiplied RGBA bytes, 4 per pixel.
+    private func readRGBA(cgImage: CGImage) -> [UInt8]? {
         let width = cgImage.width
         let height = cgImage.height
         guard width > 0, height > 0 else { return nil }
@@ -943,16 +981,7 @@ public actor DinkyImageCompression {
         }) else { return nil }
 
         ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
-
-        var pixels = [RGBTriple]()
-        pixels.reserveCapacity(width * height)
-        for i in 0..<(width * height) {
-            let off = i * 4
-            let a = buffer[off + 3]
-            if a != 255 { return nil }
-            pixels.append(RGBTriple(r: buffer[off], g: buffer[off + 1], b: buffer[off + 2]))
-        }
-        return pixels
+        return buffer
     }
 
     // MARK: - Process runner

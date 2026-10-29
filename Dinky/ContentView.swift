@@ -74,6 +74,25 @@ final class ContentViewModel: ObservableObject {
 
     func noteSelfWrittenOutput(_ url: URL) {
         selfWrittenOutputs[Self.outputKey(url)] = Date()
+        scheduleSelfWrittenPersist()
+    }
+
+    private var selfWrittenPersistTask: Task<Void, Never>?
+
+    /// Written twice per output file, so batch the pruning and the JSON write: once things go
+    /// quiet for a moment, and on quit.
+    private func scheduleSelfWrittenPersist() {
+        guard selfWrittenPersistTask == nil else { return }
+        selfWrittenPersistTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            self?.flushSelfWrittenOutputs()
+        }
+    }
+
+    func flushSelfWrittenOutputs() {
+        selfWrittenPersistTask?.cancel()
+        selfWrittenPersistTask = nil
         pruneSelfWrittenOutputs()
         persistSelfWrittenOutputs()
     }
@@ -245,8 +264,19 @@ final class ContentViewModel: ObservableObject {
             .sink { [weak self] _ in self?.refreshWatchFolders(force: true, reason: "woke from sleep") }
             .store(in: &systemObservations)
         NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
-            .sink { [weak self] _ in self?.refreshWatchFolders(force: false, reason: "app became active") }
+            .sink { [weak self] _ in self?.refreshOnActivation() }
             .store(in: &systemObservations)
+    }
+
+    private var lastActivationRefresh: Date = .distantPast
+
+    /// Switching to Dinky is frequent; re-resolving every folder bookmark each time isn't needed
+    /// unless a watch folder is still missing. Otherwise at most every few minutes.
+    private func refreshOnActivation() {
+        let missing = (watchRegistry?.unresolvedCount ?? 0) > 0
+        guard missing || Date().timeIntervalSince(lastActivationRefresh) > 300 else { return }
+        lastActivationRefresh = Date()
+        refreshWatchFolders(force: false, reason: "app became active")
     }
 
     private func refreshWatchFolders(force: Bool, reason: String) {
@@ -310,7 +340,7 @@ final class ContentViewModel: ObservableObject {
     }
 
     /// Hardware video encoders are limited; parallel `AVAssetExportSession`s usually hurt throughput.
-    static var concurrentVideoExportLimit: Int {
+    static let concurrentVideoExportLimit: Int = {
         var size = 0
         sysctlbyname("machdep.cpu.brand_string", nil, &size, nil, 0)
         guard size > 1 else { return 1 }
@@ -322,7 +352,7 @@ final class ContentViewModel: ObservableObject {
             return 2
         }
         return 1
-    }
+    }()
 
     var isEmpty: Bool { items.isEmpty }
 
@@ -366,10 +396,12 @@ final class ContentViewModel: ObservableObject {
         var seen = Set<String>()
         var replaced = Set<UUID>()
         var newURLs: [URL] = []
+        // One pass instead of a linear search per dropped file.
+        let existingByPath = Dictionary(items.map { ($0.sourceURL.path, $0) }, uniquingKeysWith: { _, latest in latest })
         for url in urls {
             let p = url.path
             guard seen.insert(p).inserted else { continue }
-            if let existing = items.first(where: { $0.sourceURL.path == p }) {
+            if let existing = existingByPath[p] {
                 guard existing.status.isTerminal else { continue }
                 if fromWatchFolder, existing.sourceFingerprint == FileFingerprint(url: url) { continue }
                 replaced.insert(existing.id)
@@ -379,21 +411,44 @@ final class ContentViewModel: ObservableObject {
         guard !newURLs.isEmpty else { return [] }
         // Not `remove(_:)`: that cleans up temp sources, and the new row reuses this file.
         if !replaced.isEmpty { items.removeAll { replaced.contains($0.id) } }
+        // Smallest files first within this drop — quick wins land early, the big ones stack up at
+        // the bottom. Earlier rows keep their place instead of reshuffling on every drop.
         let new = newURLs.map { url in
             let item = CompressionItem(sourceURL: url, presetID: presetFor(url))
             item.sourceFingerprint = FileFingerprint(url: url)
             return item
-        }
+        }.sorted { $0.originalSize < $1.originalSize }
         if force { new.forEach { $0.forceCompress = true } }
         if fromWatchFolder { new.forEach { $0.ingestedFromWatchFolder = true } }
         if fromDropzone { new.forEach { $0.ingestedFromDropzone = true } }
         items.append(contentsOf: new)
-        // Smallest files first — quick wins land early, the big ones stack
-        // up at the bottom. This is also the order they'll be processed in.
-        items.sort { $0.originalSize < $1.originalSize }
+        classifyInBackground(new.filter { $0.mediaType == .image })
         // A dropzone drop is its own "go" — it has no Compress Now button to wait for.
         if !prefs.manualMode || fromDropzone { compress() }
         return new.map(\.id)
+    }
+
+    // MARK: - Content classification
+
+    /// Classifies queued images one at a time off the main thread, so rows can show their output
+    /// format without classifying while they render. Compression reuses the result.
+    private func classifyInBackground(_ targets: [CompressionItem]) {
+        guard !targets.isEmpty else { return }
+        Task { [weak self] in
+            for item in targets where item.detectedContentType == nil {
+                guard self != nil, case .pending = item.status else { continue }
+                _ = await self?.classification(for: item)
+            }
+        }
+    }
+
+    /// The item's classification, computed off the main thread the first time it's needed.
+    private func classification(for item: CompressionItem) async -> ContentType {
+        if let known = item.detectedContentType { return known }
+        let url = item.sourceURL
+        let ct = await Task.detached(priority: .userInitiated) { ContentClassifier.classify(url) }.value
+        item.detectedContentType = ct
+        return ct
     }
 
     func compressItems(_ targets: [CompressionItem], format: CompressionFormat) {
@@ -667,7 +722,7 @@ final class ContentViewModel: ObservableObject {
                             row.presetID = nil
                         }
                         if row.mediaType == .pdf {
-                            row.pageCount = PDFDocument(url: local)?.pageCount
+                            row.loadPageCount()
                         }
                         row.pendingRemoteURL = nil
                         row.downloadTask = nil
@@ -786,13 +841,16 @@ final class ContentViewModel: ObservableObject {
                 let videoSem = AsyncSemaphore(limit: Self.concurrentVideoExportLimit)
                 for item in pending {
                     let mediaType = item.mediaType
-                    switch mediaType {
-                    case .video:
-                        await videoSem.wait()
-                    case .image, .pdf, .audio:
-                        await mediaSem.wait()
-                    }
+                    // Each job waits for its own lane inside its task. Waiting here, before
+                    // `addTask`, made a second video hold up every image, PDF and audio file
+                    // behind it even with free slots.
                     group.addTask { [weak self] in
+                        switch mediaType {
+                        case .video:
+                            await videoSem.wait()
+                        case .image, .pdf, .audio:
+                            await mediaSem.wait()
+                        }
                         defer {
                             switch mediaType {
                             case .video:
@@ -1059,14 +1117,12 @@ final class ContentViewModel: ObservableObject {
         var classifiedForResolver: ContentType? = nil
         var preclassifiedForSmartQ: ContentType? = nil
         if autoFmt, item.formatOverride == nil {
-            let ct = ContentClassifier.classify(item.sourceURL)
+            let ct = await classification(for: item)
             classifiedForResolver = ct
-            await MainActor.run { item.detectedContentType = ct }
             if smartQ { preclassifiedForSmartQ = ct }
         } else if smartQ {
-            let ct = ContentClassifier.classify(item.sourceURL)
+            let ct = await classification(for: item)
             classifiedForResolver = ct
-            await MainActor.run { item.detectedContentType = ct }
             preclassifiedForSmartQ = ct
         }
 
@@ -1106,7 +1162,7 @@ final class ContentViewModel: ObservableObject {
         // Encode into a private folder and pick the final name only when moving the result into
         // place: two files in one batch can want the same output name (photo.jpg and photo.png →
         // photo-dinky.webp), and checking for a free name up front let both write to the same file.
-        let stagingDir = Self.makeStagingDirectory()
+        let stagingDir = Self.makeStagingDirectory(near: outputURL)
         defer { try? FileManager.default.removeItem(at: stagingDir) }
         do {
             let result = try await CompressionService.shared.compress(
@@ -1163,10 +1219,22 @@ final class ContentViewModel: ObservableObject {
         }
     }
 
-    private static func makeStagingDirectory() -> URL {
-        let dir = FileManager.default.temporaryDirectory
+    /// A private folder on the same volume as `destination` when the system offers one, so moving
+    /// the result into place is a rename. Staging in the boot volume's temp folder meant writing
+    /// every result to an external drive or share twice. Falls back to the temp folder.
+    private static func makeStagingDirectory(near destination: URL) -> URL {
+        let fm = FileManager.default
+        if let dir = try? fm.url(
+            for: .itemReplacementDirectory,
+            in: .userDomainMask,
+            appropriateFor: destination.deletingLastPathComponent(),
+            create: true
+        ) {
+            return dir
+        }
+        let dir = fm.temporaryDirectory
             .appendingPathComponent("dinky_out_\(UUID().uuidString)", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }
 
@@ -1225,9 +1293,7 @@ final class ContentViewModel: ObservableObject {
             item.status = .processing
             item.compressionProgress = 0
             item.zeroGainPDFOutputMode = nil
-            if item.pageCount == nil {
-                item.pageCount = PDFDocument(url: item.sourceURL)?.pageCount
-            }
+            if item.pageCount == nil { item.loadPageCount() }
         }
         var ocrTempURL: URL?
         defer {
@@ -1306,19 +1372,20 @@ final class ContentViewModel: ObservableObject {
             }
         }
 
-        let preserveQpdfSteps: [PDFPreserveQpdfStep] = {
-            guard outputMode == .preserveStructure else { return [.base] }
-            if let o = pdfExperimentalOverride {
-                return [PDFPreserveQpdfStep.from(experimental: o)]
-            }
+        let preserveQpdfSteps: [PDFPreserveQpdfStep]
+        if outputMode != .preserveStructure {
+            preserveQpdfSteps = [.base]
+        } else if let o = pdfExperimentalOverride {
+            preserveQpdfSteps = [PDFPreserveQpdfStep.from(experimental: o)]
+        } else {
             let exp = preset.map { PDFPreserveExperimentalMode(rawValue: $0.pdfPreserveExperimentalRaw) ?? .none }
                 ?? prefs.pdfPreserveExperimental
-            return PDFPreserveQpdfStepsResolver.steps(
-                sourceURL: sourceForCompression,
-                preserveExperimental: exp,
-                smartQuality: smartQ
-            )
-        }()
+            // Samples and renders pages of the PDF; keep that off the main thread.
+            let source = sourceForCompression
+            preserveQpdfSteps = await Task.detached {
+                PDFPreserveQpdfStepsResolver.steps(sourceURL: source, preserveExperimental: exp, smartQuality: smartQ)
+            }.value
+        }
 
         CompressionTiming.logReproContext(
             media: "pdf",
@@ -1583,11 +1650,12 @@ final class ContentViewModel: ObservableObject {
         )
         // Always a private temp file; `finalizeKeptOutput` picks the free name when it moves it in,
         // so two jobs wanting the same output name can't write into one file.
-        let workURL = FileManager.default.temporaryDirectory
+        let workDir = Self.makeStagingDirectory(near: finalURL)
+        let workURL = workDir
             .appendingPathComponent("dinky_vid_\(UUID().uuidString)")
             .appendingPathExtension(finalURL.pathExtension.isEmpty ? "mp4" : finalURL.pathExtension)
         // Removes a discarded or failed encode; a kept one has already been moved into place.
-        defer { try? FileManager.default.removeItem(at: workURL) }
+        defer { try? FileManager.default.removeItem(at: workDir) }
         let replaceOrigin = (preset.map { FilenameHandling(rawValue: $0.filenameHandlingRaw) } ?? prefs.filenameHandling) == .replaceOrigin
 
         let progressHandler: @Sendable (Float) -> Void = { p in
@@ -1705,11 +1773,12 @@ final class ContentViewModel: ObservableObject {
         )
         // Always a private temp file (see video): `music.mp3` and `music.m4a` both become
         // `music-dinky.m4a`, and converting both at once into that one path corrupted or failed them.
-        let workURL = FileManager.default.temporaryDirectory
+        let workDir = Self.makeStagingDirectory(near: finalURL)
+        let workURL = workDir
             .appendingPathComponent("dinky_aud_\(UUID().uuidString)")
             .appendingPathExtension(targetFormat.fileExtension)
         // Removes a discarded or failed encode; a kept one has already been moved into place.
-        defer { try? FileManager.default.removeItem(at: workURL) }
+        defer { try? FileManager.default.removeItem(at: workDir) }
 
         let replaceOrigin = (preset.map { FilenameHandling(rawValue: $0.filenameHandlingRaw) } ?? prefs.filenameHandling)
             == .replaceOrigin

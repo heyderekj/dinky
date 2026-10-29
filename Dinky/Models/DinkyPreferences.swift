@@ -196,10 +196,19 @@ final class DinkyPreferences: ObservableObject {
     /// Reference time for the catch-up scan: files newer than this arrived while Dinky was not
     /// watching. 0 means "never scanned" — the first run records the time and compresses nothing,
     /// so enabling a watch folder never bulk-compresses files that were already sitting in it.
-    @AppStorage("lastWatchCatchUpScan") var lastWatchCatchUpScan: Double = 0
+    /// Bookkeeping, not a setting: plain `UserDefaults`, so writing it (every watch ingest)
+    /// doesn't publish a change and re-render every view holding the preferences.
+    var lastWatchCatchUpScan: Double {
+        get { UserDefaults.standard.double(forKey: "lastWatchCatchUpScan") }
+        set { UserDefaults.standard.set(newValue, forKey: "lastWatchCatchUpScan") }
+    }
     /// Paths Dinky itself wrote, persisted so the catch-up scan doesn't treat last session's
     /// output as a new arrival and recompress it into `name-dinky-dinky`.
-    @AppStorage("selfWrittenOutputs")   var selfWrittenOutputsData: Data = Data()
+    /// Bookkeeping, not a setting — plain `UserDefaults` for the same reason as above.
+    var selfWrittenOutputsData: Data {
+        get { UserDefaults.standard.data(forKey: "selfWrittenOutputs") ?? Data() }
+        set { UserDefaults.standard.set(newValue, forKey: "selfWrittenOutputs") }
+    }
 
     // MARK: Smart quality
     @AppStorage("smartQuality")         var smartQuality: Bool = true
@@ -550,9 +559,11 @@ final class DinkyPreferences: ObservableObject {
     private static func reanchorDirectory(bookmark: Data) -> ReanchoredFolder? {
         guard !bookmark.isEmpty else { return nil }
         var stale = false
+        // Runs at launch and on app activation: never mount a share or show a sign-in prompt
+        // just to re-anchor a path. Output folders still mount when actually written to.
         guard let url = try? URL(
             resolvingBookmarkData: bookmark,
-            options: .withSecurityScope,
+            options: [.withSecurityScope, .withoutMounting, .withoutUI],
             relativeTo: nil,
             bookmarkDataIsStale: &stale
         ) else { return nil }
