@@ -64,6 +64,9 @@ final class DinkyPreferences: ObservableObject {
     }
 
     init() {
+        // First: the migrations below write keys on a fresh install too, which would make it look
+        // like an existing user.
+        FirstDropDefaultsMigration.runIfNeeded(.standard)
         Self.migrateConcurrentTasksToTiersIfNeeded()
         Self.migrateMoveOriginalsToOriginalsActionIfNeeded()
         // After the originals migration above, so it copies the already-migrated setting.
@@ -170,13 +173,15 @@ final class DinkyPreferences: ObservableObject {
     @AppStorage("playSoundEffects")     var playSoundEffects: Bool = true
 
     // MARK: Finish
-    @AppStorage("openFolderWhenDone")   var openFolderWhenDone: Bool = true
-    @AppStorage("showBatchSummaryDialog") var showBatchSummaryDialog: Bool = true
+    // New installs: a drop just compresses. Existing users keep `true` (`FirstDropDefaultsMigration`).
+    @AppStorage("openFolderWhenDone")   var openFolderWhenDone: Bool = false
+    /// Off: the summary still appears when something failed or was skipped.
+    @AppStorage("showBatchSummaryDialog") var showBatchSummaryDialog: Bool = false
     @AppStorage("notifyWhenDone")       var notifyWhenDone: Bool = false
     @AppStorage("sanitizeFilenames")    var sanitizeFilenames: Bool = false
     @AppStorage("manualMode")           var manualMode: Bool = false
     /// When true (default), show the pre-compression confirmation for user-initiated adds. User can turn off in the sheet or Settings. Watch folder is unaffected.
-    @AppStorage("confirmBeforeEveryCompression") var confirmBeforeEveryCompression: Bool = true
+    @AppStorage("confirmBeforeEveryCompression") var confirmBeforeEveryCompression: Bool = false
     /// When true, Dinky uses `.accessory` activation policy — no Dock icon or App Switcher entry.
     @AppStorage(DockPresenceManager.userDefaultsKey) var hideFromDockAndAppSwitcher: Bool = false
     /// Empties finished rows from the queue after a short delay when a batch completes.
@@ -610,8 +615,22 @@ final class DinkyPreferences: ObservableObject {
         return base.appendingPathComponent(subfolder, isDirectory: true)
     }
 
+    /// Sources Dinky made itself in the temp folder (pasted images) have no real "same folder";
+    /// results going there would land somewhere hidden.
+    static func isTemporarySource(_ url: URL) -> Bool {
+        let path = url.path
+        return temporaryRoots.contains { path.hasPrefix($0) }
+    }
+
+    /// Both spellings (`/var/…` and `/private/var/…`), worked out once: this runs whenever a row
+    /// shows its output name.
+    private static let temporaryRoots: [String] = {
+        let tmp = FileManager.default.temporaryDirectory
+        return Array(Set([tmp.path, tmp.resolvingSymlinksInPath().path]))
+    }()
+
     private func baseDestinationDirectory(for source: URL, isFromURLDownload: Bool = false) -> URL {
-        if isFromURLDownload, saveLocation == .sameFolder {
+        if isFromURLDownload || Self.isTemporarySource(source), saveLocation == .sameFolder {
             return FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
                 ?? source.deletingLastPathComponent()
         }

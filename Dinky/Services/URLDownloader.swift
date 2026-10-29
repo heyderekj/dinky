@@ -193,23 +193,23 @@ enum URLDownloaderError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidScheme:
-            return "Only http or https links are supported."
+            return String(localized: "Only http or https links are supported.", comment: "Link download error.")
         case .offline:
-            return "You appear to be offline."
+            return String(localized: "You appear to be offline.", comment: "Link download error.")
         case .timeout:
-            return "Download timed out."
+            return String(localized: "Download timed out.", comment: "Link download error.")
         case .notFound:
-            return "That link couldn’t be found (404)."
+            return String(localized: "That link couldn’t be found (404).", comment: "Link download error.")
         case .forbidden:
-            return "That link is restricted (403)."
+            return String(localized: "That link is restricted (403).", comment: "Link download error.")
         case .serverError(let c):
-            return "The server returned an error (\(c))."
+            return String(localized: "The server returned an error (\(c)).", comment: "Link download error; argument is an HTTP status code.")
         case .htmlPage:
-            return "That link points to a webpage, not an image, video, or PDF. Try copying the image address instead."
+            return String(localized: "That link points to a webpage, not an image, video, or PDF. Try copying the image address instead.", comment: "Link download error.")
         case .unsupportedType:
-            return "That file type isn’t supported by Dinky."
+            return String(localized: "That file type isn’t supported by Dinky.", comment: "Link download error.")
         case .tooLarge:
-            return "That file is larger than 500 MB."
+            return String(localized: "That file is larger than 500 MB.", comment: "Link download error.")
         case .network(let e):
             return e.localizedDescription
         }

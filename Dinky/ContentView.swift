@@ -8,6 +8,7 @@ import AppKit
 import PDFKit
 import AVFoundation
 import CoreMedia
+import QuickLook
 
 // MARK: - AsyncSemaphore
 
@@ -37,6 +38,19 @@ final class ContentViewModel: ObservableObject {
     /// When true, `scheduleAutoClearAfterBatch` runs after the batch summary sheet is dismissed.
     private var pendingAutoClearAfterBatchSummary = false
     @Published var undoErrorMessage: String?
+    /// A short message for the bottom bar (e.g. files that were dropped but can't be compressed).
+    @Published private(set) var notice: String?
+    private var noticeTask: Task<Void, Never>?
+
+    func showNotice(_ text: String) {
+        notice = text
+        noticeTask?.cancel()
+        noticeTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(6))
+            guard !Task.isCancelled else { return }
+            self?.notice = nil
+        }
+    }
     /// True after the user stopped a run early; shows **Continue** to resume pending files.
     @Published var compressionInterrupted: Bool = false
     /// When manual mode is off, shows **Compress Now** after Undo from the batch sheet (undo does not auto-start a run).
@@ -527,6 +541,21 @@ final class ContentViewModel: ObservableObject {
         compress()
     }
 
+    /// The main window's undo manager, so Edit › Undo (⌘Z) can undo the last batch.
+    weak var undoManager: UndoManager?
+
+    private func registerUndo(for items: [CompressionItem]) {
+        guard let undoManager, !items.isEmpty else { return }
+        undoManager.registerUndo(withTarget: self) { vm in
+            for item in items.reversed() where item.undoSnapshot != nil {
+                vm.undoCompression(item)
+            }
+        }
+        undoManager.setActionName(items.count == 1
+            ? String(localized: "Compression", comment: "Edit menu: Undo Compression (one file).")
+            : String(localized: "Compressions", comment: "Edit menu: Undo Compressions (several files)."))
+    }
+
     func undoCompression(_ item: CompressionItem) {
         guard let snap = item.undoSnapshot else { return }
         do {
@@ -767,6 +796,11 @@ final class ContentViewModel: ObservableObject {
         for item in targets {
             if item.sourceURL.path.hasPrefix(tmp) {
                 try? FileManager.default.removeItem(at: item.sourceURL)
+                // Pasted images live in their own `dinky_paste_…` folder.
+                let parent = item.sourceURL.deletingLastPathComponent()
+                if parent.lastPathComponent.hasPrefix("dinky_paste_") {
+                    try? FileManager.default.removeItem(at: parent)
+                }
             }
         }
     }
@@ -900,6 +934,7 @@ final class ContentViewModel: ObservableObject {
                 let batchItems = self.batchItems(ids: Set(batchIDs))
                 let batchSaved = batchItems.reduce(Int64(0)) { $0 + $1.savedBytes }
                 self.prefs.lifetimeSavedBytes += batchSaved
+                self.registerUndo(for: batchItems.filter { $0.undoSnapshot != nil })
 
                 let doneCount = batchItems.filter { if case .done = $0.status { return true }; return false }.count
 
@@ -913,8 +948,9 @@ final class ContentViewModel: ObservableObject {
                 // there doesn't also open the summary sheet on the main window, or Finder.
                 let fromDropzoneOnly = batchItems.allSatisfy(\.ingestedFromDropzone)
                 let openFolder = (batchPreset?.openFolderWhenDone ?? self.prefs.openFolderWhenDone) && !fromDropzoneOnly
-                if openFolder, let first = doneItems.first {
-                    NSWorkspace.shared.open(first.deletingLastPathComponent())
+                // Select the new files in Finder rather than just opening their folder.
+                if openFolder, !doneItems.isEmpty {
+                    NSWorkspace.shared.activateFileViewerSelecting(doneItems)
                 }
 
                 let hasTerminalForSummary = batchItems.contains { item in
@@ -924,7 +960,10 @@ final class ContentViewModel: ObservableObject {
                     }
                 }
 
-                let showsSummarySheet = self.prefs.showBatchSummaryDialog && !fromDropzoneOnly
+                // With the summary turned off (the default for new installs) it still appears when
+                // something failed, so a failure never goes unnoticed.
+                let hadFailure = batchItems.contains { if case .failed = $0.status { return true }; return false }
+                let showsSummarySheet = (self.prefs.showBatchSummaryDialog || hadFailure) && !fromDropzoneOnly
 
                 if hasTerminalForSummary {
                     let skippedCount = batchItems.filter { if case .skipped = $0.status { return true }; return false }.count
@@ -1914,6 +1953,22 @@ struct ContentView: View {
     @State private var isDropTargeted  = false
     @State private var idleLoop        = 0
     @State private var selectedIDs: Set<UUID> = []
+    @State private var quickLookURL: URL?
+    @Environment(\.undoManager) private var undoManager
+
+    /// The selected rows' files: the result when there is one, otherwise the original.
+    private var selectedFileURLs: [URL] {
+        vm.items.filter { selectedIDs.contains($0.id) }.compactMap { item in
+            if case .downloading = item.status { return nil }
+            return item.outputURL ?? item.sourceURL
+        }
+    }
+
+    static func copyToPasteboard(_ urls: [URL]) {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.writeObjects(urls as [NSURL])
+    }
     @State private var showingHistory  = false
     @AppStorage("manualModeHintDismissed") private var manualModeHintDismissed = false
     @AppStorage("reviewPromptBelowUpdateDismissed") private var reviewPromptBelowUpdateDismissed = false
@@ -1982,12 +2037,14 @@ struct ContentView: View {
             return
         }
         switch imp {
-        case .localFile(let url):
-            if vm.items.contains(where: { $0.sourceURL.path == url.path && !$0.status.isTerminal }) {
+        case .localFiles(let urls):
+            let queued = Set(vm.items.filter { !$0.status.isTerminal }.map(\.sourceURL.path))
+            let fresh = urls.filter { !queued.contains($0.path) }
+            guard !fresh.isEmpty else {
                 showPasteAlert(title: S.pasteDuplicateTitle, message: S.pasteDuplicateMessage)
                 return
             }
-            userInitiatedAdd(localURLs: [url], remoteURLs: [], force: false, presetID: nil)
+            userInitiatedAdd(localURLs: fresh, remoteURLs: [], force: false, presetID: nil)
         case .remoteURL(let url):
             if vm.items.contains(where: { $0.pendingRemoteURL == url }) {
                 showPasteAlert(title: S.pasteDuplicateTitle, message: S.pasteDuplicateMessage)
@@ -2247,6 +2304,13 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .dinkyPasteClipboard)) { _ in
             handlePasteFromUser()
         }
+        // Plain ⌘V (Edit › Paste) works too, not just the Clipboard Compress shortcut. Text fields
+        // in the sidebar still get their own paste first.
+        .onPasteCommand(of: [.fileURL, .png, .tiff, .url, .plainText]) { _ in
+            handlePasteFromUser()
+        }
+        .onAppear { vm.undoManager = undoManager }
+        .onChange(of: undoManager) { _, manager in vm.undoManager = manager }
         .onReceive(NotificationCenter.default.publisher(for: .dinkyClearAll)) { _ in
             vm.clear()
             selectedIDs = []
@@ -2455,6 +2519,23 @@ struct ContentView: View {
                             Divider()
                         }
                     } else {
+                        let finished: [CompressionItem] = selectedIDs.contains(item.id)
+                            ? vm.items.filter { selectedIDs.contains($0.id) && $0.status.isTerminal }
+                            : [item]
+                        let outputs = finished.compactMap(\.outputURL)
+                        if !outputs.isEmpty {
+                            Button {
+                                NSWorkspace.shared.activateFileViewerSelecting(outputs)
+                            } label: {
+                                Label(String(localized: "Show in Finder", comment: "Button to reveal output in Finder."), systemImage: "folder")
+                            }
+                            Button {
+                                Self.copyToPasteboard(outputs)
+                            } label: {
+                                Label(String(localized: "Copy", comment: "Context menu: copy compressed files to the clipboard."), systemImage: "doc.on.doc")
+                            }
+                            Divider()
+                        }
                         let undoTargets: [CompressionItem] = {
                             if selectedIDs.contains(item.id) {
                                 return vm.items.filter { selectedIDs.contains($0.id) && $0.undoSnapshot != nil }
@@ -2485,45 +2566,45 @@ struct ContentView: View {
                             Divider()
                         }
                         if item.mediaType == .image {
-                            Button { vm.recompress(item, as: .webp) } label: {
+                            Button { finished.filter { $0.mediaType == .image }.forEach { vm.recompress($0, as: .webp) } } label: {
                                 Label(String(localized: "Re-compress as WebP", comment: "Context menu."), systemImage: "photo")
                             }
-                            Button { vm.recompress(item, as: .avif) } label: {
+                            Button { finished.filter { $0.mediaType == .image }.forEach { vm.recompress($0, as: .avif) } } label: {
                                 Label(String(localized: "Re-compress as AVIF", comment: "Context menu."), systemImage: "photo")
                             }
-                            Button { vm.recompress(item, as: .png) } label: {
+                            Button { finished.filter { $0.mediaType == .image }.forEach { vm.recompress($0, as: .png) } } label: {
                                 Label(String(localized: "Re-compress as PNG", comment: "Context menu."), systemImage: "photo")
                             }
-                            Button { vm.recompress(item, as: .heic) } label: {
+                            Button { finished.filter { $0.mediaType == .image }.forEach { vm.recompress($0, as: .heic) } } label: {
                                 Label(String(localized: "Re-compress as HEIC", comment: "Context menu."), systemImage: "photo")
                             }
-                            Button { vm.recompress(item, as: .jpeg) } label: {
+                            Button { finished.filter { $0.mediaType == .image }.forEach { vm.recompress($0, as: .jpeg) } } label: {
                                 Label(String(localized: "Re-compress as JPEG", comment: "Context menu."), systemImage: "photo")
                             }
                             Divider()
                         }
                         if item.mediaType == .pdf, vm.effectivePDFOutputMode(for: item) == .flattenPages {
-                            Button { vm.recompressPDF(item, quality: .low) } label: {
+                            Button { finished.filter { $0.mediaType == .pdf }.forEach { vm.recompressPDF($0, quality: .low) } } label: {
                                 Label(String(localized: "Re-compress PDF at Low", comment: "Context menu."), systemImage: "doc")
                             }
-                            Button { vm.recompressPDF(item, quality: .medium) } label: {
+                            Button { finished.filter { $0.mediaType == .pdf }.forEach { vm.recompressPDF($0, quality: .medium) } } label: {
                                 Label(String(localized: "Re-compress PDF at Medium", comment: "Context menu."), systemImage: "doc")
                             }
-                            Button { vm.recompressPDF(item, quality: .high) } label: {
+                            Button { finished.filter { $0.mediaType == .pdf }.forEach { vm.recompressPDF($0, quality: .high) } } label: {
                                 Label(String(localized: "Re-compress PDF at High", comment: "Context menu."), systemImage: "doc")
                             }
                             Divider()
                         }
                         if item.mediaType == .video {
                             Menu {
-                                Button(VideoQuality.medium.displayName) { vm.recompressVideo(item, quality: .medium, codec: .h264) }
-                                Button(VideoQuality.high.displayName)   { vm.recompressVideo(item, quality: .high,   codec: .h264) }
+                                Button(VideoQuality.medium.displayName) { finished.filter { $0.mediaType == .video }.forEach { vm.recompressVideo($0, quality: .medium, codec: .h264) } }
+                                Button(VideoQuality.high.displayName)   { finished.filter { $0.mediaType == .video }.forEach { vm.recompressVideo($0, quality: .high,   codec: .h264) } }
                             } label: {
                                 Label(String(localized: "Re-compress H.264", comment: "Video codec menu."), systemImage: "film")
                             }
                             Menu {
-                                Button(VideoQuality.medium.displayName) { vm.recompressVideo(item, quality: .medium, codec: .hevc) }
-                                Button(VideoQuality.high.displayName)   { vm.recompressVideo(item, quality: .high,   codec: .hevc) }
+                                Button(VideoQuality.medium.displayName) { finished.filter { $0.mediaType == .video }.forEach { vm.recompressVideo($0, quality: .medium, codec: .hevc) } }
+                                Button(VideoQuality.high.displayName)   { finished.filter { $0.mediaType == .video }.forEach { vm.recompressVideo($0, quality: .high,   codec: .hevc) } }
                             } label: {
                                 Label(String(localized: "Re-compress H.265 (HEVC)", comment: "Video codec menu."), systemImage: "film")
                             }
@@ -2545,6 +2626,17 @@ struct ContentView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
+        // ⌘C copies the selected results as files, ready to paste into Finder, Mail, Figma…
+        .onCopyCommand {
+            selectedFileURLs.compactMap { NSItemProvider(contentsOf: $0) }
+        }
+        // Space opens Quick Look on the selection, like Finder.
+        .onKeyPress(.space) {
+            guard let first = selectedFileURLs.first else { return .ignored }
+            quickLookURL = first
+            return .handled
+        }
+        .quickLookPreview($quickLookURL, in: selectedFileURLs)
         .onChange(of: vm.isEmpty) { _, isEmpty in
             if isEmpty { selectedIDs = [] }
         }
@@ -2586,6 +2678,7 @@ struct ContentView: View {
                 .multilineTextAlignment(vm.isEmpty ? .center : .leading)
                 .frame(maxWidth: .infinity, alignment: vm.isEmpty ? .center : .leading)
                 .animation(.easeInOut, value: vm.phase)
+                .animation(.easeInOut, value: vm.notice)
 
             if vm.isProcessing {
                 Button {
@@ -2612,6 +2705,7 @@ struct ContentView: View {
     }
 
     private var statusText: String {
+        if let notice = vm.notice { return notice }
         switch vm.phase {
         case .idle:       return S.dropIdle(loop: idleLoop)
         case .hovering:   return S.dropHover
@@ -2623,6 +2717,8 @@ struct ContentView: View {
                 return false
             }.count
             let done = vm.items.filter { if case .done = $0.status { return true }; return false }.count
+            let failed = vm.items.contains { if case .failed = $0.status { return true }; return false }
+            if failed { return S.doneWithFailures }
             return (skipped > 0 && done > 0) ? S.doneMixed : S.doneGood
         }
     }
@@ -2631,7 +2727,8 @@ struct ContentView: View {
 
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
         let force = NSEvent.modifierFlags.contains(.option)
-        DroppedItemsReader.read(providers) { collected, remoteURLs in
+        DroppedItemsReader.read(providers) { collected, remoteURLs, unsupported in
+            if !unsupported.isEmpty { vm.showNotice(S.skippedUnsupported(unsupported)) }
             if collected.isEmpty, remoteURLs.isEmpty { return }
             userInitiatedAdd(localURLs: collected, remoteURLs: remoteURLs, force: force, presetID: nil)
         }
@@ -2644,9 +2741,11 @@ struct ContentView: View {
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories    = true
-        panel.allowedContentTypes     = [.jpeg, .png, .webP, .heic, .heif, .image, .pdf, .mpeg4Movie, .quickTimeMovie, .movie]
+        panel.allowedContentTypes     = [.jpeg, .png, .webP, .heic, .heif, .image, .pdf, .mpeg4Movie, .quickTimeMovie, .movie, .audio]
         if panel.runModal() == .OK {
-            userInitiatedAdd(localURLs: panel.urls, remoteURLs: [], force: false, presetID: nil)
+            // A chosen folder becomes the files inside it, same as dropping one.
+            let files = panel.urls.flatMap(DroppedItemsReader.expandAndFilter)
+            userInitiatedAdd(localURLs: files, remoteURLs: [], force: false, presetID: nil)
         }
     }
 }
