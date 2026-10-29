@@ -40,20 +40,26 @@ final class MenuBarController: NSObject, NSWindowDelegate {
         icon?.size = NSSize(width: 14, height: 14)
         icon?.accessibilityDescription = String(localized: "Dinky", comment: "Menu bar item accessibility label.")
         item.button?.image = icon
+        self.item = item
+        // The expanded-interface API is in the macOS 27 SDK (Swift 6.4); a build with an older
+        // SDK, like CI's, only has the click-to-toggle path.
+        #if compiler(>=6.4)
         if #available(macOS 27, *) {
             let bridge = ExpandedSessionBridge(controller: self)
             item.expandedInterfaceDelegate = bridge
             sessionBridge = bridge
-        } else {
-            item.button?.target = self
-            item.button?.action = #selector(togglePanel)
+            return
         }
-        self.item = item
+        #endif
+        item.button?.target = self
+        item.button?.action = #selector(togglePanel)
     }
 
     private func uninstall() {
         guard let item else { return }
+        #if compiler(>=6.4)
         if #available(macOS 27, *) { item.expandedInterfaceSession?.cancel() }
+        #endif
         NSStatusBar.system.removeStatusItem(item)
         self.item = nil
         sessionBridge = nil
@@ -85,11 +91,13 @@ final class MenuBarController: NSObject, NSWindowDelegate {
 
     /// A row did its thing (or opened a window): close the way a menu would.
     func closePanel() {
+        #if compiler(>=6.4)
         if #available(macOS 27, *), let session = item?.expandedInterfaceSession {
             session.cancel()
-        } else {
-            hidePanel()
+            return
         }
+        #endif
+        hidePanel()
     }
 
     private func makePanel() -> MenuBarPanelWindow {
@@ -140,6 +148,7 @@ final class MenuBarPanelWindow: NSPanel {
     override var canBecomeMain: Bool { false }
 }
 
+#if compiler(>=6.4)
 /// The status item only holds its expanded-interface delegate weakly, and the protocol only exists
 /// on macOS 27, so it lives in its own small object.
 @available(macOS 27, *)
@@ -159,3 +168,4 @@ private final class ExpandedSessionBridge: NSObject, NSStatusItemExpandedInterfa
         MainActor.assumeIsolated { controller?.hidePanel() }
     }
 }
+#endif
