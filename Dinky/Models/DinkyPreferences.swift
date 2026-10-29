@@ -16,6 +16,22 @@ enum SaveLocation: String, CaseIterable, Identifiable {
     }
 }
 
+/// Where the floating dropzone sits on screen.
+enum ScreenCorner: String, CaseIterable, Identifiable {
+    case bottomRight, bottomLeft, topRight, topLeft
+    var id: String { rawValue }
+    var displayName: String {
+        switch self {
+        case .bottomRight: return String(localized: "Bottom right", comment: "Settings: floating dropzone corner.")
+        case .bottomLeft:  return String(localized: "Bottom left", comment: "Settings: floating dropzone corner.")
+        case .topRight:    return String(localized: "Top right", comment: "Settings: floating dropzone corner.")
+        case .topLeft:     return String(localized: "Top left", comment: "Settings: floating dropzone corner.")
+        }
+    }
+    var isTop: Bool { self == .topLeft || self == .topRight }
+    var isLeft: Bool { self == .topLeft || self == .bottomLeft }
+}
+
 // OriginalsAction and CollisionNamingStyle: see DinkyCoreImage (re-exported via DinkyCoreImageExports.swift).
 
 enum FilenameHandling: String, CaseIterable, Identifiable {
@@ -167,6 +183,13 @@ final class DinkyPreferences: ObservableObject {
     /// Failed/skipped rows are kept so the user can act on them.
     @AppStorage("autoClearWhenDone")    var autoClearWhenDone: Bool = false
     @AppStorage("reduceMotion")         var reduceMotion: Bool = false
+    /// Shows a small dropzone in a screen corner while files are dragged anywhere.
+    @AppStorage("floatingDropzoneEnabled") var floatingDropzoneEnabled: Bool = false
+    @AppStorage("floatingDropzoneCorner")  var floatingDropzoneCornerRaw: String = ScreenCorner.bottomRight.rawValue
+    var floatingDropzoneCorner: ScreenCorner {
+        get { ScreenCorner(rawValue: floatingDropzoneCornerRaw) ?? .bottomRight }
+        set { floatingDropzoneCornerRaw = newValue.rawValue }
+    }
     @AppStorage("folderWatchEnabled")   var folderWatchEnabled: Bool = false
     @AppStorage("watchedFolderPath")    var watchedFolderPath: String = ""
     @AppStorage("watchedFolderBookmark") var watchedFolderBookmark: Data = Data()

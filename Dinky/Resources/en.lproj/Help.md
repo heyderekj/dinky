@@ -23,6 +23,7 @@ That's it. The defaults are good. Read on if you want to bend them to your will.
 You don't have to open the app first. Pick whichever fits how you work.
 
 - **Drag & drop** onto the Dinky window or the Dock icon.
+- **Floating dropzone** — start dragging files anywhere and a little dropzone pops into a screen corner. Drop on it to compress without opening the window. (See *Floating dropzone* below.)
 - **Hide from Dock** — Settings → General → Behavior (requires **Open at login**) keeps Dinky running without a Dock icon or App Switcher entry (Dock-icon drops need this off).
 - **Open Files…** — `{{SK_OPEN_FILES}}` to pick from a sheet.
 - **Clipboard Compress** — `{{SK_PASTE}}` pastes a supported **file** copied in Finder (images, videos, PDFs) or **raw image** data (PNG/TIFF from screenshots or browsers).
@@ -112,6 +113,17 @@ Drop files into a folder and let Dinky handle them in the background.
 - **Per-preset watch** — each preset can also watch its own folder with its own rules. Independent of the sidebar — change the sidebar all you want, the preset still does its thing.
 
 > **Pro tip:** Combine "screen recordings folder" + a preset that strips audio and re-encodes to H.264 Balanced. Hit `⌘⇧5`, screen-record, hit stop — Dinky has a small file ready before you reach the Finder.
+
+---
+
+## Floating dropzone
+
+Turn it on in **Settings → General → Behavior → Floating dropzone**, and pick its corner there.
+
+- **Drag files anywhere** — from Finder, Mail, your browser's downloads — and a small dropzone tucks into the corner. It grows as you get close.
+- **Drop on the big target** to use your current preset. To use another one, sweep across the **preset track** along the bottom — the highlight follows you — then let go there or anywhere on the target.
+- **Watch it shrink.** When it's done you'll see how much you saved. **Drag any result straight out** into another app, or click it to show it in Finder.
+- Drops here skip the confirmation sheet and manual mode — dropping *is* the go button. Hold `⌥` while dropping to compress files Dinky would normally skip.
 
 ---
 

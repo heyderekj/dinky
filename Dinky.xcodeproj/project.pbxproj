@@ -24,6 +24,7 @@
 		AA000006000000000000006 /* ImageItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FFDD8F0AED14F8CA2C3F9A7 /* ImageItem.swift */; };
 		AA000008000000000000008 /* DinkyPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D3DAE858994431BC84C13F /* DinkyPreferences.swift */; };
 		AA000009000000000000009 /* DropZoneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56D9DE1C999B470FBB27E454 /* DropZoneView.swift */; };
+		FD000004000000000000000 /* FloatingDropzoneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD000004100000000000000 /* FloatingDropzoneView.swift */; };
 		AA000010000000000000010 /* ResultsRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B63EBD7088E4C9BAB7A45DC /* ResultsRowView.swift */; };
 		AA000011000000000000011 /* AntyMascotView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1032BF7B7A74FAF99A74DB7 /* AntyMascotView.swift */; };
 		AA000012000000000000012 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 74EE7205601D464484113FEB /* Assets.xcassets */; };
@@ -47,6 +48,9 @@
 		FC000001000000000000001 /* FinderCommentsCopier.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC100001000000000000001 /* FinderCommentsCopier.swift */; };
 		FW000001000000000000001 /* FolderWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = FW100001000000000000001 /* FolderWatcher.swift */; };
 		GH000001000000000000001 /* GlobalHotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = GH100001000000000000001 /* GlobalHotkeyManager.swift */; };
+		FD000003000000000000000 /* FloatingDropzoneController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD000003100000000000000 /* FloatingDropzoneController.swift */; };
+		FD000002000000000000000 /* FileDragWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD000002100000000000000 /* FileDragWatcher.swift */; };
+		FD000001000000000000000 /* DroppedItemsReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD000001100000000000000 /* DroppedItemsReader.swift */; };
 		HM000001000000000000001 /* Help.md in Resources */ = {isa = PBXBuildFile; fileRef = HMVGRP00000000000000001 /* Help.md */; };
 		HS000001000000000000001 /* HistorySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = HS100001000000000000001 /* HistorySheet.swift */; };
 		HW000001000000000000001 /* HelpWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = HW100001000000000000001 /* HelpWindow.swift */; };
@@ -83,6 +87,7 @@
 		4FE17DC818E44D3F88D6F88A /* Strings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Strings.swift; sourceTree = "<group>"; };
 		4FFDD8F0AED14F8CA2C3F9A7 /* ImageItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageItem.swift; sourceTree = "<group>"; };
 		56D9DE1C999B470FBB27E454 /* DropZoneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropZoneView.swift; sourceTree = "<group>"; };
+		FD000004100000000000000 /* FloatingDropzoneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingDropzoneView.swift; sourceTree = "<group>"; };
 		5B63EBD7088E4C9BAB7A45DC /* ResultsRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultsRowView.swift; sourceTree = "<group>"; };
 		5BC7D00FC2B14EF09CB7F833 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5BEB16B6B1534C999F261F79 /* CompressionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompressionService.swift; sourceTree = "<group>"; };
@@ -116,6 +121,9 @@
 		FC100001000000000000001 /* FinderCommentsCopier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderCommentsCopier.swift; sourceTree = "<group>"; };
 		FW100001000000000000001 /* FolderWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderWatcher.swift; sourceTree = "<group>"; };
 		GH100001000000000000001 /* GlobalHotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalHotkeyManager.swift; sourceTree = "<group>"; };
+		FD000003100000000000000 /* FloatingDropzoneController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingDropzoneController.swift; sourceTree = "<group>"; };
+		FD000002100000000000000 /* FileDragWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileDragWatcher.swift; sourceTree = "<group>"; };
+		FD000001100000000000000 /* DroppedItemsReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DroppedItemsReader.swift; sourceTree = "<group>"; };
 		HMDE0000000000000000001 /* Help.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = Help.md; path = de.lproj/Help.md; sourceTree = "<group>"; };
 		HMEN0000000000000000001 /* Help.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = Help.md; path = en.lproj/Help.md; sourceTree = "<group>"; };
 		HMES0000000000000000001 /* Help.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = Help.md; path = es.lproj/Help.md; sourceTree = "<group>"; };
@@ -202,6 +210,7 @@
 			isa = PBXGroup;
 			children = (
 				56D9DE1C999B470FBB27E454 /* DropZoneView.swift */,
+				FD000004100000000000000 /* FloatingDropzoneView.swift */,
 				5B63EBD7088E4C9BAB7A45DC /* ResultsRowView.swift */,
 				CCS100001000000000000001 /* CompressionConfirmationSheet.swift */,
 				SSR100001000000000000001 /* SummaryStatRow.swift */,
@@ -320,6 +329,9 @@
 				FW100001000000000000001 /* FolderWatcher.swift */,
 				WR100001000000000000001 /* WatchRegistry.swift */,
 				GH100001000000000000001 /* GlobalHotkeyManager.swift */,
+				FD000003100000000000000 /* FloatingDropzoneController.swift */,
+				FD000002100000000000000 /* FileDragWatcher.swift */,
+				FD000001100000000000000 /* DroppedItemsReader.swift */,
 				DR100001000000000000001 /* DiagnosticsReporter.swift */,
 				FC100001000000000000001 /* FinderCommentsCopier.swift */,
 				DCRERR0001 /* DinkyImageCompression+AppError.swift */,
@@ -494,6 +506,7 @@
 				DCBERR0001 /* DinkyImageCompression+AppError.swift in Sources */,
 				AA000008000000000000008 /* DinkyPreferences.swift in Sources */,
 				AA000009000000000000009 /* DropZoneView.swift in Sources */,
+				FD000004000000000000000 /* FloatingDropzoneView.swift in Sources */,
 				AA000010000000000000010 /* ResultsRowView.swift in Sources */,
 				CCS000001000000000000001 /* CompressionConfirmationSheet.swift in Sources */,
 				SSR000001000000000000001 /* SummaryStatRow.swift in Sources */,
@@ -527,6 +540,9 @@
 				KS000001000000000000001 /* CustomShortcut.swift in Sources */,
 				SH000001000000000000001 /* ShortcutRecorderField.swift in Sources */,
 				GH000001000000000000001 /* GlobalHotkeyManager.swift in Sources */,
+				FD000003000000000000000 /* FloatingDropzoneController.swift in Sources */,
+				FD000002000000000000000 /* FileDragWatcher.swift in Sources */,
+				FD000001000000000000000 /* DroppedItemsReader.swift in Sources */,
 				DR000001000000000000001 /* DiagnosticsReporter.swift in Sources */,
 				FC000001000000000000001 /* FinderCommentsCopier.swift in Sources */,
 				SP000001000000000000001 /* SavingsPerspective.swift in Sources */,

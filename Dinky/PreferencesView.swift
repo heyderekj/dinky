@@ -348,6 +348,29 @@ private struct BehaviorPreferencesPane: View {
                     .foregroundStyle(.tertiary)
                 PreferencesRelatedTabLink(title: String(localized: "Change shortcut in Keyboard Shortcuts…", comment: "Settings UI."), tab: .shortcuts)
 
+                Toggle(String(localized: "Floating dropzone", comment: "Settings UI."), isOn: Binding(
+                    get: { prefs.floatingDropzoneEnabled },
+                    set: { newValue in
+                        prefs.floatingDropzoneEnabled = newValue
+                        NotificationCenter.default.post(name: .dinkyFloatingDropzoneChanged, object: nil)
+                    }
+                ))
+                Picker(String(localized: "Corner", comment: "Settings UI: where the floating dropzone appears."), selection: Binding(
+                    get: { prefs.floatingDropzoneCorner },
+                    set: { newValue in
+                        prefs.floatingDropzoneCorner = newValue
+                        NotificationCenter.default.post(name: .dinkyFloatingDropzoneChanged, object: nil)
+                    }
+                )) {
+                    ForEach(ScreenCorner.allCases) { corner in
+                        Text(corner.displayName).tag(corner)
+                    }
+                }
+                .disabled(!prefs.floatingDropzoneEnabled)
+                Text(S.behaviorFloatingDropzoneFootnote)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+
                 Toggle(String(localized: "Show batch summary when done", comment: "Settings UI."), isOn: Binding(
                     get: { prefs.showBatchSummaryDialog },
                     set: { prefs.showBatchSummaryDialog = $0 }

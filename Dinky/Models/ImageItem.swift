@@ -61,6 +61,8 @@ final class CompressionItem: ObservableObject, Identifiable {
     var presetID: UUID? = nil
     /// Arrived via a Watch folder (not drag-and-drop / Open / Services). Uses the Watch originals policy.
     var ingestedFromWatchFolder: Bool = false
+    /// Dropped on the floating dropzone; its results show there instead of in the batch summary sheet.
+    var ingestedFromDropzone: Bool = false
     /// Size and modification date when added — tells a changed file from a repeat watch event.
     var sourceFingerprint: FileFingerprint? = nil
     /// True when the file was fetched from an `http(s)` URL (temp download). Affects output path and original disposal.

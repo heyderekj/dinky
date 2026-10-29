@@ -26,6 +26,8 @@ extension Notification.Name {
     static let dinkyStartCompression    = Notification.Name("dinkyStartCompression")
     /// Re-register the system-wide “Clipboard Compress” hotkey (toggle or shortcut changed).
     static let dinkyGlobalPasteHotkeyChanged = Notification.Name("dinkyGlobalPasteHotkeyChanged")
+    /// Turn the floating dropzone on or off, or move it (Behavior settings changed).
+    static let dinkyFloatingDropzoneChanged = Notification.Name("dinkyFloatingDropzoneChanged")
     /// Re-apply Dock / App Switcher visibility when the Behavior toggle changes.
     static let dinkyDockPresenceChanged = Notification.Name("dinkyDockPresenceChanged")
     /// Posted before quit so SwiftUI can dismiss sheets; used with `applicationShouldTerminate` / `terminateLater`.
@@ -81,6 +83,10 @@ enum S {
     /// Settings › General › Behavior — global clipboard shortcut explainer (combo comes from `CustomShortcut.displayString`).
     static func behaviorPasteClipboardGlobalFootnote(currentShortcutDisplay: String) -> String {
         String(localized: "Triggers Clipboard Compress from any app while Dinky is running (currently \(currentShortcutDisplay)).", comment: "Settings footnote; argument is the shortcut key combo.")
+    }
+
+    static var behaviorFloatingDropzoneFootnote: String {
+        String(localized: "Pops up in a corner whenever you drag images, videos, or PDFs anywhere. Drop on it to compress right there — no window, no confirmation, even in manual mode. Drag the results straight out.", comment: "Settings › General › Behavior footnote for the floating dropzone toggle.")
     }
 
     static var behaviorHideFromDockFootnote: String {

@@ -5,6 +5,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var globalPasteHotkeyObserver: NSObjectProtocol?
     private var dockPresenceObserver: NSObjectProtocol?
+    private var floatingDropzoneObserver: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         migratePDFMaxFileSizeIfNeeded()
@@ -24,6 +25,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             queue: .main
         ) { _ in
             GlobalHotkeyManager.shared.syncFromDefaults()
+        }
+        FloatingDropzoneController.shared.syncFromDefaults()
+        floatingDropzoneObserver = NotificationCenter.default.addObserver(
+            forName: .dinkyFloatingDropzoneChanged,
+            object: nil,
+            queue: .main
+        ) { _ in
+            MainActor.assumeIsolated { FloatingDropzoneController.shared.syncFromDefaults() }
         }
         dockPresenceObserver = NotificationCenter.default.addObserver(
             forName: .dinkyDockPresenceChanged,

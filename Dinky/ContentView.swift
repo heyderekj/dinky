@@ -330,15 +330,18 @@ final class ContentViewModel: ObservableObject {
         Set(items.map { $0.mediaType })
     }
 
-    func addAndCompress(_ urls: [URL], force: Bool = false, presetID: UUID? = nil, fromWatchFolder: Bool = false) {
-        enqueue(urls, force: force, fromWatchFolder: fromWatchFolder) { _ in presetID }
+    /// Returns the IDs of the rows it added, so a caller like the floating dropzone can follow them.
+    @discardableResult
+    func addAndCompress(_ urls: [URL], force: Bool = false, presetID: UUID? = nil, fromWatchFolder: Bool = false, fromDropzone: Bool = false) -> [UUID] {
+        enqueue(urls, force: force, fromWatchFolder: fromWatchFolder, fromDropzone: fromDropzone) { _ in presetID }
     }
 
     /// Adds files using the preset selected in the main window (when it covers the file's type), read
     /// fresh from Settings — so editing that preset applies to the next drop, not just to the copy
     /// taken when it was selected.
-    func addAndCompressWithActivePreset(_ urls: [URL], force: Bool = false, fromWatchFolder: Bool = false) {
-        enqueue(urls, force: force, fromWatchFolder: fromWatchFolder) { self.activePresetID(for: $0) }
+    @discardableResult
+    func addAndCompressWithActivePreset(_ urls: [URL], force: Bool = false, fromWatchFolder: Bool = false, fromDropzone: Bool = false) -> [UUID] {
+        enqueue(urls, force: force, fromWatchFolder: fromWatchFolder, fromDropzone: fromDropzone) { self.activePresetID(for: $0) }
     }
 
     func activePresetID(for url: URL) -> UUID? {
@@ -352,12 +355,14 @@ final class ContentViewModel: ObservableObject {
     /// Queues files. A file whose row is still waiting or working is ignored; one whose row already
     /// finished (done, no gain, skipped, failed) gets a fresh row so dropping it again tries again.
     /// A watch folder only retries when the file actually changed, not on a repeat event.
+    @discardableResult
     private func enqueue(
         _ urls: [URL],
         force: Bool,
         fromWatchFolder: Bool,
+        fromDropzone: Bool = false,
         presetFor: (URL) -> UUID?
-    ) {
+    ) -> [UUID] {
         var seen = Set<String>()
         var replaced = Set<UUID>()
         var newURLs: [URL] = []
@@ -371,7 +376,7 @@ final class ContentViewModel: ObservableObject {
             }
             newURLs.append(url)
         }
-        guard !newURLs.isEmpty else { return }
+        guard !newURLs.isEmpty else { return [] }
         // Not `remove(_:)`: that cleans up temp sources, and the new row reuses this file.
         if !replaced.isEmpty { items.removeAll { replaced.contains($0.id) } }
         let new = newURLs.map { url in
@@ -381,11 +386,14 @@ final class ContentViewModel: ObservableObject {
         }
         if force { new.forEach { $0.forceCompress = true } }
         if fromWatchFolder { new.forEach { $0.ingestedFromWatchFolder = true } }
+        if fromDropzone { new.forEach { $0.ingestedFromDropzone = true } }
         items.append(contentsOf: new)
         // Smallest files first — quick wins land early, the big ones stack
         // up at the bottom. This is also the order they'll be processed in.
         items.sort { $0.originalSize < $1.originalSize }
-        if !prefs.manualMode { compress() }
+        // A dropzone drop is its own "go" — it has no Compress Now button to wait for.
+        if !prefs.manualMode || fromDropzone { compress() }
+        return new.map(\.id)
     }
 
     func compressItems(_ targets: [CompressionItem], format: CompressionFormat) {
@@ -610,7 +618,9 @@ final class ContentViewModel: ObservableObject {
     }
 
     /// Download remote `http(s)` media URLs (max 4 concurrent), then queue for compression.
-    func queueRemoteDownload(urls: [URL], force: Bool, presetID: UUID? = nil) {
+    @discardableResult
+    func queueRemoteDownload(urls: [URL], force: Bool, presetID: UUID? = nil, fromDropzone: Bool = false) -> [UUID] {
+        var ids: [UUID] = []
         for url in urls {
             let placeholder = FileManager.default.temporaryDirectory
                 .appendingPathComponent("dinky_dl_placeholder_\(UUID().uuidString)")
@@ -619,7 +629,9 @@ final class ContentViewModel: ObservableObject {
             item.isURLDownloadSource = true
             item.status = .downloading(progress: 0, bytesReceived: 0, totalBytes: nil, displayHost: url.host ?? "…")
             if force { item.forceCompress = true }
+            if fromDropzone { item.ingestedFromDropzone = true }
             items.append(item)
+            ids.append(item.id)
 
             let host = url.host ?? "…"
             item.downloadTask = Task { [weak self] in
@@ -660,7 +672,7 @@ final class ContentViewModel: ObservableObject {
                         row.pendingRemoteURL = nil
                         row.downloadTask = nil
                         row.status = .pending
-                        if !self.prefs.manualMode { self.compress() }
+                        if !self.prefs.manualMode || row.ingestedFromDropzone { self.compress() }
                     }
                 } catch is CancellationError {
                     await MainActor.run { self.remove(item) }
@@ -675,6 +687,7 @@ final class ContentViewModel: ObservableObject {
             }
         }
         // Re-sort by placeholder size (0) — keep order
+        return ids
     }
 
     private static func userFacingDownloadFailure(_ error: Error) -> Error {
@@ -838,7 +851,10 @@ final class ContentViewModel: ObservableObject {
                 }
                 let outputFolderURL = doneItems.first?.deletingLastPathComponent()
 
-                let openFolder = batchPreset?.openFolderWhenDone ?? self.prefs.openFolderWhenDone
+                // The floating dropzone shows its own results, so a batch that came only from
+                // there doesn't also open the summary sheet on the main window, or Finder.
+                let fromDropzoneOnly = batchItems.allSatisfy(\.ingestedFromDropzone)
+                let openFolder = (batchPreset?.openFolderWhenDone ?? self.prefs.openFolderWhenDone) && !fromDropzoneOnly
                 if openFolder, let first = doneItems.first {
                     NSWorkspace.shared.open(first.deletingLastPathComponent())
                 }
@@ -849,6 +865,8 @@ final class ContentViewModel: ObservableObject {
                     default: return false
                     }
                 }
+
+                let showsSummarySheet = self.prefs.showBatchSummaryDialog && !fromDropzoneOnly
 
                 if hasTerminalForSummary {
                     let skippedCount = batchItems.filter { if case .skipped = $0.status { return true }; return false }.count
@@ -904,7 +922,7 @@ final class ContentViewModel: ObservableObject {
                     history.insert(record, at: 0)
                     self.prefs.sessionHistory = Array(history.prefix(50))
 
-                    if self.prefs.showBatchSummaryDialog {
+                    if showsSummarySheet {
                         self.pendingBatchSummary = summary
                         self.pendingBatchSummarySupportsUndo = true
                     }
@@ -918,7 +936,7 @@ final class ContentViewModel: ObservableObject {
                 }
 
                 if self.prefs.autoClearWhenDone, doneItems.isEmpty == false {
-                    if self.prefs.showBatchSummaryDialog, hasTerminalForSummary {
+                    if showsSummarySheet, hasTerminalForSummary {
                         self.pendingAutoClearAfterBatchSummary = true
                     } else {
                         self.scheduleAutoClearAfterBatch()
@@ -2543,53 +2561,12 @@ struct ContentView: View {
     // MARK: - Drop handling (reliable macOS URL extraction)
 
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
-        var collected: [URL] = []
-        var remoteURLs: [URL] = []
         let force = NSEvent.modifierFlags.contains(.option)
-        let group = DispatchGroup()
-        let lock  = NSLock()
-
-        for provider in providers {
-            if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
-                group.enter()
-                provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
-                    defer { group.leave() }
-                    var resolved: URL?
-                    if let url  = item as? URL  { resolved = url }
-                    else if let url = item as? NSURL as URL? { resolved = url }
-                    else if let data = item as? Data { resolved = URL(dataRepresentation: data, relativeTo: nil) }
-                    guard let url = resolved else { return }
-                    let files = expandAndFilter(url)
-                    lock.lock(); collected.append(contentsOf: files); lock.unlock()
-                }
-            } else if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier) {
-                group.enter()
-                provider.loadItem(forTypeIdentifier: UTType.url.identifier, options: nil) { item, _ in
-                    defer { group.leave() }
-                    let resolved: URL? = (item as? URL) ?? (item as? NSURL) as URL?
-                    guard let url = resolved,
-                          let scheme = url.scheme?.lowercased(),
-                          scheme == "http" || scheme == "https" else { return }
-                    lock.lock(); remoteURLs.append(url); lock.unlock()
-                }
-            }
-        }
-
-        group.notify(queue: .main) {
+        DroppedItemsReader.read(providers) { collected, remoteURLs in
             if collected.isEmpty, remoteURLs.isEmpty { return }
             userInitiatedAdd(localURLs: collected, remoteURLs: remoteURLs, force: force, presetID: nil)
         }
         return true
-    }
-
-    private func expandAndFilter(_ url: URL) -> [URL] {
-        var isDir: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir) else { return [] }
-        let urls: [URL] = isDir.boolValue
-            ? (FileManager.default.enumerator(at: url, includingPropertiesForKeys: nil)?
-                .compactMap { $0 as? URL } ?? [])
-            : [url]
-        return urls.filter { MediaTypeDetector.detect($0) != nil }
     }
 
     // MARK: - Open panel
