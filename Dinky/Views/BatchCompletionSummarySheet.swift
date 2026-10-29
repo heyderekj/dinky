@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// One successfully compressed row for the batch summary sheet (input → output).
 struct BatchCompletionFileRow: Identifiable, Equatable, Codable {
@@ -288,7 +289,8 @@ struct BatchCompletionSummarySheet: View {
                 // Inset the list inside the glass so row rounded rects aren’t clipped by the
                 // shape mask (same for ScrollView’s edge clipping).
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 8) {
+                    // Lazy: a 500-file batch used to build (and look up an icon for) every row up front.
+                    LazyVStack(alignment: .leading, spacing: 8) {
                         ForEach(summary.fileRows) { row in
                             listRowView(row)
                         }
@@ -337,7 +339,7 @@ struct BatchCompletionSummarySheet: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 Button(String(localized: "Change in Settings…", comment: "Batch summary: open Settings for Open folder when done.")) {
-                    openPreferences(.behavior)
+                    openPreferences(.whenDone)
                 }
                 .buttonStyle(.plain)
                 .font(.system(size: 12))
@@ -623,7 +625,7 @@ struct BatchCompletionSummarySheet: View {
         }
 
         return HStack(alignment: .top, spacing: 10) {
-            Image(nsImage: NSWorkspace.shared.icon(forFile: row.outputPath))
+            Image(nsImage: Self.icon(forPath: row.outputPath))
                 .resizable()
                 .interpolation(.high)
                 .aspectRatio(contentMode: .fit)
@@ -718,18 +720,37 @@ struct BatchCompletionSummarySheet: View {
         )
     }
 
-    private func formattedSavedBytes(_ n: Int64) -> String {
+    private static let bytesFormatter: ByteCountFormatter = {
         let nf = ByteCountFormatter()
         nf.allowedUnits = [.useKB, .useMB, .useGB, .useTB]
         nf.countStyle = .file
-        return nf.string(fromByteCount: n)
-    }
+        return nf
+    }()
 
-    private func formattedElapsed(_ t: TimeInterval) -> String {
+    private static let elapsedFormatter: DateComponentsFormatter = {
         let f = DateComponentsFormatter()
         f.allowedUnits = [.minute, .second]
         f.unitsStyle = .positional
         f.zeroFormattingBehavior = .pad
-        return f.string(from: t) ?? String(format: "%.0f", t)
+        return f
+    }()
+
+    private func formattedSavedBytes(_ n: Int64) -> String {
+        Self.bytesFormatter.string(fromByteCount: n)
+    }
+
+    private func formattedElapsed(_ t: TimeInterval) -> String {
+        Self.elapsedFormatter.string(from: t) ?? String(format: "%.0f", t)
+    }
+
+    /// One Launch Services lookup per file type, not per row.
+    private static var iconCache: [String: NSImage] = [:]
+
+    private static func icon(forPath path: String) -> NSImage {
+        let ext = (path as NSString).pathExtension.lowercased()
+        if let cached = iconCache[ext] { return cached }
+        let icon = NSWorkspace.shared.icon(for: UTType(filenameExtension: ext) ?? .data)
+        iconCache[ext] = icon
+        return icon
     }
 }

@@ -26,6 +26,8 @@ extension Notification.Name {
     static let dinkyStartCompression    = Notification.Name("dinkyStartCompression")
     /// Re-register the system-wide “Clipboard Compress” hotkey (toggle or shortcut changed).
     static let dinkyGlobalPasteHotkeyChanged = Notification.Name("dinkyGlobalPasteHotkeyChanged")
+    /// Turn the floating dropzone on or off, or move it (Behavior settings changed).
+    static let dinkyFloatingDropzoneChanged = Notification.Name("dinkyFloatingDropzoneChanged")
     /// Re-apply Dock / App Switcher visibility when the Behavior toggle changes.
     static let dinkyDockPresenceChanged = Notification.Name("dinkyDockPresenceChanged")
     /// Posted before quit so SwiftUI can dismiss sheets; used with `applicationShouldTerminate` / `terminateLater`.
@@ -60,10 +62,24 @@ enum S {
     // Completion (English brand voice)
     static let doneGood      = "Done. Look how little they are now."
     static let doneMixed     = "Done. Some were already pretty lean."
+    static var doneWithFailures: String {
+        String(localized: "Done, but some couldn’t be compressed.", comment: "Bottom bar when a batch finished with failures.")
+    }
+
+    /// "Skipped 2 files Dinky can't compress (.docx, .zip)."
+    static func skippedUnsupported(_ urls: [URL]) -> String {
+        let exts = Array(Set(urls.map { $0.pathExtension.lowercased() }.filter { !$0.isEmpty })).sorted()
+        let list = exts.prefix(3).map { ".\($0)" }.joined(separator: ", ")
+        let suffix = list.isEmpty ? "" : " (\(list))"
+        if urls.count == 1 {
+            return String(localized: "Skipped 1 file Dinky can’t compress\(suffix).", comment: "Bottom bar after a drop; argument is a list of file extensions in parentheses, or empty.")
+        }
+        return String(localized: "Skipped \(urls.count) files Dinky can’t compress\(suffix).", comment: "Bottom bar after a drop; first argument is the count, second a list of file extensions in parentheses, or empty.")
+    }
 
     // Per-file (English brand voice)
     static let skipped       = "Already tiny. Skipped."
-    static let errored       = "Couldn't crunch this one. Skipped."
+    static let errored       = "Couldn't compress this one."
     static let zeroBytes     = "Couldn't make this one any smaller. Keeping the original."
 
     // Buttons
@@ -83,12 +99,16 @@ enum S {
         String(localized: "Triggers Clipboard Compress from any app while Dinky is running (currently \(currentShortcutDisplay)).", comment: "Settings footnote; argument is the shortcut key combo.")
     }
 
+    static var behaviorFloatingDropzoneFootnote: String {
+        String(localized: "Pops up in a corner whenever you drag images, videos, or PDFs anywhere. Drop on it to compress right there — no window, no confirmation, even in manual mode. Drag the results straight out.", comment: "Settings › General › Behavior footnote for the floating dropzone toggle.")
+    }
+
     static var behaviorHideFromDockFootnote: String {
         String(localized: "Requires Open at login. Dinky won’t appear in the Dock or App Switcher, and starts without showing the window. Drag-and-drop onto the Dock icon won’t work — use the global Clipboard Compress shortcut, Finder, or Services instead.", comment: "Settings › General › Behavior footnote for hide-from-Dock toggle.")
     }
 
     static var watchFolderBackgroundModeCaption: String {
-        String(localized: "Optional. Turn on Open at login and Hide from Dock and App Switcher in Behavior to keep watching in the background without a Dock icon or ⌘Tab entry.", comment: "Settings › Watch: points users to background-mode toggles.")
+        String(localized: "Optional. Turn on Open at login and Hide from Dock and App Switcher in Startup & Dock to keep watching in the background without a Dock icon or ⌘Tab entry.", comment: "Settings › Watch: points users to background-mode toggles.")
     }
 
     static var watchFolderBackgroundModeLinkTitle: String {
@@ -100,7 +120,7 @@ enum S {
         String(localized: "Batch speed", comment: "Settings: label for parallel compression limit picker.")
     }
     static var concurrentCompressionFootnote: String {
-        String(localized: "How many files crunch at once — not image, video, or PDF quality. Fast is gentle; Fastest clears the queue sooner if your Mac is up for it.", comment: "Settings: explains batch parallelism tiers.")
+        String(localized: "How many files compress at once — not image, video, or PDF quality. Gentle goes easy on your Mac; Maximum clears the queue sooner if it’s up for it.", comment: "Settings: explains batch parallelism tiers.")
     }
 
     /// Settings › General › Compression — optional largest-first batch order.
@@ -113,10 +133,11 @@ enum S {
 
     static func concurrentCompressionTierOption(limit: Int) -> String {
         switch limit {
-        case 1: return "Fast — one at a time, dinky zen"
-        case 3: return "Faster — up to three in parallel"
-        case 8: return "Fastest — up to eight, all cores welcome"
-        default: return "Up to \(limit)"
+        // Named for how hard the Mac works: "Fast" for one-at-a-time read as the quick option.
+        case 1: return String(localized: "Gentle — one at a time", comment: "Settings: batch speed tier.")
+        case 3: return String(localized: "Balanced — up to three at once", comment: "Settings: batch speed tier.")
+        case 8: return String(localized: "Maximum — up to eight, all cores welcome", comment: "Settings: batch speed tier.")
+        default: return String.localizedStringWithFormat(String(localized: "Up to %lld", comment: "Settings: batch speed tier; argument is a count."), Int64(limit))
         }
     }
 

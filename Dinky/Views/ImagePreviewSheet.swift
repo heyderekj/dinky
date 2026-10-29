@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import ImageIO
 
 struct ImagePreviewSheet: View {
     let item: CompressionItem
@@ -8,6 +9,9 @@ struct ImagePreviewSheet: View {
     enum PreviewMode { case sideBySide, slider }
     @State private var mode: PreviewMode = .sideBySide
     @State private var sliderPosition: CGFloat = 0.5
+    /// Decoded once. Reading them in the view body re-decoded both full-size images on every
+    /// render — 60+ times a second while dragging the slider.
+    @State private var images: [URL: NSImage] = [:]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -26,6 +30,28 @@ struct ImagePreviewSheet: View {
         }
         .frame(minWidth: 640, minHeight: 440)
         .background(.ultraThinMaterial)
+        .task { await loadImages() }
+    }
+
+    private func loadImages() async {
+        guard case .done(let outputURL, _, _) = item.status else { return }
+        for url in [item.sourceURL, outputURL] where images[url] == nil {
+            let decoded = await Task.detached(priority: .userInitiated) { Self.decodeForDisplay(url) }.value
+            if let decoded {
+                images[url] = NSImage(cgImage: decoded, size: NSSize(width: decoded.width, height: decoded.height))
+            }
+        }
+    }
+
+    /// Oriented, and capped at a size no preview window needs more of.
+    nonisolated private static func decodeForDisplay(_ url: URL) -> CGImage? {
+        guard let src = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: 4096,
+        ]
+        return CGImageSourceCreateThumbnailAtIndex(src, 0, options as CFDictionary)
     }
 
     private var header: some View {
@@ -66,7 +92,7 @@ struct ImagePreviewSheet: View {
 
     private func imagePane(url: URL, label: String, size: Int64) -> some View {
         VStack(spacing: 6) {
-            if let img = NSImage(contentsOf: url) {
+            if let img = images[url] {
                 Image(nsImage: img)
                     .resizable()
                     .scaledToFit()
@@ -96,7 +122,7 @@ struct ImagePreviewSheet: View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 // Compressed image fills the background
-                if let img = NSImage(contentsOf: outputURL) {
+                if let img = images[outputURL] {
                     Image(nsImage: img)
                         .resizable()
                         .scaledToFit()
@@ -104,7 +130,7 @@ struct ImagePreviewSheet: View {
                 }
 
                 // Original image clipped to the left portion
-                if let img = NSImage(contentsOf: item.sourceURL) {
+                if let img = images[item.sourceURL] {
                     Image(nsImage: img)
                         .resizable()
                         .scaledToFit()

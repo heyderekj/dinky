@@ -16,6 +16,22 @@ enum SaveLocation: String, CaseIterable, Identifiable {
     }
 }
 
+/// Where the floating dropzone sits on screen.
+enum ScreenCorner: String, CaseIterable, Identifiable {
+    case bottomRight, bottomLeft, topRight, topLeft
+    var id: String { rawValue }
+    var displayName: String {
+        switch self {
+        case .bottomRight: return String(localized: "Bottom right", comment: "Settings: floating dropzone corner.")
+        case .bottomLeft:  return String(localized: "Bottom left", comment: "Settings: floating dropzone corner.")
+        case .topRight:    return String(localized: "Top right", comment: "Settings: floating dropzone corner.")
+        case .topLeft:     return String(localized: "Top left", comment: "Settings: floating dropzone corner.")
+        }
+    }
+    var isTop: Bool { self == .topLeft || self == .topRight }
+    var isLeft: Bool { self == .topLeft || self == .bottomLeft }
+}
+
 // OriginalsAction and CollisionNamingStyle: see DinkyCoreImage (re-exported via DinkyCoreImageExports.swift).
 
 enum FilenameHandling: String, CaseIterable, Identifiable {
@@ -48,6 +64,9 @@ final class DinkyPreferences: ObservableObject {
     }
 
     init() {
+        // First: the migrations below write keys on a fresh install too, which would make it look
+        // like an existing user.
+        FirstDropDefaultsMigration.runIfNeeded(.standard)
         Self.migrateConcurrentTasksToTiersIfNeeded()
         Self.migrateMoveOriginalsToOriginalsActionIfNeeded()
         // After the originals migration above, so it copies the already-migrated setting.
@@ -154,29 +173,49 @@ final class DinkyPreferences: ObservableObject {
     @AppStorage("playSoundEffects")     var playSoundEffects: Bool = true
 
     // MARK: Finish
-    @AppStorage("openFolderWhenDone")   var openFolderWhenDone: Bool = true
-    @AppStorage("showBatchSummaryDialog") var showBatchSummaryDialog: Bool = true
+    // New installs: a drop just compresses. Existing users keep `true` (`FirstDropDefaultsMigration`).
+    @AppStorage("openFolderWhenDone")   var openFolderWhenDone: Bool = false
+    /// Off: the summary still appears when something failed or was skipped.
+    @AppStorage("showBatchSummaryDialog") var showBatchSummaryDialog: Bool = false
     @AppStorage("notifyWhenDone")       var notifyWhenDone: Bool = false
     @AppStorage("sanitizeFilenames")    var sanitizeFilenames: Bool = false
     @AppStorage("manualMode")           var manualMode: Bool = false
     /// When true (default), show the pre-compression confirmation for user-initiated adds. User can turn off in the sheet or Settings. Watch folder is unaffected.
-    @AppStorage("confirmBeforeEveryCompression") var confirmBeforeEveryCompression: Bool = true
+    @AppStorage("confirmBeforeEveryCompression") var confirmBeforeEveryCompression: Bool = false
     /// When true, Dinky uses `.accessory` activation policy — no Dock icon or App Switcher entry.
     @AppStorage(DockPresenceManager.userDefaultsKey) var hideFromDockAndAppSwitcher: Bool = false
     /// Empties finished rows from the queue after a short delay when a batch completes.
     /// Failed/skipped rows are kept so the user can act on them.
     @AppStorage("autoClearWhenDone")    var autoClearWhenDone: Bool = false
     @AppStorage("reduceMotion")         var reduceMotion: Bool = false
+    /// The menu bar item (always shown while hidden from the Dock, which needs it to get back in).
+    @AppStorage(MenuBarController.showInMenuBarKey) var showInMenuBar: Bool = true
+    /// Shows a small dropzone in a screen corner while files are dragged anywhere.
+    @AppStorage("floatingDropzoneEnabled") var floatingDropzoneEnabled: Bool = false
+    @AppStorage("floatingDropzoneCorner")  var floatingDropzoneCornerRaw: String = ScreenCorner.bottomRight.rawValue
+    var floatingDropzoneCorner: ScreenCorner {
+        get { ScreenCorner(rawValue: floatingDropzoneCornerRaw) ?? .bottomRight }
+        set { floatingDropzoneCornerRaw = newValue.rawValue }
+    }
     @AppStorage("folderWatchEnabled")   var folderWatchEnabled: Bool = false
     @AppStorage("watchedFolderPath")    var watchedFolderPath: String = ""
     @AppStorage("watchedFolderBookmark") var watchedFolderBookmark: Data = Data()
     /// Reference time for the catch-up scan: files newer than this arrived while Dinky was not
     /// watching. 0 means "never scanned" — the first run records the time and compresses nothing,
     /// so enabling a watch folder never bulk-compresses files that were already sitting in it.
-    @AppStorage("lastWatchCatchUpScan") var lastWatchCatchUpScan: Double = 0
+    /// Bookkeeping, not a setting: plain `UserDefaults`, so writing it (every watch ingest)
+    /// doesn't publish a change and re-render every view holding the preferences.
+    var lastWatchCatchUpScan: Double {
+        get { UserDefaults.standard.double(forKey: "lastWatchCatchUpScan") }
+        set { UserDefaults.standard.set(newValue, forKey: "lastWatchCatchUpScan") }
+    }
     /// Paths Dinky itself wrote, persisted so the catch-up scan doesn't treat last session's
     /// output as a new arrival and recompress it into `name-dinky-dinky`.
-    @AppStorage("selfWrittenOutputs")   var selfWrittenOutputsData: Data = Data()
+    /// Bookkeeping, not a setting — plain `UserDefaults` for the same reason as above.
+    var selfWrittenOutputsData: Data {
+        get { UserDefaults.standard.data(forKey: "selfWrittenOutputs") ?? Data() }
+        set { UserDefaults.standard.set(newValue, forKey: "selfWrittenOutputs") }
+    }
 
     // MARK: Smart quality
     @AppStorage("smartQuality")         var smartQuality: Bool = true
@@ -527,9 +566,11 @@ final class DinkyPreferences: ObservableObject {
     private static func reanchorDirectory(bookmark: Data) -> ReanchoredFolder? {
         guard !bookmark.isEmpty else { return nil }
         var stale = false
+        // Runs at launch and on app activation: never mount a share or show a sign-in prompt
+        // just to re-anchor a path. Output folders still mount when actually written to.
         guard let url = try? URL(
             resolvingBookmarkData: bookmark,
-            options: .withSecurityScope,
+            options: [.withSecurityScope, .withoutMounting, .withoutUI],
             relativeTo: nil,
             bookmarkDataIsStale: &stale
         ) else { return nil }
@@ -576,8 +617,22 @@ final class DinkyPreferences: ObservableObject {
         return base.appendingPathComponent(subfolder, isDirectory: true)
     }
 
+    /// Sources Dinky made itself in the temp folder (pasted images) have no real "same folder";
+    /// results going there would land somewhere hidden.
+    static func isTemporarySource(_ url: URL) -> Bool {
+        let path = url.path
+        return temporaryRoots.contains { path.hasPrefix($0) }
+    }
+
+    /// Both spellings (`/var/…` and `/private/var/…`), worked out once: this runs whenever a row
+    /// shows its output name.
+    private static let temporaryRoots: [String] = {
+        let tmp = FileManager.default.temporaryDirectory
+        return Array(Set([tmp.path, tmp.resolvingSymlinksInPath().path]))
+    }()
+
     private func baseDestinationDirectory(for source: URL, isFromURLDownload: Bool = false) -> URL {
-        if isFromURLDownload, saveLocation == .sameFolder {
+        if isFromURLDownload || Self.isTemporarySource(source), saveLocation == .sameFolder {
             return FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
                 ?? source.deletingLastPathComponent()
         }

@@ -283,7 +283,7 @@ struct SidebarView: View {
                         openPreferences(.watch)
                     }
                     settingsShortcutRow(title: "All settings", systemImage: "gearshape") {
-                        openPreferences(.behavior)
+                        openPreferences(.waysToCompress)
                     }
                 }
             }
@@ -673,7 +673,7 @@ struct SidebarView: View {
                         openPreferences(.sidebar)
                     }
                     Button(String(localized: "All settings…", comment: "Sidebar menu: open settings.")) {
-                        openPreferences(.behavior)
+                        openPreferences(.waysToCompress)
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")

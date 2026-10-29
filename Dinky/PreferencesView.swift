@@ -53,10 +53,12 @@ private struct PreferencesRelatedTabLink: View {
 
 /// Tabs in the Settings window — use `openWindow(to:)` to deep-link from the main window sidebar.
 enum PreferencesTab: Int, CaseIterable, Hashable, Identifiable {
-    case behavior = 0
+    /// Was "Behavior" (same raw value, so old links land here).
+    case waysToCompress = 0
     case originals = 1
     case compression = 2
-    case notifications = 3
+    /// Was "Notifications"; now everything about the end of a batch.
+    case whenDone = 3
     case privacy = 4
     case about = 5
     case output = 6
@@ -65,6 +67,7 @@ enum PreferencesTab: Int, CaseIterable, Hashable, Identifiable {
     case shortcuts = 9
     case sidebar = 10
     case accessibility = 11
+    case startup = 12
 
     var id: Int { rawValue }
 
@@ -73,10 +76,10 @@ enum PreferencesTab: Int, CaseIterable, Hashable, Identifiable {
     static let pendingPresetUUIDKey = "prefs.pendingPresetUUID"
 
     static var generalGroup: [PreferencesTab] {
-        [.behavior, .originals, .compression, .notifications, .privacy, .about]
+        [.startup, .originals, .compression, .privacy, .about]
     }
     static var workflowGroup: [PreferencesTab] {
-        [.output, .watch, .presets, .shortcuts]
+        [.waysToCompress, .whenDone, .output, .watch, .presets, .shortcuts]
     }
     static var interfaceGroup: [PreferencesTab] {
         [.sidebar, .accessibility]
@@ -84,10 +87,10 @@ enum PreferencesTab: Int, CaseIterable, Hashable, Identifiable {
 
     var sidebarLabel: String {
         switch self {
-        case .behavior: return String(localized: "Behavior", comment: "Settings sidebar item.")
+        case .waysToCompress: return String(localized: "Ways to Compress", comment: "Settings sidebar item.")
         case .originals: return String(localized: "Original Files", comment: "Settings sidebar item.")
         case .compression: return String(localized: "Compression", comment: "Settings sidebar item.")
-        case .notifications: return String(localized: "Notifications", comment: "Settings sidebar item.")
+        case .whenDone: return String(localized: "When Done", comment: "Settings sidebar item.")
         case .privacy: return String(localized: "Privacy", comment: "Settings sidebar item.")
         case .about: return String(localized: "About & Support", comment: "Settings sidebar item.")
         case .output: return String(localized: "Output", comment: "Settings UI.")
@@ -96,15 +99,16 @@ enum PreferencesTab: Int, CaseIterable, Hashable, Identifiable {
         case .shortcuts: return String(localized: "Shortcuts", comment: "Settings UI.")
         case .sidebar: return String(localized: "Sidebar", comment: "Settings sidebar item.")
         case .accessibility: return String(localized: "Accessibility", comment: "Settings sidebar item.")
+        case .startup: return String(localized: "Startup & Dock", comment: "Settings sidebar item.")
         }
     }
 
     var sidebarSystemImage: String {
         switch self {
-        case .behavior: return "slider.horizontal.3"
+        case .waysToCompress: return "tray.and.arrow.down"
         case .originals: return "doc.on.doc"
         case .compression: return "arrow.down.circle"
-        case .notifications: return "bell"
+        case .whenDone: return "checkmark.circle"
         case .privacy: return "hand.raised"
         case .about: return "info.circle"
         case .output: return "folder"
@@ -113,6 +117,7 @@ enum PreferencesTab: Int, CaseIterable, Hashable, Identifiable {
         case .shortcuts: return "keyboard"
         case .sidebar: return "sidebar.left"
         case .accessibility: return "accessibility"
+        case .startup: return "power"
         }
     }
 
@@ -133,13 +138,13 @@ enum PreferencesTab: Int, CaseIterable, Hashable, Identifiable {
     /// Maps legacy TabView indices (0–5) and new split-view raw values to a pane.
     static func migrateStoredTabIndex(_ raw: Int) -> PreferencesTab {
         switch raw {
-        case 0: return .behavior
+        case 0: return .waysToCompress
         case 1: return .output
         case 2: return .watch
         case 3: return .presets
         case 4: return .shortcuts
         case 5: return .sidebar
-        default: return PreferencesTab(rawValue: raw) ?? .behavior
+        default: return PreferencesTab(rawValue: raw) ?? .waysToCompress
         }
     }
 }
@@ -148,7 +153,7 @@ struct PreferencesView: View {
     @EnvironmentObject var prefs: DinkyPreferences
     @EnvironmentObject var updater: UpdateChecker
 
-    @State private var history: [PreferencesTab] = [.behavior]
+    @State private var history: [PreferencesTab] = [.waysToCompress]
     @State private var historyIndex: Int = 0
 
     private var selectedTab: PreferencesTab { history[historyIndex] }
@@ -249,15 +254,16 @@ struct PreferencesView: View {
     @ViewBuilder
     private func preferencesDetail(for tab: PreferencesTab) -> some View {
         switch tab {
-        case .behavior:
-            BehaviorPreferencesPane()
-                .environmentObject(prefs)
+        case .waysToCompress:
+            WaysToCompressPreferencesPane().environmentObject(prefs)
+        case .startup:
+            StartupPreferencesPane().environmentObject(prefs)
         case .originals:
             OriginalsPreferencesPane().environmentObject(prefs)
         case .compression:
             CompressionPreferencesPane().environmentObject(prefs)
-        case .notifications:
-            NotificationsPreferencesPane().environmentObject(prefs)
+        case .whenDone:
+            WhenDonePreferencesPane().environmentObject(prefs)
         case .privacy:
             PrivacyPreferencesPane().environmentObject(prefs)
         case .about:
@@ -280,7 +286,9 @@ struct PreferencesView: View {
 
 // MARK: - General (split panes)
 
-private struct BehaviorPreferencesPane: View {
+// MARK: - Startup & Dock
+
+private struct StartupPreferencesPane: View {
     @EnvironmentObject var prefs: DinkyPreferences
     @State private var launchAtLoginEnabled: Bool = LaunchAtLoginManager.isEnabled
 
@@ -309,7 +317,11 @@ private struct BehaviorPreferencesPane: View {
                             .foregroundStyle(Color.accentColor)
                     }
                 }
+            } header: {
+                Text(String(localized: "Startup", comment: "Settings: section header in Startup & Dock."))
+            }
 
+            Section {
                 Toggle(String(localized: "Hide from Dock and App Switcher", comment: "Settings UI."), isOn: Binding(
                     get: { prefs.hideFromDockAndAppSwitcher },
                     set: { newValue in
@@ -326,16 +338,101 @@ private struct BehaviorPreferencesPane: View {
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
 
-                Toggle(String(localized: "Always confirm before compressing", comment: "Settings UI."), isOn: Binding(
-                    get: { prefs.confirmBeforeEveryCompression },
-                    set: { prefs.confirmBeforeEveryCompression = $0 }
+                Toggle(String(localized: "Show in menu bar", comment: "Settings: menu bar item toggle."), isOn: Binding(
+                    get: { prefs.showInMenuBar || DockPresenceManager.isEffectivelyHidden },
+                    set: { newValue in
+                        prefs.showInMenuBar = newValue
+                        MenuBarController.shared.sync()
+                    }
                 ))
+                .disabled(DockPresenceManager.isEffectivelyHidden)
+                Text(String(localized: "Open files, compress the clipboard, turn the floating dropzone on or off, and grab recent results from the menu bar. Always on while Dinky is hidden from the Dock.", comment: "Settings: menu bar item footnote."))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            } header: {
+                Text(String(localized: "Dock and menu bar", comment: "Settings: section header in Startup & Dock."))
+            }
+        }
+        .formStyle(.grouped)
+        .onAppear { launchAtLoginEnabled = LaunchAtLoginManager.isEnabled }
+    }
+}
 
-                Toggle(String(localized: "Manual mode by default", comment: "Settings UI."), isOn: Binding(
-                    get: { prefs.manualMode },
-                    set: { prefs.manualMode = $0 }
+// MARK: - Ways to Compress
+
+/// One choice instead of two overlapping switches ("Always confirm" and "Manual mode").
+private enum CompressionStart: Hashable, CaseIterable {
+    case rightAway, askFirst, wait
+
+    var label: String {
+        switch self {
+        case .rightAway: return String(localized: "Right away", comment: "Settings: start compressing as soon as files are added.")
+        case .askFirst:  return String(localized: "Ask first", comment: "Settings: show the confirmation sheet before compressing.")
+        case .wait:      return String(localized: "Wait for Compress Now", comment: "Settings: manual mode; files wait until Compress Now.")
+        }
+    }
+
+    init(prefs: DinkyPreferences) {
+        if prefs.manualMode { self = .wait }
+        else if prefs.confirmBeforeEveryCompression { self = .askFirst }
+        else { self = .rightAway }
+    }
+
+    func apply(to prefs: DinkyPreferences) {
+        prefs.manualMode = self == .wait
+        prefs.confirmBeforeEveryCompression = self == .askFirst
+    }
+}
+
+private struct WaysToCompressPreferencesPane: View {
+    @EnvironmentObject var prefs: DinkyPreferences
+
+    var body: some View {
+        Form {
+            Section {
+                Picker(String(localized: "Start compressing", comment: "Settings: when added files start compressing."), selection: Binding(
+                    get: { CompressionStart(prefs: prefs) },
+                    set: { $0.apply(to: prefs) }
+                )) {
+                    ForEach(CompressionStart.allCases, id: \.self) { Text($0.label).tag($0) }
+                }
+                .pickerStyle(.radioGroup)
+                Text(String(localized: "Ask first shows what will happen before each batch. Wait keeps files in the list until you choose Compress Now (\(prefs.shortcut(for: .compressNow).displayString)). Watch folders always start right away.", comment: "Settings footnote; argument is the Compress Now shortcut."))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            } header: {
+                Text(String(localized: "When files are added", comment: "Settings: section header in Ways to Compress."))
+            }
+
+            Section {
+                Toggle(String(localized: "Show while dragging files", comment: "Settings: floating dropzone toggle."), isOn: Binding(
+                    get: { prefs.floatingDropzoneEnabled },
+                    set: { newValue in
+                        prefs.floatingDropzoneEnabled = newValue
+                        NotificationCenter.default.post(name: .dinkyFloatingDropzoneChanged, object: nil)
+                    }
                 ))
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(String(localized: "Corner", comment: "Settings UI: where the floating dropzone appears."))
+                    DropzoneCornerPicker(corner: Binding(
+                        get: { prefs.floatingDropzoneCorner },
+                        set: { newValue in
+                            prefs.floatingDropzoneCorner = newValue
+                            NotificationCenter.default.post(name: .dinkyFloatingDropzoneChanged, object: nil)
+                        }
+                    ))
+                    .frame(maxWidth: .infinity)
+                }
+                .disabled(!prefs.floatingDropzoneEnabled)
+                .opacity(prefs.floatingDropzoneEnabled ? 1 : 0.45)
+                Text(S.behaviorFloatingDropzoneFootnote)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            } header: {
+                Text(String(localized: "Floating dropzone", comment: "Settings UI."))
+            }
 
+            Section {
                 Toggle(String(localized: "Global Clipboard Compress", comment: "Settings UI."), isOn: Binding(
                     get: { prefs.pasteClipboardGlobalEnabled },
                     set: { newValue in
@@ -347,26 +444,99 @@ private struct BehaviorPreferencesPane: View {
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                 PreferencesRelatedTabLink(title: String(localized: "Change shortcut in Keyboard Shortcuts…", comment: "Settings UI."), tab: .shortcuts)
+            } header: {
+                Text(String(localized: "Clipboard", comment: "Settings: section header in Ways to Compress."))
+            }
 
-                Toggle(String(localized: "Show batch summary when done", comment: "Settings UI."), isOn: Binding(
+            Section {
+                Text(String(localized: "In Finder, right-click files or folders and choose Services → Compress with Dinky. You can give it a keyboard shortcut in System Settings → Keyboard → Keyboard Shortcuts → Services.", comment: "Settings: explains the Finder service."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                PreferencesRelatedTabLink(title: String(localized: "Watch settings…", comment: "Settings UI: link to Watch tab."), tab: .watch)
+            } header: {
+                Text(String(localized: "Finder and folders", comment: "Settings: section header in Ways to Compress."))
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
+// MARK: - When Done
+
+private struct WhenDonePreferencesPane: View {
+    @EnvironmentObject var prefs: DinkyPreferences
+
+    var body: some View {
+        Form {
+            Section {
+                Picker(String(localized: "Show batch summary", comment: "Settings: when the batch summary sheet appears."), selection: Binding(
                     get: { prefs.showBatchSummaryDialog },
                     set: { prefs.showBatchSummaryDialog = $0 }
+                )) {
+                    Text(String(localized: "After every batch", comment: "Settings: batch summary option.")).tag(true)
+                    Text(String(localized: "Only if something failed", comment: "Settings: batch summary option.")).tag(false)
+                }
+                Toggle(String(localized: "Show results in Finder", comment: "Settings: select the new files in Finder when a batch finishes."), isOn: Binding(
+                    get: { prefs.openFolderWhenDone },
+                    set: { prefs.openFolderWhenDone = $0 }
                 ))
-
                 Toggle(String(localized: "Auto-clear queue when done", comment: "Settings UI."), isOn: Binding(
                     get: { prefs.autoClearWhenDone },
                     set: { prefs.autoClearWhenDone = $0 }
                 ))
             } header: {
-                Text(String(localized: "Behavior", comment: "Settings UI."))
+                Text(String(localized: "In Dinky", comment: "Settings: section header in When Done."))
             } footer: {
-                Text(String(localized: "Confirm covers drag-and-drop, Open, the Dock, Services, and Clipboard (not Watch Folder). Manual mode waits for Compress Now. Batch summary shows savings; auto-clear removes finished rows while failures remain.", comment: "Settings UI: Behavior section summary footer."))
+                Text(String(localized: "Auto-clear removes finished rows after a moment; files that failed or were skipped stay so you can act on them.", comment: "Settings: When Done footer."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            Section {
+                Toggle(String(localized: "Play sound when done", comment: "Settings UI."), isOn: Binding(
+                    get: { prefs.playSoundEffects },
+                    set: { prefs.playSoundEffects = $0 }
+                ))
+                Toggle(String(localized: "Notify when done", comment: "Settings UI."), isOn: Binding(
+                    get: { prefs.notifyWhenDone },
+                    set: { newValue in
+                        prefs.notifyWhenDone = newValue
+                        if newValue { requestNotificationAuth() }
+                    }
+                ))
+            } header: {
+                Text(String(localized: "Sound and notifications", comment: "Settings: section header in When Done."))
+            } footer: {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(String(localized: "Notifications may be suppressed during Focus or Do Not Disturb until Dinky is allowed in System Settings → Notifications.", comment: "Settings: When Done notifications footer."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Button(String(localized: "Notification settings…", comment: "Settings UI.")) {
+                        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.notifications")!)
+                    }
+                    .buttonStyle(.plain)
+                    .font(.caption)
+                    .foregroundStyle(Color.accentColor)
+                }
+            }
         }
         .formStyle(.grouped)
-        .onAppear { launchAtLoginEnabled = LaunchAtLoginManager.isEnabled }
+    }
+
+    private func requestNotificationAuth() {
+        Task {
+            let center = UNUserNotificationCenter.current()
+            let settings = await center.notificationSettings()
+            switch settings.authorizationStatus {
+            case .notDetermined:
+                _ = try? await center.requestAuthorization(options: [.alert, .sound])
+            case .denied:
+                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.notifications")!)
+            default:
+                break
+            }
+        }
     }
 }
 
@@ -522,62 +692,6 @@ private struct CompressionPreferencesPane: View {
             }
         }
         .formStyle(.grouped)
-    }
-}
-
-private struct NotificationsPreferencesPane: View {
-    @EnvironmentObject var prefs: DinkyPreferences
-
-    var body: some View {
-        Form {
-            Section {
-                Toggle(String(localized: "Play sound when done", comment: "Settings UI."), isOn: Binding(
-                    get: { prefs.playSoundEffects },
-                    set: { prefs.playSoundEffects = $0 }
-                ))
-                Toggle(String(localized: "Notify when done", comment: "Settings UI."), isOn: Binding(
-                    get: { prefs.notifyWhenDone },
-                    set: { newValue in
-                        prefs.notifyWhenDone = newValue
-                        if newValue { requestNotificationAuth() }
-                    }
-                ))
-                Toggle(String(localized: "Open folder when done", comment: "Settings UI."), isOn: Binding(
-                    get: { prefs.openFolderWhenDone },
-                    set: { prefs.openFolderWhenDone = $0 }
-                ))
-            } header: {
-                Text(String(localized: "Notifications", comment: "Settings UI."))
-            } footer: {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(String(localized: "Notifications may be suppressed during Focus or Do Not Disturb until Dinky is allowed in System Settings → Notifications. Open Folder reveals the output directory after each batch.", comment: "Settings UI: Notifications footer."))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Button(String(localized: "Notification settings…", comment: "Settings UI.")) {
-                        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.notifications")!)
-                    }
-                    .buttonStyle(.plain)
-                    .font(.caption)
-                    .foregroundStyle(Color.accentColor)
-                }
-            }
-        }
-        .formStyle(.grouped)
-    }
-
-    private func requestNotificationAuth() {
-        Task {
-            let center = UNUserNotificationCenter.current()
-            let settings = await center.notificationSettings()
-            switch settings.authorizationStatus {
-            case .notDetermined:
-                _ = try? await center.requestAuthorization(options: [.alert, .sound])
-            case .denied:
-                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.notifications")!)
-            default:
-                break
-            }
-        }
     }
 }
 
@@ -1963,7 +2077,7 @@ private struct WatchFoldersTab: View {
                     Text(S.watchFolderBackgroundModeCaption)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    PreferencesRelatedTabLink(title: S.watchFolderBackgroundModeLinkTitle, tab: .behavior)
+                    PreferencesRelatedTabLink(title: S.watchFolderBackgroundModeLinkTitle, tab: .startup)
                 } header: {
                     Text(String(localized: "Background", comment: "Settings UI: watch folder background running section."))
                 }

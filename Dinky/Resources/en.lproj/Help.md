@@ -2,7 +2,7 @@
 
 Dinky makes files dinky. Drop something in, get a smaller version out — same look, less weight.
 
-It works on **images** (JPEG, PNG, WebP, AVIF, HEIC/HEIF, TIFF, BMP), **videos** (MP4, MOV, M4V), and **PDFs**.
+It works on **images** (JPEG, PNG, WebP, AVIF, HEIC/HEIF, TIFF, BMP), **videos** (MP4, MOV, M4V), **PDFs**, and **audio** (MP3, M4A, WAV, AIFF, FLAC).
 
 Everything happens on your Mac. Nothing is uploaded.
 
@@ -10,9 +10,11 @@ Everything happens on your Mac. Nothing is uploaded.
 
 ## Quick start
 
-1. Drag a file (or a pile of them) onto Dinky's window.
-2. Watch the count go down.
+1. Drag a file, a folder, or a pile of them onto Dinky's window.
+2. Watch the count go down. No questions asked — it just compresses.
 3. Find the smaller copies next to the originals (default), in your Downloads folder, or in a folder you choose.
+
+Want a say before each batch? Set **Start compressing** to **Ask first** in **Settings → Ways to Compress**.
 
 That's it. The defaults are good. Read on if you want to bend them to your will.
 
@@ -22,10 +24,11 @@ That's it. The defaults are good. Read on if you want to bend them to your will.
 
 You don't have to open the app first. Pick whichever fits how you work.
 
-- **Drag & drop** onto the Dinky window or the Dock icon.
-- **Hide from Dock** — Settings → General → Behavior (requires **Open at login**) keeps Dinky running without a Dock icon or App Switcher entry (Dock-icon drops need this off).
-- **Open Files…** — `{{SK_OPEN_FILES}}` to pick from a sheet.
-- **Clipboard Compress** — `{{SK_PASTE}}` pastes a supported **file** copied in Finder (images, videos, PDFs) or **raw image** data (PNG/TIFF from screenshots or browsers).
+- **Drag & drop** files or whole folders onto the Dinky window or the Dock icon.
+- **Floating dropzone** — start dragging files anywhere and a little dropzone pops into a screen corner. Drop on it to compress without opening the window. (See *Floating dropzone* below.)
+- **Hide from Dock** — **Settings → Startup & Dock** (requires **Open at login**) keeps Dinky running without a Dock icon or App Switcher entry (Dock-icon drops need this off).
+- **Open Files…** — `{{SK_OPEN_FILES}}` to pick files or folders from a sheet.
+- **Paste** — `⌘V` or `{{SK_PASTE}}` compresses **files** copied in Finder (images, videos, PDFs, audio — all of them, not just the first) or **raw image** data (screenshots, browser copies). Pasted images are saved to your Downloads folder as *Pasted image …*.
 - **Right-click in Finder → Services → Compress with Dinky** — works on selections of any size.
 - **Watch a folder** — Dinky compresses anything new that lands in it. (See *Watch folders* below.)
 - **Quick Action** — assign a keyboard shortcut to "Compress with Dinky" in System Settings → Keyboard → Keyboard Shortcuts → Services.
@@ -115,9 +118,20 @@ Drop files into a folder and let Dinky handle them in the background.
 
 ---
 
+## Floating dropzone
+
+Turn it on in **Settings → Ways to Compress → Floating dropzone**, and pick its corner there.
+
+- **Drag files anywhere** — from Finder, Mail, your browser's downloads — and a small dropzone tucks into the corner. It grows as you get close.
+- **Drop on the big target** to use your current preset. To use another one, sweep across the **preset track** along the bottom — the highlight follows you — then let go there or anywhere on the target.
+- **Watch it shrink.** When it's done you'll see how much you saved. **Drag any result straight out** into another app, or click it to show it in Finder.
+- Drops here skip the confirmation sheet and manual mode — dropping *is* the go button. Hold `⌥` while dropping to compress files Dinky would normally skip.
+
+---
+
 ## Manual mode
 
-Turn on **Settings → General → Manual mode** when you want full control.
+Set **Start compressing** to **Wait for Compress Now** in **Settings → Ways to Compress** when you want full control.
 
 Files dropped in won't auto-compress. Right-click any row to pick a format on the spot, use **File → Compress Now** (`{{SK_COMPRESS_NOW}}`) when the queue is ready, or change settings in the sidebar first. Useful when one batch contains very different files.
 
@@ -131,6 +145,10 @@ You’ll find the same list in **Settings → Shortcuts** so you don’t have to
 | --- | --- |
 | `{{SK_OPEN_FILES}}` | Open files… |
 | `{{SK_PASTE}}` | Clipboard Compress |
+| `⌘V` | Paste files or images to compress |
+| `Space` | Quick Look the selected results |
+| `⌘C` | Copy the selected results (paste them straight into Finder, Mail, Figma…) |
+| `⌘Z` | Undo the last batch |
 | `{{SK_COMPRESS_NOW}}` | Compress Now (runs the queue — especially useful in Manual mode) |
 | `{{SK_CLEAR_ALL}}` | Clear All |
 | `{{SK_TOGGLE_SIDEBAR}}` | Toggle format sidebar |
@@ -154,7 +172,7 @@ Dinky registers a **Compress Images** action for the Shortcuts app. Use it to pi
 - **Crash reports** are only sent if *you* choose to — via the post-crash prompt, the "Report a Bug…" menu, or the error detail sheet. If you've opted into macOS diagnostic sharing in System Settings, Apple also delivers anonymised crash data to Dinky on your behalf via MetricKit, with no additional data leaving your Mac.
 - The encoders (`cwebp`, `avifenc`, `oxipng`, plus Apple's built-in PDF and AVFoundation video pipelines) ship inside the app and read your files directly.
 - Originals are kept by default. *Move originals to trash after compressing* is opt-in, in **Settings → General**.
-- *Skip if savings below* (off by default) protects already-lean files from being re-encoded for nothing.
+- *Skip if savings below* (2% by default) protects already-lean files from being re-encoded for nothing.
 - *Strip metadata* in any preset removes EXIF, GPS, camera info, and color profiles. Worth it before publishing photos to the web.
 
 ---
@@ -165,10 +183,16 @@ Dinky registers a **Compress Images** action for the Shortcuts app. Use it to pi
 Dinky keeps the original instead. You'll see *"Couldn't make this one any smaller. Keeping the original."* in the row.
 
 **A file was skipped.**
-Either it was already very small (under your *Skip if savings below* threshold), or the encoder couldn't read it. Click the row for details.
+It was already very small (under your *Skip if savings below* threshold). Choose *Compress Anyway* from the row's menu to try it regardless.
+
+**A file couldn't be compressed.**
+The row says so, and the batch summary opens to show what went wrong. Right-click the row to try again with a different format or quality.
+
+**I dropped files and nothing happened.**
+Dinky only takes images, videos, PDFs and audio. The bar at the bottom says which files it skipped.
 
 **A video is taking a long time.**
-Video re-encoding is CPU-heavy. The *Batch speed* setting in **Settings → General** controls how many files run at once — drop it to **Fast** if your Mac is doing other things.
+Video re-encoding is CPU-heavy. The *Batch speed* setting in **Settings → Compression** controls how many files run at once — set it to **Gentle** if your Mac is doing other things.
 
 **My PDF lost text selection / hyperlinks.**
 You used *Smallest file (flatten pages)*. Switch the preset's PDF output to *Preserve text (best-effort size)* and re-run. Flatten is for reliable smaller files; preserve keeps text and links when optimization actually reduces size.

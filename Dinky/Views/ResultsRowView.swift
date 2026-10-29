@@ -321,13 +321,13 @@ struct ResultsRowView: View {
            let preset = prefs.savedPresets.first(where: { $0.id == pid }) {
             switch item.mediaType {
             case .image:
-                let fmt = ImageCompressionFormatResolver.resolvedFormat(
-                    sourceURL: item.sourceURL,
+                guard let fmt = ImageCompressionFormatResolver.knownFormat(
                     formatOverride: item.formatOverride,
                     preset: preset,
                     globalAutoFormat: prefs.autoFormat,
-                    globalSelectedFormat: selectedFormat
-                )
+                    globalSelectedFormat: selectedFormat,
+                    classifiedContent: item.detectedContentType
+                ) else { return item.filename }
                 return preset.outputURL(for: item.sourceURL, format: fmt, globalPrefs: prefs, isFromURLDownload: urlDL).lastPathComponent
             case .pdf:
                 return preset.outputURL(for: item.sourceURL, mediaType: .pdf, globalPrefs: prefs, isFromURLDownload: urlDL).lastPathComponent
@@ -339,13 +339,13 @@ struct ResultsRowView: View {
         }
         switch item.mediaType {
         case .image:
-            let fmt = ImageCompressionFormatResolver.resolvedFormat(
-                sourceURL: item.sourceURL,
+            guard let fmt = ImageCompressionFormatResolver.knownFormat(
                 formatOverride: item.formatOverride,
                 preset: nil,
                 globalAutoFormat: prefs.autoFormat,
-                globalSelectedFormat: selectedFormat
-            )
+                globalSelectedFormat: selectedFormat,
+                classifiedContent: item.detectedContentType
+            ) else { return item.filename }
             return prefs.outputURL(for: item.sourceURL, format: fmt, isFromURLDownload: urlDL).lastPathComponent
         case .pdf, .video, .audio:
             return prefs.outputURL(for: item.sourceURL, mediaType: item.mediaType, isFromURLDownload: urlDL).lastPathComponent
@@ -365,14 +365,13 @@ struct ResultsRowView: View {
         if case .done(let outURL, _, _) = item.status {
             return outURL.pathExtension
         }
-        let fmt = ImageCompressionFormatResolver.resolvedFormat(
-            sourceURL: item.sourceURL,
+        return ImageCompressionFormatResolver.knownFormat(
             formatOverride: item.formatOverride,
             preset: appliedPreset,
             globalAutoFormat: prefs.autoFormat,
-            globalSelectedFormat: selectedFormat
-        )
-        return fmt.outputExtension
+            globalSelectedFormat: selectedFormat,
+            classifiedContent: item.detectedContentType
+        )?.outputExtension
     }
 
     private var showsImageFormatConversionChip: Bool {

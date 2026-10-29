@@ -1,9 +1,55 @@
 import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
+import DinkyCoreShared
 
 enum DropZonePhase: Equatable {
     case idle, hovering, processing, done
+}
+
+/// Shared by the main drop zone and the floating dropzone.
+enum DropZoneStyle {
+    /// The "let go" blue → purple.
+    static let gradientColors = [Color(red: 0.28, green: 0.56, blue: 1.0),
+                                 Color(red: 0.52, green: 0.28, blue: 0.96)]
+}
+
+/// Six stars that burst out from the centre and fade — the "done" flourish.
+struct SparkleBurst: View {
+    var radius: CGFloat = 54
+    var starSize: CGFloat = 10
+    /// Bursts again whenever this changes; also bursts on appear.
+    var trigger: Bool
+
+    @State private var scale: CGFloat = 0
+    @State private var opacity: Double = 0
+
+    private let colors: [Color] = [.yellow, .orange, .pink, .purple, .cyan, .green]
+
+    var body: some View {
+        ZStack {
+            ForEach(0..<6, id: \.self) { i in
+                let angle = Double(i) * 60 * (.pi / 180)
+                Image(systemName: "star.fill")
+                    .font(.system(size: starSize))
+                    .foregroundStyle(colors[i % colors.count])
+                    .offset(x: CGFloat(cos(angle)) * radius * scale,
+                            y: CGFloat(sin(angle)) * radius * scale)
+                    .scaleEffect(scale > 0 ? 1 : 0.1)
+                    .opacity(opacity)
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+        .onAppear(perform: burst)
+        .onChange(of: trigger) { _, _ in burst() }
+    }
+
+    private func burst() {
+        scale = 0; opacity = 1
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.55)) { scale = 1 }
+        withAnimation(.easeOut(duration: 0.55).delay(0.3))             { opacity = 0 }
+    }
 }
 
 struct DropZoneView: View {
@@ -19,8 +65,6 @@ struct DropZoneView: View {
     @State private var doneFlash      = false
     @State private var ringScale      : CGFloat = 1.0
     @State private var ringOpacity    : Double  = 0.5
-    @State private var sparkleScale   : CGFloat = 0
-    @State private var sparkleOpacity : Double  = 0
 
     var body: some View {
         ZStack {
@@ -45,7 +89,7 @@ struct DropZoneView: View {
         .contentShape(Rectangle())
         .onTapGesture { onOpenPanel() }
         .onChange(of: phase) { _, new in
-            if new == .done { doneFlash.toggle(); triggerSparkles() }
+            if new == .done { doneFlash.toggle() }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(dropZoneAccessibilityLabel)
@@ -101,8 +145,7 @@ struct DropZoneView: View {
                     .scaleEffect(ringScale).opacity(ringOpacity)
                 Circle()
                     .fill(LinearGradient(
-                        colors: [Color(red: 0.28, green: 0.56, blue: 1.0),
-                                 Color(red: 0.52, green: 0.28, blue: 0.96)],
+                        colors: DropZoneStyle.gradientColors,
                         startPoint: .topLeading, endPoint: .bottomTrailing))
                     .frame(width: 80, height: 80)
                     .shadow(color: Color.accentColor.opacity(0.45), radius: 18, x: 0, y: 6)
@@ -125,16 +168,7 @@ struct DropZoneView: View {
 
         case .done:
             ZStack {
-                ForEach(0..<6, id: \.self) { i in
-                    let angle = Double(i) * 60 * (.pi / 180)
-                    Image(systemName: "star.fill")
-                        .font(.system(size: 10))
-                        .foregroundStyle(sparkleColors[i % sparkleColors.count])
-                        .offset(x: CGFloat(cos(angle)) * 54 * sparkleScale,
-                                y: CGFloat(sin(angle)) * 54 * sparkleScale)
-                        .scaleEffect(sparkleScale > 0 ? 1 : 0.1)
-                        .opacity(sparkleOpacity)
-                }
+                SparkleBurst(trigger: doneFlash)
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 52, weight: .ultraLight))
                     .foregroundStyle(Color.green)
@@ -142,8 +176,6 @@ struct DropZoneView: View {
             }
         }
     }
-
-    private let sparkleColors: [Color] = [.yellow, .orange, .pink, .purple, .cyan, .green]
 
     @ViewBuilder
     private var labelView: some View {
@@ -168,8 +200,7 @@ struct DropZoneView: View {
                 .padding(.horizontal, 18).padding(.vertical, 8)
                 .background(
                     Capsule().fill(LinearGradient(
-                        colors: [Color(red: 0.28, green: 0.56, blue: 1.0),
-                                 Color(red: 0.52, green: 0.28, blue: 0.96)],
+                        colors: DropZoneStyle.gradientColors,
                         startPoint: .leading, endPoint: .trailing))
                     .shadow(color: Color.accentColor.opacity(0.4), radius: 12, x: 0, y: 4))
         case .processing:
@@ -178,20 +209,23 @@ struct DropZoneView: View {
             Text(String(localized: "All done!", comment: "Drop zone when batch completes.")).font(.title3.weight(.medium)).foregroundStyle(Color.green)
         }
     }
-
-    private func triggerSparkles() {
-        sparkleScale = 0; sparkleOpacity = 1
-        withAnimation(.spring(response: 0.45, dampingFraction: 0.55)) { sparkleScale = 1 }
-        withAnimation(.easeOut(duration: 0.55).delay(0.3))             { sparkleOpacity = 0 }
-    }
 }
 
 // MARK: - Idle drag animation
 
 // MARK: - File card type
 
-private enum FileCardType {
+enum FileCardType {
     case image, video, audio, pdf
+
+    init(_ media: MediaType) {
+        switch media {
+        case .image: self = .image
+        case .video: self = .video
+        case .audio: self = .audio
+        case .pdf:   self = .pdf
+        }
+    }
 
     /// UTTypes aligned with Dinky-supported types (see `MediaType`).
     var workspaceContentType: UTType {
@@ -238,7 +272,7 @@ private enum IdleFourCardFan {
 
 // MARK: - Finder-style file card (system document icons)
 
-private struct FinderStyleFileCard: View {
+struct FinderStyleFileCard: View {
     let type: FileCardType
     let width: CGFloat
     let height: CGFloat

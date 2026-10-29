@@ -25,7 +25,7 @@ enum DockPresenceManager {
 
     static func applyFromDefaults() {
         updateActivationPolicy()
-        updateStatusItem()
+        MenuBarController.shared.sync()
     }
 
     // MARK: - Dock icon
@@ -57,72 +57,6 @@ enum DockPresenceManager {
         ) { _ in
             // The closing window still reports itself visible here; look again once it's gone.
             DispatchQueue.main.async { updateActivationPolicy() }
-        }
-    }
-
-    // MARK: - Menu bar item
-
-    /// With no Dock icon there is nothing to click to get Dinky back, so hidden mode puts an item
-    /// in the menu bar instead. Removed again as soon as the Dock icon returns.
-    private static var statusItem: NSStatusItem?
-    private static let menuTarget = StatusMenuTarget()
-
-    private static func updateStatusItem() {
-        guard isEffectivelyHidden else {
-            if let statusItem { NSStatusBar.system.removeStatusItem(statusItem) }
-            statusItem = nil
-            return
-        }
-        guard statusItem == nil else { return }
-
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        // `MenuBarIcon` is the app mark, already vector + template-rendered in the asset catalog.
-        // Its artwork runs edge to edge, so drawn at its native 22pt it reads bigger than the
-        // system items next to it. 14pt gives about 14 × 12pt of ink, measured against the system's
-        // own items (Wi-Fi 15 × 11, Spotlight 14 × 13, Control Center 12 × 12). It's a filled shape,
-        // so it should sit at the small end of those.
-        let icon = NSImage(named: "MenuBarIcon")
-        icon?.size = NSSize(width: 14, height: 14)
-        icon?.accessibilityDescription = String(localized: "Dinky", comment: "Menu bar item accessibility label.")
-        item.button?.image = icon
-
-        let menu = NSMenu()
-        menu.addItem(menuItem(
-            String(localized: "Open Dinky", comment: "Menu bar item: show the main window."),
-            #selector(StatusMenuTarget.openDinky)
-        ))
-        menu.addItem(menuItem(
-            String(localized: "Settings…", comment: "Menu bar item: open settings."),
-            #selector(StatusMenuTarget.openSettings)
-        ))
-        menu.addItem(.separator())
-        menu.addItem(menuItem(
-            String(localized: "Quit Dinky", comment: "Menu bar item: quit the app."),
-            #selector(StatusMenuTarget.quitDinky)
-        ))
-        item.menu = menu
-        statusItem = item
-    }
-
-    private static func menuItem(_ title: String, _ action: Selector) -> NSMenuItem {
-        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
-        item.target = menuTarget
-        return item
-    }
-
-    @MainActor
-    private final class StatusMenuTarget: NSObject {
-
-        @objc func openDinky() {
-            DockPresenceManager.showMainWindow()
-        }
-
-        @objc func openSettings() {
-            DockPresenceManager.showSettings()
-        }
-
-        @objc func quitDinky() {
-            NSApp.terminate(nil)
         }
     }
 

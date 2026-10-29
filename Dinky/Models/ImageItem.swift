@@ -39,7 +39,12 @@ enum CompressionStatus {
 final class CompressionItem: ObservableObject, Identifiable {
     let id = UUID()
     /// Local file URL (or temp path while a remote URL is still downloading).
-    var sourceURL: URL
+    var sourceURL: URL {
+        didSet { knownSize = nil }
+    }
+    /// The source's size, read once. Sorting and row rendering read `originalSize` constantly, and
+    /// each read used to be a file-system call (slow on network volumes).
+    private var knownSize: Int64?
     var mediaType: MediaType
     var formatOverride: CompressionFormat? = nil
 
@@ -61,8 +66,12 @@ final class CompressionItem: ObservableObject, Identifiable {
     var presetID: UUID? = nil
     /// Arrived via a Watch folder (not drag-and-drop / Open / Services). Uses the Watch originals policy.
     var ingestedFromWatchFolder: Bool = false
+    /// Dropped on the floating dropzone; its results show there instead of in the batch summary sheet.
+    var ingestedFromDropzone: Bool = false
     /// Size and modification date when added — tells a changed file from a repeat watch event.
-    var sourceFingerprint: FileFingerprint? = nil
+    var sourceFingerprint: FileFingerprint? = nil {
+        didSet { if let size = sourceFingerprint?.size { knownSize = size } }
+    }
     /// True when the file was fetched from an `http(s)` URL (temp download). Affects output path and original disposal.
     var isURLDownloadSource: Bool = false
     /// While downloading, the original remote URL (for cancel / logging).
@@ -80,7 +89,16 @@ final class CompressionItem: ObservableObject, Identifiable {
     var videoRecompressOverride: (quality: VideoQuality, codec: VideoCodecFamily)? = nil
 
     /// `0...1` while compression is in progress (video export, staged image/PDF steps); `nil` when idle or indeterminate.
-    @Published var compressionProgress: Double? = nil
+    /// Published in whole-percent steps: encoders report many times a second, and each publish
+    /// re-renders the row.
+    var compressionProgress: Double? {
+        get { steppedProgress }
+        set {
+            let stepped = newValue.map { ($0 * 100).rounded(.down) / 100 }
+            if stepped != steppedProgress { steppedProgress = stepped }
+        }
+    }
+    @Published private var steppedProgress: Double? = nil
     /// Optional sub-step label (e.g. OCR page progress); `nil` when not applicable.
     @Published var compressionStageLabel: String? = nil
     /// Last completed PDF job: user had “Make scanned PDFs searchable” on.
@@ -98,15 +116,25 @@ final class CompressionItem: ObservableObject, Identifiable {
         self.presetID = presetID
         self.undoSnapshot = nil
         self.mediaType = mediaType ?? (MediaTypeDetector.detect(sourceURL) ?? .image)
-        if self.mediaType == .pdf {
-            self.pageCount = PDFDocument(url: sourceURL)?.pageCount
+        if self.mediaType == .pdf { loadPageCount() }
+    }
+
+    /// Opening a PDF can take a while (big files, network volumes); don't make a drop wait for it.
+    func loadPageCount() {
+        let url = sourceURL
+        Task.detached(priority: .utility) { [weak self] in
+            let count = PDFDocument(url: url)?.pageCount
+            await MainActor.run { self?.pageCount = count }
         }
     }
 
     var filename: String { sourceURL.lastPathComponent }
 
     var originalSize: Int64 {
-        (try? sourceURL.resourceValues(forKeys: [.fileSizeKey]).fileSize).flatMap { Int64($0) } ?? 0
+        if let knownSize { return knownSize }
+        let size = (try? sourceURL.resourceValues(forKeys: [.fileSizeKey]).fileSize).flatMap { Int64($0) } ?? 0
+        knownSize = size
+        return size
     }
 
     var savedBytes: Int64 {
@@ -126,10 +154,14 @@ final class CompressionItem: ObservableObject, Identifiable {
 
     var statusLabel: String {
         switch status {
-        case .pending:               return "Waiting"
+        case .pending:
+            return String(localized: "Waiting", comment: "Row status: queued, not started.")
         case .downloading(let p, _, _, _):
-            return p >= 0 ? String(format: "Downloading %.0f%%", p * 100) : "Downloading…"
-        case .processing:            return "Processing…"
+            return p >= 0
+                ? String.localizedStringWithFormat(String(localized: "Downloading %lld%%", comment: "Row status; argument is percent downloaded."), Int64((p * 100).rounded()))
+                : String(localized: "Downloading…", comment: "Row status: download with unknown size.")
+        case .processing:
+            return String(localized: "Processing…", comment: "Row status: compressing.")
         case .done:
             if savedPercent <= 0, let resize = imageResize {
                 return String.localizedStringWithFormat(
@@ -137,7 +169,10 @@ final class CompressionItem: ObservableObject, Identifiable {
                     Int64(resize.outputWidth), Int64(resize.outputHeight)
                 )
             }
-            return String(format: "%.1f%% smaller", savedPercent)
+            return String.localizedStringWithFormat(
+                String(localized: "%@%% smaller", comment: "Row status; argument is the percent saved, e.g. 42.5."),
+                savedPercent.formatted(.number.precision(.fractionLength(1)))
+            )
         case .skipped:               return S.skipped
         case .zeroGain:              return S.zeroBytes
         case .failed:                return S.errored

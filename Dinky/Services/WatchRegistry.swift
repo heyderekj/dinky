@@ -16,9 +16,10 @@ enum WatchFolderPathResolver {
     static func resolvedWatchDirectoryPath(bookmark: Data, storedPath: String) -> String? {
         if !bookmark.isEmpty {
             var stale = false
+            // An unmounted share stays unresolved (and is retried) rather than stalling on a mount.
             if let url = try? URL(
                 resolvingBookmarkData: bookmark,
-                options: .withSecurityScope,
+                options: [.withSecurityScope, .withoutMounting, .withoutUI],
                 relativeTo: nil,
                 bookmarkDataIsStale: &stale
             ) {
