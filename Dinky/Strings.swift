@@ -62,10 +62,24 @@ enum S {
     // Completion (English brand voice)
     static let doneGood      = "Done. Look how little they are now."
     static let doneMixed     = "Done. Some were already pretty lean."
+    static var doneWithFailures: String {
+        String(localized: "Done, but some couldn’t be compressed.", comment: "Bottom bar when a batch finished with failures.")
+    }
+
+    /// "Skipped 2 files Dinky can't compress (.docx, .zip)."
+    static func skippedUnsupported(_ urls: [URL]) -> String {
+        let exts = Array(Set(urls.map { $0.pathExtension.lowercased() }.filter { !$0.isEmpty })).sorted()
+        let list = exts.prefix(3).map { ".\($0)" }.joined(separator: ", ")
+        let suffix = list.isEmpty ? "" : " (\(list))"
+        if urls.count == 1 {
+            return String(localized: "Skipped 1 file Dinky can’t compress\(suffix).", comment: "Bottom bar after a drop; argument is a list of file extensions in parentheses, or empty.")
+        }
+        return String(localized: "Skipped \(urls.count) files Dinky can’t compress\(suffix).", comment: "Bottom bar after a drop; first argument is the count, second a list of file extensions in parentheses, or empty.")
+    }
 
     // Per-file (English brand voice)
     static let skipped       = "Already tiny. Skipped."
-    static let errored       = "Couldn't crunch this one. Skipped."
+    static let errored       = "Couldn't compress this one."
     static let zeroBytes     = "Couldn't make this one any smaller. Keeping the original."
 
     // Buttons
@@ -106,7 +120,7 @@ enum S {
         String(localized: "Batch speed", comment: "Settings: label for parallel compression limit picker.")
     }
     static var concurrentCompressionFootnote: String {
-        String(localized: "How many files crunch at once — not image, video, or PDF quality. Fast is gentle; Fastest clears the queue sooner if your Mac is up for it.", comment: "Settings: explains batch parallelism tiers.")
+        String(localized: "How many files compress at once — not image, video, or PDF quality. Gentle goes easy on your Mac; Maximum clears the queue sooner if it’s up for it.", comment: "Settings: explains batch parallelism tiers.")
     }
 
     /// Settings › General › Compression — optional largest-first batch order.
@@ -119,10 +133,11 @@ enum S {
 
     static func concurrentCompressionTierOption(limit: Int) -> String {
         switch limit {
-        case 1: return "Fast — one at a time, dinky zen"
-        case 3: return "Faster — up to three in parallel"
-        case 8: return "Fastest — up to eight, all cores welcome"
-        default: return "Up to \(limit)"
+        // Named for how hard the Mac works: "Fast" for one-at-a-time read as the quick option.
+        case 1: return String(localized: "Gentle — one at a time", comment: "Settings: batch speed tier.")
+        case 3: return String(localized: "Balanced — up to three at once", comment: "Settings: batch speed tier.")
+        case 8: return String(localized: "Maximum — up to eight, all cores welcome", comment: "Settings: batch speed tier.")
+        default: return String.localizedStringWithFormat(String(localized: "Up to %lld", comment: "Settings: batch speed tier; argument is a count."), Int64(limit))
         }
     }
 

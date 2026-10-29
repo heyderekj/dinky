@@ -157,7 +157,7 @@ extension CompressionPreset {
     }
 
     private func baseDestinationDirectory(for source: URL, globalPrefs: DinkyPreferences, isFromURLDownload: Bool = false) -> URL {
-        if isFromURLDownload, saveLocationRaw == "sameFolder" {
+        if isFromURLDownload || DinkyPreferences.isTemporarySource(source), saveLocationRaw == "sameFolder" {
             return FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
                 ?? source.deletingLastPathComponent()
         }

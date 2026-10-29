@@ -154,10 +154,14 @@ final class CompressionItem: ObservableObject, Identifiable {
 
     var statusLabel: String {
         switch status {
-        case .pending:               return "Waiting"
+        case .pending:
+            return String(localized: "Waiting", comment: "Row status: queued, not started.")
         case .downloading(let p, _, _, _):
-            return p >= 0 ? String(format: "Downloading %.0f%%", p * 100) : "Downloading…"
-        case .processing:            return "Processing…"
+            return p >= 0
+                ? String.localizedStringWithFormat(String(localized: "Downloading %lld%%", comment: "Row status; argument is percent downloaded."), Int64((p * 100).rounded()))
+                : String(localized: "Downloading…", comment: "Row status: download with unknown size.")
+        case .processing:
+            return String(localized: "Processing…", comment: "Row status: compressing.")
         case .done:
             if savedPercent <= 0, let resize = imageResize {
                 return String.localizedStringWithFormat(
@@ -165,7 +169,10 @@ final class CompressionItem: ObservableObject, Identifiable {
                     Int64(resize.outputWidth), Int64(resize.outputHeight)
                 )
             }
-            return String(format: "%.1f%% smaller", savedPercent)
+            return String.localizedStringWithFormat(
+                String(localized: "%@%% smaller", comment: "Row status; argument is the percent saved, e.g. 42.5."),
+                savedPercent.formatted(.number.precision(.fractionLength(1)))
+            )
         case .skipped:               return S.skipped
         case .zeroGain:              return S.zeroBytes
         case .failed:                return S.errored

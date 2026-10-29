@@ -102,12 +102,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         userData: String,
         error: AutoreleasingUnsafeMutablePointer<NSString?>
     ) {
-        let opts: [NSPasteboard.ReadingOptionKey: Any] = [
-            .urlReadingFileURLsOnly: true,
-            .urlReadingContentsConformToTypes: acceptedUTIs
-        ]
-        guard let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: opts) as? [URL],
-              !urls.isEmpty else { return }
+        let opts: [NSPasteboard.ReadingOptionKey: Any] = [.urlReadingFileURLsOnly: true]
+        guard let selected = pasteboard.readObjects(forClasses: [NSURL.self], options: opts) as? [URL] else { return }
+        // Folders and audio too, same as dropping on the window.
+        let urls = acceptedURLs(from: selected)
+        guard !urls.isEmpty else { return }
         DockPresenceManager.cancelInitialWindowSuppression()
         DockPresenceManager.showMainWindow {
             NotificationCenter.default.post(name: .dinkyOpenFiles, object: urls)
@@ -116,19 +115,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Helpers
 
-    private let acceptedUTIs = [
-        "public.jpeg", "public.png", "org.webmproject.webp",
-        "public.avif", "public.tiff", "com.microsoft.bmp",
-        "public.heic", "public.heif",
-        "public.gif", "com.compuserve.gif",
-        "com.adobe.pdf",
-        "public.mpeg-4", "com.apple.quicktime-movie", "public.m4v-video",
-        "public.avi",
-        "org.webmproject.webm",
-    ]
-
+    /// Files Dinky can compress, with folders expanded to the files inside them.
     private func acceptedURLs(from urls: [URL]) -> [URL] {
-        urls.filter { MediaTypeDetector.detect($0) != nil }
+        urls.flatMap(DroppedItemsReader.expandAndFilter)
     }
 
     /// Older builds allowed sub‑MB targets; clamp global PDF max size to 5–25 MB to match current presets.
