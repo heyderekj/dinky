@@ -111,7 +111,14 @@ private func encoderInputURLForImageCompression(source: URL, outputFormat: Compr
         guard ext != "png" else { return source }
         return try decodeImageToPNG(source: source)
     }
-    return try heicTranscodeToPNGIfNeeded(source: source)
+    // The bundled cwebp reads only PNG/JPEG/WebP and avifenc only PNG/JPEG; ImageIO decodes the rest
+    // (HEIC, TIFF, BMP, GIF, AVIF…) so the encoders don't need libtiff and friends.
+    let encoderReadable: Set<String> = outputFormat == .webp ? ["png", "jpg", "jpeg", "webp"] : ["png", "jpg", "jpeg"]
+    guard outputFormat == .webp || outputFormat == .avif, !encoderReadable.contains(ext) else { return source }
+    if ext == "heic" || ext == "heif" {
+        return try heicTranscodeToPNGIfNeeded(source: source)
+    }
+    return try decodeImageToPNG(source: source)
 }
 
 /// Lossless pixel decode to PNG so `oxipng` can read the file.
