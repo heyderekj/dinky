@@ -21,6 +21,8 @@ struct CompressionConfirmationSheet: View {
     let onContinue: () -> Void
 
     @EnvironmentObject var prefs: DinkyPreferences
+    /// Filled in the background once the sheet is up; rows show the plain media label until then.
+    @State private var classified: [URL: ContentType] = [:]
 
     private var localCount: Int { localURLs.count }
     private var remoteCount: Int { remoteURLs.count }
@@ -102,6 +104,21 @@ struct CompressionConfirmationSheet: View {
     }
 
     var body: some View {
+        content
+            .task(id: localURLs) { await classifyShownImages() }
+    }
+
+    /// Classifying is a thumbnail decode plus Vision per file; it used to run on every render.
+    private func classifyShownImages() async {
+        guard localURLs.count <= Self.maxPerFileFormatHints else { return }
+        for url in localURLs where MediaTypeDetector.detect(url) == .image && classified[url] == nil {
+            let ct = await Task.detached(priority: .userInitiated) { ContentClassifier.classify(url) }.value
+            guard !Task.isCancelled else { return }
+            classified[url] = ct
+        }
+    }
+
+    private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 Text(String(localized: "Confirm compression", comment: "Compression confirm sheet title."))
@@ -349,14 +366,14 @@ struct CompressionConfirmationSheet: View {
         }
         switch media {
         case .image:
-            if localURLs.count <= Self.maxPerFileFormatHints {
-                let fmt = ImageCompressionFormatResolver.resolvedFormat(
-                    sourceURL: url,
-                    formatOverride: nil,
-                    preset: nil,
-                    globalAutoFormat: prefs.autoFormat,
-                    globalSelectedFormat: selectedFormat
-                )
+            if localURLs.count <= Self.maxPerFileFormatHints,
+               let fmt = ImageCompressionFormatResolver.knownFormat(
+                   formatOverride: nil,
+                   preset: nil,
+                   globalAutoFormat: prefs.autoFormat,
+                   globalSelectedFormat: selectedFormat,
+                   classifiedContent: classified[url]
+               ) {
                 return String.localizedStringWithFormat(
                     String(localized: "Image → .%@", comment: "Compression confirm: resolved output extension."),
                     fmt.outputExtension

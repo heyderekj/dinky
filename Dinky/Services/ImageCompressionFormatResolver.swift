@@ -22,4 +22,22 @@ enum ImageCompressionFormatResolver {
         }
         return format
     }
+
+    /// For views: never classifies. Classifying is a thumbnail decode plus Vision, and a row used to
+    /// run it several times per render. `nil` while Auto format waits on the background
+    /// classification (`CompressionItem.detectedContentType`).
+    static func knownFormat(
+        formatOverride: CompressionFormat?,
+        preset: CompressionPreset?,
+        globalAutoFormat: Bool,
+        globalSelectedFormat: CompressionFormat,
+        classifiedContent: ContentType?
+    ) -> CompressionFormat? {
+        let autoFmt = preset?.autoFormat ?? globalAutoFormat
+        if autoFmt, formatOverride == nil {
+            guard let classifiedContent else { return nil }
+            return classifiedContent == .photo ? .avif : .webp
+        }
+        return formatOverride ?? preset?.format ?? globalSelectedFormat
+    }
 }

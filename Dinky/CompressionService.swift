@@ -44,19 +44,19 @@ enum CompressionError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .binaryNotFound(let n): return "Binary '\(n)' not found in app bundle."
-        case .processFailed(let c, let e): return "Process exited \(c): \(e)"
-        case .outputMissing: return "Output file was not created."
-        case .pdfLoadFailed: return "Could not open the PDF file."
-        case .pdfPageRenderFailed(let p): return "Could not render page \(p + 1)."
-        case .videoExportFailed(let msg): return "Video export failed: \(msg)"
-        case .videoExportSessionUnavailable: return "Could not create export session for this video."
-        case .heicTranscodeFailed: return "Could not read or convert this HEIC/HEIF image."
+        case .binaryNotFound(let n): return String(localized: "The \(n) encoder is missing from Dinky. Try reinstalling Dinky.", comment: "Error; argument is a tool name like cwebp.")
+        case .processFailed(let c, let e): return String(localized: "The encoder stopped with an error (\(c)): \(e)", comment: "Error; first argument is an exit code, second the tool's message.")
+        case .outputMissing: return String(localized: "The compressed file wasn’t created.", comment: "Error.")
+        case .pdfLoadFailed: return String(localized: "Could not open the PDF file.", comment: "Error.")
+        case .pdfPageRenderFailed(let p): return String(localized: "Could not render page \(p + 1).", comment: "Error; argument is a page number.")
+        case .videoExportFailed(let msg): return String(localized: "Video export failed: \(msg)", comment: "Error; argument is the system's message.")
+        case .videoExportSessionUnavailable: return String(localized: "This video can’t be exported.", comment: "Error.")
+        case .heicTranscodeFailed: return String(localized: "Could not read or convert this HEIC/HEIF image.", comment: "Error.")
         case .heicEncodeFailed:
             return String(localized: "Could not encode this image as HEIC.", comment: "Error when HEIC export fails.")
         case .jpegEncodeFailed:
             return String(localized: "Could not encode this image as JPEG.", comment: "Error when JPEG export fails.")
-        case .imageResizeFailed: return "Could not resize this image."
+        case .imageResizeFailed: return String(localized: "Could not resize this image.", comment: "Error.")
         case .imageReadFailed:
             return String(localized: "Could not read image data from this file.", comment: "Error when ImageIO fails to read source.")
         case .imageWriteFailed:
@@ -107,7 +107,9 @@ actor CompressionService {
             withIntermediateDirectories: true
         )
         do {
-            let r = try await imagePipeline.compress(
+            let threads = max(1, ProcessInfo.processInfo.activeProcessorCount / max(1, parallelCompressionLimit))
+            let r = try await DinkyImageCompression.$encoderThreads.withValue(threads) {
+                try await imagePipeline.compress(
                 source: source,
                 format: format,
                 goals: goals,
@@ -124,7 +126,8 @@ actor CompressionService {
                 webpLossless: webpLossless,
                 pngOutputMode: pngOutputMode,
                 progressHandler: progressHandler
-            )
+                )
+            }
             return CompressionResult(
                 outputURL: r.outputURL,
                 originalSize: r.originalSize,

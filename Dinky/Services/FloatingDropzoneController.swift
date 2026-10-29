@@ -156,7 +156,7 @@ final class FloatingDropzoneController: ObservableObject {
         stage = .working
         setExpanded(true)
         dropID = UUID()
-        DroppedItemsReader.read(providers) { [weak self] local, remote in
+        DroppedItemsReader.read(providers) { [weak self] local, remote, _ in
             guard let self else { return }
             let vm = DinkyRootModel.shared.contentVM
             var ids: [UUID] = []
