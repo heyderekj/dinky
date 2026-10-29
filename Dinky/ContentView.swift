@@ -2196,7 +2196,7 @@ struct ContentView: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
             Button(String(localized: "Settings…", comment: "Open Settings from banner.")) {
-                revealPreferences(.behavior)
+                revealPreferences(.waysToCompress)
             }
             .buttonStyle(.bordered)
             .controlSize(.small)

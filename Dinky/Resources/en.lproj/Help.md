@@ -14,7 +14,7 @@ Everything happens on your Mac. Nothing is uploaded.
 2. Watch the count go down. No questions asked — it just compresses.
 3. Find the smaller copies next to the originals (default), in your Downloads folder, or in a folder you choose.
 
-Want a say before each batch? Turn on **Always confirm before compressing** in **Settings → General → Behavior**.
+Want a say before each batch? Set **Start compressing** to **Ask first** in **Settings → Ways to Compress**.
 
 That's it. The defaults are good. Read on if you want to bend them to your will.
 
@@ -26,7 +26,7 @@ You don't have to open the app first. Pick whichever fits how you work.
 
 - **Drag & drop** files or whole folders onto the Dinky window or the Dock icon.
 - **Floating dropzone** — start dragging files anywhere and a little dropzone pops into a screen corner. Drop on it to compress without opening the window. (See *Floating dropzone* below.)
-- **Hide from Dock** — Settings → General → Behavior (requires **Open at login**) keeps Dinky running without a Dock icon or App Switcher entry (Dock-icon drops need this off).
+- **Hide from Dock** — **Settings → Startup & Dock** (requires **Open at login**) keeps Dinky running without a Dock icon or App Switcher entry (Dock-icon drops need this off).
 - **Open Files…** — `{{SK_OPEN_FILES}}` to pick files or folders from a sheet.
 - **Paste** — `⌘V` or `{{SK_PASTE}}` compresses **files** copied in Finder (images, videos, PDFs, audio — all of them, not just the first) or **raw image** data (screenshots, browser copies). Pasted images are saved to your Downloads folder as *Pasted image …*.
 - **Right-click in Finder → Services → Compress with Dinky** — works on selections of any size.
@@ -120,7 +120,7 @@ Drop files into a folder and let Dinky handle them in the background.
 
 ## Floating dropzone
 
-Turn it on in **Settings → General → Behavior → Floating dropzone**, and pick its corner there.
+Turn it on in **Settings → Ways to Compress → Floating dropzone**, and pick its corner there.
 
 - **Drag files anywhere** — from Finder, Mail, your browser's downloads — and a small dropzone tucks into the corner. It grows as you get close.
 - **Drop on the big target** to use your current preset. To use another one, sweep across the **preset track** along the bottom — the highlight follows you — then let go there or anywhere on the target.
@@ -131,7 +131,7 @@ Turn it on in **Settings → General → Behavior → Floating dropzone**, and p
 
 ## Manual mode
 
-Turn on **Settings → General → Manual mode** when you want full control.
+Set **Start compressing** to **Wait for Compress Now** in **Settings → Ways to Compress** when you want full control.
 
 Files dropped in won't auto-compress. Right-click any row to pick a format on the spot, use **File → Compress Now** (`{{SK_COMPRESS_NOW}}`) when the queue is ready, or change settings in the sidebar first. Useful when one batch contains very different files.
 

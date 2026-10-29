@@ -108,7 +108,7 @@ enum S {
     }
 
     static var watchFolderBackgroundModeCaption: String {
-        String(localized: "Optional. Turn on Open at login and Hide from Dock and App Switcher in Behavior to keep watching in the background without a Dock icon or ⌘Tab entry.", comment: "Settings › Watch: points users to background-mode toggles.")
+        String(localized: "Optional. Turn on Open at login and Hide from Dock and App Switcher in Startup & Dock to keep watching in the background without a Dock icon or ⌘Tab entry.", comment: "Settings › Watch: points users to background-mode toggles.")
     }
 
     static var watchFolderBackgroundModeLinkTitle: String {
