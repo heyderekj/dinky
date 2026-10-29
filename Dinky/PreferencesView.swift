@@ -412,18 +412,19 @@ private struct WaysToCompressPreferencesPane: View {
                         NotificationCenter.default.post(name: .dinkyFloatingDropzoneChanged, object: nil)
                     }
                 ))
-                Picker(String(localized: "Corner", comment: "Settings UI: where the floating dropzone appears."), selection: Binding(
-                    get: { prefs.floatingDropzoneCorner },
-                    set: { newValue in
-                        prefs.floatingDropzoneCorner = newValue
-                        NotificationCenter.default.post(name: .dinkyFloatingDropzoneChanged, object: nil)
-                    }
-                )) {
-                    ForEach(ScreenCorner.allCases) { corner in
-                        Text(corner.displayName).tag(corner)
-                    }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(String(localized: "Corner", comment: "Settings UI: where the floating dropzone appears."))
+                    DropzoneCornerPicker(corner: Binding(
+                        get: { prefs.floatingDropzoneCorner },
+                        set: { newValue in
+                            prefs.floatingDropzoneCorner = newValue
+                            NotificationCenter.default.post(name: .dinkyFloatingDropzoneChanged, object: nil)
+                        }
+                    ))
+                    .frame(maxWidth: .infinity)
                 }
                 .disabled(!prefs.floatingDropzoneEnabled)
+                .opacity(prefs.floatingDropzoneEnabled ? 1 : 0.45)
                 Text(S.behaviorFloatingDropzoneFootnote)
                     .font(.caption2)
                     .foregroundStyle(.tertiary)

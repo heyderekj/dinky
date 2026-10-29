@@ -24,6 +24,7 @@
 		AA000006000000000000006 /* ImageItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FFDD8F0AED14F8CA2C3F9A7 /* ImageItem.swift */; };
 		AA000008000000000000008 /* DinkyPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D3DAE858994431BC84C13F /* DinkyPreferences.swift */; };
 		AA000009000000000000009 /* DropZoneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56D9DE1C999B470FBB27E454 /* DropZoneView.swift */; };
+		FD000007000000000000000 /* DropzoneCornerPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD000007100000000000000 /* DropzoneCornerPicker.swift */; };
 		FD000006000000000000000 /* MenuBarPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD000006100000000000000 /* MenuBarPanel.swift */; };
 		FD000004000000000000000 /* FloatingDropzoneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD000004100000000000000 /* FloatingDropzoneView.swift */; };
 		AA000010000000000000010 /* ResultsRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B63EBD7088E4C9BAB7A45DC /* ResultsRowView.swift */; };
@@ -89,6 +90,7 @@
 		4FE17DC818E44D3F88D6F88A /* Strings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Strings.swift; sourceTree = "<group>"; };
 		4FFDD8F0AED14F8CA2C3F9A7 /* ImageItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageItem.swift; sourceTree = "<group>"; };
 		56D9DE1C999B470FBB27E454 /* DropZoneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropZoneView.swift; sourceTree = "<group>"; };
+		FD000007100000000000000 /* DropzoneCornerPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropzoneCornerPicker.swift; sourceTree = "<group>"; };
 		FD000006100000000000000 /* MenuBarPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarPanel.swift; sourceTree = "<group>"; };
 		FD000004100000000000000 /* FloatingDropzoneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingDropzoneView.swift; sourceTree = "<group>"; };
 		5B63EBD7088E4C9BAB7A45DC /* ResultsRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultsRowView.swift; sourceTree = "<group>"; };
@@ -214,6 +216,7 @@
 			isa = PBXGroup;
 			children = (
 				56D9DE1C999B470FBB27E454 /* DropZoneView.swift */,
+				FD000007100000000000000 /* DropzoneCornerPicker.swift */,
 				FD000006100000000000000 /* MenuBarPanel.swift */,
 				FD000004100000000000000 /* FloatingDropzoneView.swift */,
 				5B63EBD7088E4C9BAB7A45DC /* ResultsRowView.swift */,
@@ -512,6 +515,7 @@
 				DCBERR0001 /* DinkyImageCompression+AppError.swift in Sources */,
 				AA000008000000000000008 /* DinkyPreferences.swift in Sources */,
 				AA000009000000000000009 /* DropZoneView.swift in Sources */,
+				FD000007000000000000000 /* DropzoneCornerPicker.swift in Sources */,
 				FD000006000000000000000 /* MenuBarPanel.swift in Sources */,
 				FD000004000000000000000 /* FloatingDropzoneView.swift in Sources */,
 				AA000010000000000000010 /* ResultsRowView.swift in Sources */,
