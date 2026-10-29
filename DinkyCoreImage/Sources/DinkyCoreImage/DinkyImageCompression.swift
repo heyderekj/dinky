@@ -965,13 +965,9 @@ public actor DinkyImageCompression {
     // MARK: - Process runner
 
     private func run(_ binary: URL, args: [String]) async throws {
-        // Homebrew binaries use @rpath dylibs that live in /opt/homebrew/lib.
-        // Inject that path so dyld can find them when running inside the app bundle.
-        var env = ProcessInfo.processInfo.environment
-        let existing = env["DYLD_LIBRARY_PATH"].flatMap { $0.isEmpty ? nil : $0 }
-        env["DYLD_LIBRARY_PATH"] = ["/opt/homebrew/lib", existing].compactMap { $0 }.joined(separator: ":")
-
-        let out = try await SubprocessRunner.run(binary, arguments: args, environment: env)
+        // The bundled encoders are static. Don't set DYLD_LIBRARY_PATH: it would let
+        // /opt/homebrew/lib dylibs replace the ones a binary was built against.
+        let out = try await SubprocessRunner.run(binary, arguments: args)
         guard out.status == 0 else {
             throw DinkyImageCompressionError.processFailed(out.status, out.stderr)
         }
