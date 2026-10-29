@@ -188,6 +188,8 @@ final class DinkyPreferences: ObservableObject {
     /// Failed/skipped rows are kept so the user can act on them.
     @AppStorage("autoClearWhenDone")    var autoClearWhenDone: Bool = false
     @AppStorage("reduceMotion")         var reduceMotion: Bool = false
+    /// The menu bar item (always shown while hidden from the Dock, which needs it to get back in).
+    @AppStorage(MenuBarController.showInMenuBarKey) var showInMenuBar: Bool = true
     /// Shows a small dropzone in a screen corner while files are dragged anywhere.
     @AppStorage("floatingDropzoneEnabled") var floatingDropzoneEnabled: Bool = false
     @AppStorage("floatingDropzoneCorner")  var floatingDropzoneCornerRaw: String = ScreenCorner.bottomRight.rawValue

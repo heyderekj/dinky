@@ -337,8 +337,20 @@ private struct StartupPreferencesPane: View {
                 Text(S.behaviorHideFromDockFootnote)
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
+
+                Toggle(String(localized: "Show in menu bar", comment: "Settings: menu bar item toggle."), isOn: Binding(
+                    get: { prefs.showInMenuBar || DockPresenceManager.isEffectivelyHidden },
+                    set: { newValue in
+                        prefs.showInMenuBar = newValue
+                        MenuBarController.shared.sync()
+                    }
+                ))
+                .disabled(DockPresenceManager.isEffectivelyHidden)
+                Text(String(localized: "Open files, compress the clipboard, turn the floating dropzone on or off, and grab recent results from the menu bar. Always on while Dinky is hidden from the Dock.", comment: "Settings: menu bar item footnote."))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
             } header: {
-                Text(String(localized: "Dock", comment: "Settings: section header in Startup & Dock."))
+                Text(String(localized: "Dock and menu bar", comment: "Settings: section header in Startup & Dock."))
             }
         }
         .formStyle(.grouped)
