@@ -339,7 +339,7 @@ struct BatchCompletionSummarySheet: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 Button(String(localized: "Change in Settings…", comment: "Batch summary: open Settings for Open folder when done.")) {
-                    openPreferences(.behavior)
+                    openPreferences(.whenDone)
                 }
                 .buttonStyle(.plain)
                 .font(.system(size: 12))
