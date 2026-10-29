@@ -11,8 +11,9 @@ let dinkyGradient = LinearGradient(
 // MARK: - Numeric presets (sidebar + Settings presets tab)
 
 let settingsWidthPresets: [(String, Int)] = [
-    ("640 px", 640), ("1080 px", 1080), ("1280 px", 1280),
-    ("1920 px", 1920), ("2560 px", 2560), ("3840 px", 3840)
+    // No unit on each option: the track is narrow, and the field below says px.
+    ("640", 640), ("1080", 1080), ("1280", 1280),
+    ("1920", 1920), ("2560", 2560), ("3840", 3840)
 ]
 
 let settingsScalePercentPresets: [(String, Int)] = [
@@ -97,33 +98,73 @@ func settingsHelperText(_ text: String) -> some View {
 // MARK: - Chip grid
 
 /// - Parameter fixedColumnCount: When set (e.g. `3` for six width presets), uses a balanced fixed grid; otherwise `.adaptive` packing.
+/// Numeric quick picks as a `SlidingTrack`. `fixedColumnCount` is from the old grid layout and
+/// no longer used; every preset list fits on one track.
 func settingsChipGrid(
     presets: [(String, Int)],
     current: Int,
     fixedColumnCount: Int? = nil,
     onSelect: @escaping (Int) -> Void
 ) -> some View {
-    let columns: [GridItem]
-    if let count = fixedColumnCount, count > 0 {
-        columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: count)
-    } else {
-        columns = [GridItem(.adaptive(minimum: 50), spacing: 4)]
+    SlidingTrack(items: presets.map { (label: $0.0, id: $0.1) }, selection: current, onSelect: onSelect)
+}
+
+// MARK: - Sliding track
+
+/// One soft track of options; the pick is a Dinky-gradient pill that springs across to whatever
+/// you choose. Replaces the boxed chip grids — one row instead of a wall of buttons.
+struct SlidingTrack<ID: Hashable>: View {
+    let items: [(label: String, id: ID)]
+    /// `nil`, or a value no option has (a custom width typed in the field), shows no pill.
+    let selection: ID?
+    let onSelect: (ID) -> Void
+
+    @Namespace private var pill
+    @AppStorage("reduceMotion") private var appReduceMotion = false
+    @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
+
+    private var animation: Animation {
+        appReduceMotion || systemReduceMotion
+            ? .easeInOut(duration: 0.15)
+            : .spring(response: 0.32, dampingFraction: 0.78)
     }
-    return LazyVGrid(columns: columns, alignment: .leading, spacing: 4) {
-        ForEach(presets, id: \.1) { label, value in
-            let active = current == value
-            Text(label)
-                .font(.system(size: 11, weight: active ? .semibold : .regular))
-                .foregroundStyle(active ? .white : .secondary)
-                .padding(.horizontal, 6).padding(.vertical, 4)
-                .frame(maxWidth: .infinity)
-                .background(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(active ? AnyShapeStyle(dinkyGradient) : AnyShapeStyle(Color.primary.opacity(0.08)))
-                )
-                .contentShape(Rectangle())
-                .onTapGesture { onSelect(value) }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(items, id: \.id) { item in
+                let active = item.id == selection
+                Button {
+                    withAnimation(animation) { onSelect(item.id) }
+                } label: {
+                    Text(item.label)
+                        .font(.system(size: 11, weight: active ? .semibold : .regular))
+                        .foregroundStyle(active ? AnyShapeStyle(.white) : AnyShapeStyle(.secondary))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .padding(.vertical, 5)
+                        .padding(.horizontal, 2)
+                        .frame(maxWidth: .infinity)
+                        .background {
+                            if active {
+                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .fill(dinkyGradient)
+                                    .shadow(color: Color(red: 0.35, green: 0.4, blue: 1).opacity(0.3), radius: 3, x: 0, y: 1)
+                                    .matchedGeometryEffect(id: "pill", in: pill)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(active ? .isSelected : [])
+            }
         }
+        .padding(2)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.primary.opacity(0.07))
+        )
+        // Also slide when the value changes from elsewhere (a preset, the text field).
+        .animation(animation, value: selection)
     }
 }
 

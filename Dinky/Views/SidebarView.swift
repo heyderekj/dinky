@@ -1418,14 +1418,11 @@ struct AudioFormatChipPicker: View {
 
     var body: some View {
         let activeFormat = AudioConversionFormat(rawValue: audioFormatRaw) ?? .aacM4A
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 3), spacing: 4) {
-            ForEach(AudioConversionFormat.allCases) { format in
-                let active = audioFormatRaw == format.rawValue
-                chipCell(format.chipLabel, active: active)
-                    .onTapGesture { audioFormatRaw = format.rawValue }
-                    .help(format.displayName)
-            }
-        }
+        SlidingTrack(
+            items: AudioConversionFormat.allCases.map { (label: $0.chipLabel, id: $0.rawValue) },
+            selection: audioFormatRaw
+        ) { audioFormatRaw = $0 }
+        .help(activeFormat.displayName)
         Text(activeFormat.description)
             .font(.system(size: 10))
             .foregroundStyle(.tertiary)
@@ -1454,17 +1451,13 @@ struct FormatChipPicker: View {
             opt.format == nil ? autoFormat : (!autoFormat && selectedFormat == opt.format)
         })?.description ?? ""
 
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 3), spacing: 4) {
-            ForEach(options, id: \.label) { opt in
-                let active: Bool = opt.format == nil
-                    ? autoFormat
-                    : !autoFormat && selectedFormat == opt.format
-                chipCell(opt.label, active: active)
-                    .onTapGesture {
-                        if let f = opt.format { autoFormat = false; selectedFormat = f }
-                        else { autoFormat = true }
-                    }
-            }
+        let activeLabel = options.first(where: { opt in
+            opt.format == nil ? autoFormat : (!autoFormat && selectedFormat == opt.format)
+        })?.label
+        SlidingTrack(items: options.map { (label: $0.label, id: $0.label) }, selection: activeLabel) { label in
+            guard let opt = options.first(where: { $0.label == label }) else { return }
+            if let f = opt.format { autoFormat = false; selectedFormat = f }
+            else { autoFormat = true }
         }
         if showActiveDescription && !activeDesc.isEmpty {
             Text(activeDesc)
@@ -1494,21 +1487,10 @@ struct ChromaSubsamplingChipPicker: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            LazyVGrid(
-                columns: [
-                    GridItem(.flexible(), spacing: 4),
-                    GridItem(.flexible(), spacing: 4),
-                ],
-                spacing: 4
-            ) {
-                ForEach(ChromaSubsampling.allCases) { mode in
-                    let active = selection == mode
-                    chipCell(mode.displayName, active: active)
-                        .onTapGesture { selection = mode }
-                        .accessibilityLabel(mode.displayName)
-                        .accessibilityAddTraits(active ? .isSelected : [])
-                }
-            }
+            SlidingTrack(
+                items: ChromaSubsampling.allCases.map { (label: $0.displayName, id: $0) },
+                selection: selection
+            ) { selection = $0 }
             .accessibilityElement(children: .contain)
             .accessibilityLabel(String(localized: "AVIF chroma subsampling", comment: "Accessibility: AVIF chroma picker group."))
 
@@ -1535,15 +1517,10 @@ struct PNGOutputModeChipPicker: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 4) {
-                ForEach(PNGOutputMode.allCases) { mode in
-                    let active = selection == mode
-                    chipCell(mode.displayName, active: active)
-                        .onTapGesture { selection = mode }
-                        .accessibilityLabel(mode.displayName)
-                        .accessibilityAddTraits(active ? .isSelected : [])
-                }
-            }
+            SlidingTrack(
+                items: PNGOutputMode.allCases.map { (label: $0.displayName, id: $0) },
+                selection: selection
+            ) { selection = $0 }
             .accessibilityElement(children: .contain)
             .accessibilityLabel(String(localized: "PNG output mode", comment: "Accessibility: PNG mode picker group."))
 
@@ -1574,12 +1551,8 @@ struct ContentTypeChipPicker: View {
         let activeRaw = normalizedRaw
         let activeDesc = options.first(where: { activeRaw == $0.raw })?.description ?? ""
 
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 3), spacing: 4) {
-            ForEach(options, id: \.raw) { opt in
-                let active = activeRaw == opt.raw
-                chipCell(opt.label, active: active)
-                    .onTapGesture { contentTypeHintRaw = opt.raw }
-            }
+        SlidingTrack(items: options.map { (label: $0.label, id: $0.raw) }, selection: activeRaw) {
+            contentTypeHintRaw = $0
         }
         if !activeDesc.isEmpty {
             Text(activeDesc)
@@ -1597,12 +1570,8 @@ struct QualityChipPicker: View {
 
     var body: some View {
         let activeDesc = options.first(where: { selected == $0.raw })?.description ?? ""
-        HStack(spacing: 4) {
-            ForEach(options, id: \.raw) { opt in
-                let active = selected == opt.raw
-                chipCell(opt.label, active: active)
-                    .onTapGesture { selected = opt.raw }
-            }
+        SlidingTrack(items: options.map { (label: $0.label, id: $0.raw) }, selection: selected) {
+            selected = $0
         }
         if !activeDesc.isEmpty {
             Text(activeDesc)
@@ -1612,17 +1581,4 @@ struct QualityChipPicker: View {
                 .animation(.easeInOut(duration: 0.15), value: activeDesc)
         }
     }
-}
-
-private func chipCell(_ label: String, active: Bool) -> some View {
-    Text(label)
-        .font(.system(size: 11, weight: active ? .semibold : .regular))
-        .foregroundStyle(active ? .white : .secondary)
-        .padding(.vertical, 5)
-        .frame(maxWidth: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(active ? AnyShapeStyle(dinkyGradient) : AnyShapeStyle(Color.primary.opacity(0.08)))
-        )
-        .contentShape(Rectangle())
 }
