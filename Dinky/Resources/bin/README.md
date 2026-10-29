@@ -1,79 +1,41 @@
 # Compression Binaries
 
-Place arm64 macOS CLI binaries here. Dinky expects them at:
+Xcode copies these into the app bundle's `Contents/Resources/` root. Every encoder is a single
+static arm64 binary that links only system libraries (`libSystem`, `libz`, `libc++`, `libiconv`),
+so there is no `lib/` folder of dylibs to ship or re-point.
 
-```
-Dinky.app/Contents/Resources/bin/
-├── cjpeg      ← MozJPEG
-├── cwebp      ← libwebp / Google WebP
-├── oxipng     ← OxiPNG
-├── avifenc    ← libavif
-└── qpdf       ← QPDF (preserve-mode structural optimize; needs `lib/*.dylib` — see below)
-```
+| Binary    | Version | Built from | Notes |
+|-----------|---------|------------|-------|
+| `cwebp`   | libwebp 1.6.0 | source | Reads PNG/JPEG/WebP only (no TIFF). Dinky decodes every other input to PNG first. |
+| `avifenc` | libavif 1.4.1 + libaom 3.13.3 | source | aom encoder only: no AV1 decoder, no dav1d, no VMAF/Butteraugli tuning, no SVE kernels. `-O3`. 10-bit (`--depth 10`) supported. |
+| `oxipng`  | 10.1.0 | crates.io | No zopfli (Dinky never passes `--zopfli`); `--threads` works. |
+| `qpdf`    | 12.3.2 | source | Native crypto instead of OpenSSL. `--optimize-images` uses the static libjpeg-turbo. |
+| `lame`    | 3.100 | Homebrew | Unchanged. |
 
-After placing binaries, make them executable:
-```bash
-chmod +x bin/cjpeg bin/cwebp bin/oxipng bin/avifenc
-```
+Shared static deps: libjpeg-turbo 3.1.4.1, libpng 1.6.57 (zlib comes from macOS).
+These are the same versions the 2.16 bundle shipped as Homebrew dylibs, and the encodes are
+byte-for-byte identical to that build's.
 
-Then remove quarantine (required for unsigned binaries on macOS):
-```bash
-xattr -d com.apple.quarantine bin/cjpeg bin/cwebp bin/oxipng bin/avifenc
-```
-
----
-
-## Download links (arm64 / Apple Silicon)
-
-### cjpeg (MozJPEG)
-Build from source or grab a prebuilt binary from:
-- https://github.com/mozilla/mozjpeg/releases
-- Homebrew: `brew install mozjpeg` → binary at `/opt/homebrew/opt/mozjpeg/bin/cjpeg`
-
-### cwebp (WebP)
-- https://developers.google.com/speed/webp/download
-- Homebrew: `brew install webp` → binary at `/opt/homebrew/bin/cwebp`
-
-### oxipng
-- https://github.com/shssoichiro/oxipng/releases
-- Grab `oxipng-*-aarch64-apple-darwin.tar.gz`
-- Homebrew: `brew install oxipng`
-
-### avifenc (libavif)
-- https://github.com/AOMediaCodec/libavif/releases
-- Homebrew: `brew install libavif` → binary at `/opt/homebrew/bin/avifenc`
-
----
-
-## Quick setup via Homebrew
+## Rebuilding
 
 ```bash
-brew install mozjpeg webp oxipng libavif
-
-cp /opt/homebrew/opt/mozjpeg/bin/cjpeg  bin/
-cp /opt/homebrew/bin/cwebp               bin/
-cp /opt/homebrew/bin/oxipng             bin/
-cp /opt/homebrew/bin/avifenc            bin/
-
-chmod +x bin/*
-xattr -d com.apple.quarantine bin/* 2>/dev/null || true
+brew install cmake ninja      # plus Xcode command line tools and Rust 1.85+ (rustup)
+tools/build_encoders.sh /tmp/dinky-encoders Dinky/Resources/bin
 ```
 
-### qpdf (PDF structure / streams)
+`tools/build_encoders.sh` downloads the pinned sources, builds them static for arm64 with a
+macOS 15.0 deployment target, strips and ad-hoc signs the four binaries, and fails if any of them
+links a non-system library. To move to a new version, change the `*_VER` line at the top and
+re-check the outputs against the old binaries.
 
-Homebrew’s `qpdf` links to `libqpdf`, `jpeg-turbo`, and `openssl@3`. After copying the binary into `bin/`, copy the dylibs into `../lib/` and fix loader paths (Apple Silicon example):
+The key configure flags, for reference:
 
-```bash
-brew install qpdf
-cp /opt/homebrew/bin/qpdf bin/
-cp /opt/homebrew/opt/qpdf/lib/libqpdf.*.dylib ../lib/
-cp /opt/homebrew/opt/jpeg-turbo/lib/libjpeg.*.dylib ../lib/
-cp /opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib ../lib/
+- **libwebp**: `-DBUILD_SHARED_LIBS=OFF -DWEBP_BUILD_{DWEBP,GIF2WEBP,IMG2WEBP,VWEBP,WEBPINFO,WEBPMUX,EXTRAS,ANIM_UTILS}=OFF`, TIFF and GIF not found.
+- **libaom**: `-DCMAKE_BUILD_TYPE=Release -DCONFIG_AV1_DECODER=0 -DCONFIG_TUNE_VMAF=0 -DCONFIG_TUNE_BUTTERAUGLI=0 -DENABLE_SVE=0 -DENABLE_SVE2=0 -DBUILD_SHARED_LIBS=0`
+- **libavif**: `-DAVIF_CODEC_AOM=SYSTEM -DAVIF_CODEC_AOM_DECODE=OFF -DAVIF_CODEC_DAV1D=OFF -DAVIF_BUILD_APPS=ON -DAVIF_LIBYUV=OFF -DAVIF_LIBSHARPYUV=OFF -DBUILD_SHARED_LIBS=OFF`
+- **qpdf**: `-DCMAKE_BUILD_TYPE=MinSizeRel -DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DREQUIRE_CRYPTO_NATIVE=ON -DUSE_IMPLICIT_CRYPTO=OFF -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON`
+- **oxipng**: `cargo install oxipng --version 10.1.0 --locked --no-default-features --features binary,parallel` with `CARGO_PROFILE_RELEASE_{LTO=fat,CODEGEN_UNITS=1,PANIC=abort,STRIP=symbols}`
+- Everything: `-DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=15.0 -DCMAKE_EXE_LINKER_FLAGS=-Wl,-dead_strip`
 
-chmod +x bin/qpdf
-install_name_tool -change @rpath/libqpdf.30.dylib @loader_path/lib/libqpdf.30.3.2.dylib bin/qpdf
-# Xcode copies `bin/qpdf` into the app bundle’s `Resources/` root, so use `@loader_path/lib/…` (same folder as `cwebp`), not `../lib`.
-# Point libqpdf at vendored libjpeg + libcrypto (see `otool -L` on your copies).
-```
-
-Then re-sign in Xcode’s “Re-sign bundled binaries” phase (or `codesign -s - --force` on `qpdf` and each dylib).
+The "Re-sign bundled binaries" build phase ad-hoc signs everything in `Resources` again at build
+time, so a binary whose signature was invalidated (for example by `install_name_tool`) still runs.

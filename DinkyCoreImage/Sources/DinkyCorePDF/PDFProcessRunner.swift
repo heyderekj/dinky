@@ -16,18 +16,7 @@ public enum DinkyPDFProcessError: LocalizedError, Sendable {
 
 public enum PDFProcessRunner: Sendable {
     public static func run(_ binary: URL, args: [String]) async throws {
-        var env = ProcessInfo.processInfo.environment
-        let binDir = binary.deletingLastPathComponent()
-        let bundledLib = binDir.deletingLastPathComponent().appendingPathComponent("lib", isDirectory: true)
-        var parts: [String] = []
-        if FileManager.default.fileExists(atPath: bundledLib.path) {
-            parts.append(bundledLib.path)
-        }
-        parts.append("/opt/homebrew/lib")
-        if let existing = env["DYLD_LIBRARY_PATH"], !existing.isEmpty { parts.append(existing) }
-        env["DYLD_LIBRARY_PATH"] = parts.joined(separator: ":")
-
-        let out = try await SubprocessRunner.run(binary, arguments: args, environment: env)
+        let out = try await SubprocessRunner.run(binary, arguments: args)
         guard out.status == 0 else {
             throw DinkyPDFProcessError.processFailed(out.status, out.stderr)
         }

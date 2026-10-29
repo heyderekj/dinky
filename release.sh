@@ -194,8 +194,25 @@ fi
 # ── 3. Build ──────────────────────────────────────────────────────────────────
 
 echo "→ Building Release…"
-xcodebuild -scheme Dinky -configuration Release -derivedDataPath build clean build \
+# Coverage flags go on the command line because project settings don't reach the DinkyCoreImage
+# package targets; without them Release ships __llvm_prf* sections and writes a profraw on exit.
+xcodebuild -scheme Dinky -configuration Release -derivedDataPath build \
+  ENABLE_CODE_COVERAGE=NO CLANG_COVERAGE_MAPPING=NO \
+  clean build \
   | grep -E "error:|BUILD (SUCCEEDED|FAILED)"
+
+APP="build/Build/Products/Release/Dinky.app"
+BIN="$APP/Contents/MacOS/Dinky"
+if size -m "$BIN" | grep -q __llvm_prf; then
+  echo "✗ $BIN has coverage instrumentation (__llvm_prf sections). Check the coverage flags above."
+  exit 1
+fi
+echo "→ Dinky.app is $(du -sh "$APP" | awk '{print $1}') (binary $(du -h "$BIN" | awk '{print $1}'))"
+
+# The binary ships stripped (DEPLOYMENT_POSTPROCESSING); keep the symbols locally for crash logs.
+# Not uploaded. Zipped now, before the test build below can touch build/.
+rm -f "Dinky-$VERSION.dSYM.zip"
+ditto -c -k --keepParent "$APP.dSYM" "Dinky-$VERSION.dSYM.zip"
 
 # ── 4. Preflight tests (match CI targets) ─────────────────────────────────────
 

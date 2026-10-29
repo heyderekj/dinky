@@ -64,7 +64,6 @@
 		INT00003000000000000001 /* CompressVideoIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = INT10003000000000000001 /* CompressVideoIntent.swift */; };
 		IPS00001000000000000001 /* ImagePreviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = IPS10001000000000000001 /* ImagePreviewSheet.swift */; };
 		KS000001000000000000001 /* CustomShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = KS100001000000000000001 /* CustomShortcut.swift */; };
-		LB000001000000000000001 /* lib in Resources */ = {isa = PBXBuildFile; fileRef = LB100001000000000000001 /* lib */; };
 		LCAT00000100000000000001 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = LCATREF0000000000000001 /* Localizable.xcstrings */; };
 		LL000001000000000000001 /* LaunchAtLoginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = LL100001000000000000001 /* LaunchAtLoginManager.swift */; };
 		DP000001000000000000001 /* DockPresenceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DP100001000000000000001 /* DockPresenceManager.swift */; };
@@ -152,7 +151,6 @@
 		INT10003000000000000001 /* CompressVideoIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompressVideoIntent.swift; sourceTree = "<group>"; };
 		IPS10001000000000000001 /* ImagePreviewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePreviewSheet.swift; sourceTree = "<group>"; };
 		KS100001000000000000001 /* CustomShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomShortcut.swift; sourceTree = "<group>"; };
-		LB100001000000000000001 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; path = lib; sourceTree = "<group>"; };
 		LCATREF0000000000000001 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		LL100001000000000000001 /* LaunchAtLoginManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginManager.swift; sourceTree = "<group>"; };
 		DP100001000000000000001 /* DockPresenceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockPresenceManager.swift; sourceTree = "<group>"; };
@@ -276,7 +274,6 @@
 			isa = PBXGroup;
 			children = (
 				E168EFE304164DA3B71EFE4F /* bin */,
-				LB100001000000000000001 /* lib */,
 				HMVGRP00000000000000001 /* Help.md */,
 			);
 			path = Resources;
@@ -466,7 +463,6 @@
 				5CBDB89E2F9041F600E7E9C0 /* cwebp in Resources */,
 				QP000001000000000000001 /* qpdf in Resources */,
 				LM000001000000000000001 /* lame in Resources */,
-				LB000001000000000000001 /* lib in Resources */,
 				HM000001000000000000001 /* Help.md in Resources */,
 				LCAT00000100000000000001 /* Localizable.xcstrings in Resources */,
 				ICAT00000100000000000001 /* InfoPlist.xcstrings in Resources */,
@@ -493,7 +489,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Re-sign all bundled CLI binaries and dylibs with ad-hoc signatures.\n# Required because install_name_tool invalidates Homebrew-supplied signatures.\nRESOURCES=\"$BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/Resources\"\nfor f in \"$RESOURCES/avifenc\" \"$RESOURCES/cwebp\" \"$RESOURCES/oxipng\" \"$RESOURCES/qpdf\" \"$RESOURCES/lame\" \"$RESOURCES\"/lib/*.dylib; do\n  [ -f \"$f\" ] && codesign -s - --force \"$f\"\ndone\n";
+			shellScript = "# Re-sign all bundled CLI binaries with ad-hoc signatures.\nRESOURCES=\"$BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/Resources\"\nfor f in \"$RESOURCES/avifenc\" \"$RESOURCES/cwebp\" \"$RESOURCES/oxipng\" \"$RESOURCES/qpdf\" \"$RESOURCES/lame\"; do\n  if [ -f \"$f\" ]; then codesign -s - --force \"$f\" || exit 1; fi\ndone\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -758,6 +754,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 2.16.0;
 				DEAD_CODE_STRIPPING = YES;
+				DEPLOYMENT_POSTPROCESSING = YES;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_PREVIEWS = YES;
@@ -772,6 +769,7 @@
 				MARKETING_VERSION = 2.16.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.dinky.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRINGS_FILE_OUTPUT_ENCODING = binary;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "";
