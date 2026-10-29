@@ -6,8 +6,8 @@ public enum DinkyCLIHelp {
         dinky — local Dinky compression (CLI): images, video, PDF
 
         Tools: set DINKY_BIN to a folder with cwebp, avifenc, oxipng (same as the app Resources layout).
-        For PDF preserve-mode qpdf passes, place an executable `qpdf` in that folder; add a sibling `lib/`
-        for bundled dylibs (see app `Resources/bin/README.md`). video/flatten-PDF do not require encoders.
+        For PDF preserve-mode qpdf passes, place an executable `qpdf` in that folder
+        (see app `Resources/bin/README.md`). video/flatten-PDF do not require encoders.
 
         Exit codes: 0 = all files succeeded, 1 = parse error, missing tools, or at least one failure.
 
