@@ -153,7 +153,8 @@ struct FloatingDropzoneView: View {
         case .hidden:
             EmptyView()
         case .dragging:
-            MiniCardFan(types: fanTypes, lean: controller.isExpanded ? 0 : lean)
+            MiniCardFan(types: fanTypes, lean: controller.isExpanded ? 0 : lean,
+                        lively: !reduceMotion && !mainTargeted && !trackTargeted)
                 .scaleEffect(controller.isExpanded ? (mainTargeted || trackTargeted ? 0.8 : 1.15) : 1)
                 .animation(spring, value: mainTargeted || trackTargeted)
         case .working:
@@ -187,12 +188,21 @@ struct FloatingDropzoneView: View {
     // MARK: - Pill (far)
 
     private var pill: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text(String(localized: "Make it dinky", comment: "Floating dropzone: call to action while files are dragged."))
-                .font(.callout.weight(.semibold))
-            Text(draggedCountText)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(String(localized: "Make it dinky", comment: "Floating dropzone: call to action while files are dragged."))
+                    .font(.callout.weight(.semibold))
+                Text(draggedCountText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            // Points the way: "drop here".
+            Image(systemName: "arrow.down.circle.fill")
+                .font(.system(size: 18))
+                .foregroundStyle(.white, LinearGradient(colors: DropZoneStyle.gradientColors,
+                                                         startPoint: .topLeading, endPoint: .bottomTrailing))
+                .symbolEffect(.bounce, options: .repeating.speed(0.55), isActive: !reduceMotion)
+                .accessibilityHidden(true)
         }
         .fixedSize()
         // Room on the outer side for the cards sitting on the pill.
@@ -336,9 +346,12 @@ struct FloatingDropzoneView: View {
 
     // MARK: - Helpers
 
+    /// One card per dragged file (up to three), showing each file's kind. A folder alone shows the
+    /// main window's mix, since what's inside isn't known until the drop.
     private var fanTypes: [FileCardType] {
-        let media = controller.dragged?.mediaTypes ?? []
-        return media.isEmpty ? [.image] : media.map(FileCardType.init)
+        guard let dragged = controller.dragged else { return [.image] }
+        if dragged.cardTypes.isEmpty { return [.image, .video, .pdf] }
+        return dragged.cardTypes.map(FileCardType.init)
     }
 
     private var resultTypes: [FileCardType] {
@@ -629,17 +642,31 @@ private struct ConcentricContainer: ViewModifier {
 private struct MiniCardFan: View {
     let types: [FileCardType]
     var lean: CGFloat = 0
+    /// While waiting for a drop: cards drop in one after another, then bob gently out of step.
+    var lively = false
+
+    @State private var landed = false
 
     var body: some View {
         let shown = Array(types.prefix(3))
-        ZStack {
-            ForEach(Array(shown.enumerated()), id: \.offset) { index, type in
-                let spread = CGFloat(index) - CGFloat(shown.count - 1) / 2
-                FinderStyleFileCard(type: type, width: 26, height: 35, cornerRadius: 5)
-                    .rotationEffect(.degrees(Double(spread * 9 + lean * 8)))
-                    .offset(x: spread * 9 + lean * 3, y: abs(spread) * 2)
+        TimelineView(.animation(paused: !lively)) { context in
+            let t = context.date.timeIntervalSinceReferenceDate
+            ZStack {
+                ForEach(Array(shown.enumerated()), id: \.offset) { index, type in
+                    let spread = CGFloat(index) - CGFloat(shown.count - 1) / 2
+                    let bob = lively ? CGFloat(sin(t * 2.6 + Double(index) * 1.4)) * 1.6 : 0
+                    let tilt = lively ? sin(t * 1.9 + Double(index) * 2.1) * 1.5 : 0
+                    FinderStyleFileCard(type: type, width: 26, height: 35, cornerRadius: 5)
+                        .rotationEffect(.degrees(Double(spread * 9 + lean * 8) + tilt))
+                        .offset(x: spread * 9 + lean * 3, y: abs(spread) * 2 + bob)
+                        // Entrance: each card falls in a beat after the one before.
+                        .offset(y: lively && !landed ? -26 : 0)
+                        .opacity(lively && !landed ? 0 : 1)
+                        .animation(.spring(response: 0.42, dampingFraction: 0.6).delay(Double(index) * 0.09), value: landed)
+                }
             }
         }
+        .onAppear { if lively { landed = true } }
         .accessibilityHidden(true)
     }
 }

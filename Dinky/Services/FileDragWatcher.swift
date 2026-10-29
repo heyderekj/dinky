@@ -16,6 +16,9 @@ final class FileDragWatcher {
         var count: Int
         /// A folder is in the drag; its contents aren't read until the drop.
         var includesFolder: Bool
+        /// Up to three kinds to draw as cards, one per file: every kind present first, then
+        /// repeats in drag order (five photos → three photo cards; a PDF and photos → both).
+        var cardTypes: [MediaType] = []
     }
 
     enum Event {
@@ -139,11 +142,13 @@ final class FileDragWatcher {
         ) as? [URL], !urls.isEmpty else { return nil }
 
         var found = Set<MediaType>()
+        var inOrder: [MediaType] = []
         var count = 0
         var includesFolder = false
         for url in urls {
             if let media = MediaTypeDetector.detect(url) {
                 found.insert(media)
+                if inOrder.count < 3 { inOrder.append(media) }
                 count += 1
             } else if let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .isPackageKey]),
                       values.isDirectory == true, values.isPackage != true {
@@ -152,6 +157,9 @@ final class FileDragWatcher {
         }
         guard count > 0 || includesFolder else { return nil }
         let order: [MediaType] = [.image, .video, .audio, .pdf]
-        return DraggedFiles(mediaTypes: order.filter(found.contains), count: count, includesFolder: includesFolder)
+        let kinds = order.filter(found.contains)
+        var cards = Array(kinds.prefix(3))
+        for media in inOrder where cards.count < min(count, 3) { cards.append(media) }
+        return DraggedFiles(mediaTypes: kinds, count: count, includesFolder: includesFolder, cardTypes: cards)
     }
 }
