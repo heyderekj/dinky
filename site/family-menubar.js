@@ -26,27 +26,55 @@
   ];
   const edit = [['Undo', '⌘Z', null, true], ['Redo', '⇧⌘Z', null, true], '-', ['Cut', '⌘X'], ['Copy', '⌘C'], ['Paste', '⌘V'], ['Select All', '⌘A'], '-', ['Find…', '⌘F', 'spotlight']];
   const windowMenu = [['Minimize', '⌘M', 'minimize'], ['Zoom', '', 'fullscreen'], '-', ['Bring All to Front', '', 'restore']];
+  const slinkyLocked = () => !!$('[data-mb-window].is-locked');
   const MENUS = {
     Slinky: {
       app: [['About Slinky', '', 'about'], ['Check for Updates…', '', 'upToDate'], '-', ['Lock Slinky', '⌃⌘L', 'lock'], '-', ['Settings…', '⌘,'], '-', ['Hide Slinky', '⌘H', 'hide'], ['Quit Slinky', '⌘Q']],
       file: [['Add Item…', '⌘N', 'add-item'], ['New Project…', '⇧⌘N', 'new-project'], ['Import…', '⇧⌘I', 'import'], '-', ['Quick Access', '⌥⌘K', 'quick-access'], '-', ['Close Window', '⌘W', 'minimize']],
-      view: [['All Items', '⌘1'], ['Keys & Tokens', '⌘2'], ['Recovery Codes', '⌘3'], ['Recovery Keys', '⌘4'], ['Health', '⌘5'], ['Recently Deleted', '⌘6'], ['Activity', '⌘7'], '-', ['Show Sidebar', '⌃⌘S', 'toggle-sidebar'], '-', ['Enter Full Screen', '⌃⌘F', 'fullscreen']],
+      view: [['All Items', '⌘1'], ['Keys & Tokens', '⌘2'], ['Recovery Codes', '⌘3'], ['Recovery Keys', '⌘4'], ['Health', '⌘5'], ['Recently Deleted', '⌘6'], ['Activity', '⌘7'], ['People', '⌘8'], '-', ['Show Sidebar', '⌃⌘S', 'toggle-sidebar'], '-', ['Enter Full Screen', '⌃⌘F', 'fullscreen']],
       help: [['Slinky Help', '', 'help']],
-      extra: [['Open Slinky', '', 'restore'], ['Quick Access', '⌥⌘K', 'quick-access'], '-', ['Recently Copied', '', null, true], ['  STRIPE_SECRET_KEY'], ['  GITHUB_TOKEN'], '-', ['Lock Slinky', '⌃⌘L', 'lock']],
+      extra: {
+        status: () => (slinkyLocked() ? ['Locked', false] : ['Unlocked', true]),
+        button: { icon: () => (slinkyLocked() ? 'lock' : 'unlock'), label: () => (slinkyLocked() ? 'Unlock Slinky' : 'Lock Slinky'), action: () => (slinkyLocked() ? 'unlock' : 'lock') },
+        // Locked, the panel keeps only what doesn't need the vault, as in the app.
+        groups: () => [
+          [['Quick Access', '⌥⌘K', 'quick-access', 'search'], ['Add Item…', '⌘N', 'add-item', 'plus', slinkyLocked() ? 'off' : '']],
+          ...(slinkyLocked() ? [] : [
+            [['1 thing to look at in Health', '', null, 'heart']],
+            ['Recently Copied', { key: 'STRIPE_SECRET_KEY', note: 'Copy' }, { key: 'GITHUB_TOKEN', note: 'Copy' }],
+          ]),
+          [['Open Slinky', '', 'restore', 'window'], ['Settings…', '⌘,', null, 'gear'], ['About Slinky', '', 'about', 'info'], ['Quit Slinky', '⌘Q', null, 'power']],
+        ],
+      },
     },
     Dinky: {
       app: [['About Dinky', '', 'about'], ['Check for Updates…', '', 'upToDate'], '-', ['Settings…', '⌘,'], '-', ['Hide Dinky', '⌘H', 'hide'], ['Quit Dinky', '⌘Q']],
-      file: [['Open…', '⌘O'], ['Compress Clipboard', '⇧⌘V'], '-', ['Close Window', '⌘W', 'minimize']],
+      file: [['Open Files…', '⌘O'], ['Clipboard Compress', '⇧⌘V', 'clipboard'], '-', ['Compress Now', '⌘↩'], ['Clear All', '⌥⌘K'], '-', ['Close Window', '⌘W', 'minimize']],
       view: [['Show Sidebar', '⌃⌘S'], '-', ['Enter Full Screen', '⌃⌘F', 'fullscreen']],
-      help: [['Dinky Help', '', 'help']],
-      extra: [['Open Dinky', '', 'restore'], ['Settings…'], '-', ['Quit Dinky', '', 'wave']],
+      help: [['Dinky Help', '⇧⌘?', 'help']],
+      extra: {
+        status: () => ['1.2 GB saved so far', false],
+        groups: [
+          [['Open Files…', '⌘O', null, 'open'], ['Clipboard Compress', '⇧⌘V', 'clipboard', 'clipboard'], ['Floating dropzone', '', 'dropzone', 'tray', 'check']],
+          ['Recently compressed', { file: 'img', name: 'hero-photo.webp', note: '−72%' }, { file: 'doc', name: 'Pitch deck.pdf', note: '−48%' }, { file: 'vid', name: 'demo-reel.mp4', note: '−81%' }],
+          [['Open Dinky', '', 'restore', 'window'], ['Settings…', '⌘,', null, 'gear'], ['About Dinky', '', 'about', 'info'], ['Quit Dinky', '⌘Q', 'wave', 'power']],
+        ],
+      },
     },
     Binky: {
-      app: [['About Binky', '', 'about'], ['Check for Updates…', '', 'upToDate'], '-', ['Settings…', '⌘,'], '-', ['Hide Binky', '⌘H', 'hide'], ['Quit Binky', '⌘Q']],
-      file: [['Sort Now', '⌘R', 'sort'], ['Choose Folder…', '⌘O'], '-', ['Close Window', '⌘W', 'minimize']],
+      app: [['About Binky', '', 'about'], ['Check for Updates…', '', 'upToDate'], ['History…'], ['Last Sort Summary…', '⌥⌘B'], '-', ['Settings…', '⌘,'], '-', ['Hide Binky', '⌘H', 'hide'], ['Quit Binky', '⌘Q']],
+      file: [['Open Files…', '⌘O'], ['Sort All', '⌘↩', 'sort'], '-', ['Close Window', '⌘W', 'minimize']],
       view: [['Quick Sort', '⌘1'], ['Routines', '⌘2'], '-', ['Enter Full Screen', '⌃⌘F', 'fullscreen']],
-      help: [['Binky Help', '', 'help']],
-      extra: [['Sort Now', '', 'sort'], ['Open Binky', '', 'restore'], '-', ['Pause Routines'], '-', ['Quit Binky']],
+      help: [['Binky Help', '⇧⌘?', 'help']],
+      extra: {
+        status: () => (routinesOn ? [binkySorted ? 'Sorted 5 · just now' : 'Sorted 215 · 4 min. ago', true] : ['Watching paused.', false]),
+        button: { icon: () => (routinesOn ? 'pause' : 'play'), label: () => (routinesOn ? 'Pause watching' : 'Resume watching'), action: 'watch' },
+        groups: [
+          [['Sort All Folders', '', 'sort', 'tray'], ['Sort Auto-install DMGs', '', 'sort', 'folder'], ['Sort Sort my Downloads', '', 'sort', 'folder']],
+          [['91 want a second look.', '', 'review', 'review']],
+          [['Show Binky', '', 'restore', 'window'], ['History…', '', null, 'history'], ['Settings…', '⌘,', null, 'gear'], ['About Binky', '', 'about', 'info'], ['Quit Binky', '⌘Q', null, 'power']],
+        ],
+      },
     },
   };
   const menus = MENUS[app] || MENUS.Slinky;
@@ -66,6 +94,7 @@
   const openMenu = (key, anchor) => {
     const items = menuFor[key];
     if (!items) return;
+    if (!Array.isArray(items)) return extraPanel(anchor);
     close();
     const el = document.createElement('div');
     el.className = 'fmb-menu';
@@ -232,7 +261,7 @@
     });
   };
   const isDark = () => (forced === null ? sysDark() : forced);
-  let wifiOn = true; let routinesOn = true; let network = 'Home';
+  let wifiOn = true; let routinesOn = true; let binkySorted = false; let dropzoneOn = true; let network = 'Home';
   const WIFI = (w = 15) => `<svg viewBox="0 0 680 520" width="${w}" height="${Math.round(w * 0.76)}" aria-hidden="true">${bar.querySelector('[data-mb="wifi"] svg')?.innerHTML || ''}</svg>`;
   const LOCK = '<svg viewBox="0 0 20 20" width="11" height="11" aria-hidden="true"><path d="M10 2.5a3.6 3.6 0 0 1 3.6 3.6V8h.4A1.5 1.5 0 0 1 15.5 9.5v6A1.5 1.5 0 0 1 14 17H6a1.5 1.5 0 0 1-1.5-1.5v-6A1.5 1.5 0 0 1 6 8h.4V6.1A3.6 3.6 0 0 1 10 2.5Zm0 1.7a1.9 1.9 0 0 0-1.9 1.9V8h3.8V6.1A1.9 1.9 0 0 0 10 4.2Z" fill="currentColor"/></svg>';
   const setWifi = (on) => { wifiOn = on; bar.querySelector('[data-mb="wifi"]')?.classList.toggle('fmb-dim', !on); };
@@ -279,6 +308,71 @@
       : `<p class="fmb-empty">No Notifications</p>`, 'fmb-nc', anchor);
     p.querySelectorAll('.fmb-note small').forEach((el, i) => { el.textContent = history[i].text; });
     p.style.left = 'auto'; p.style.right = '8px';
+  };
+  // The menu bar icon opens each app's panel (macOS 27 style, the same in all three): a header with what the
+  // app is doing and one round button, then rows in groups, a caption over a list of recent things.
+  const SYM = { // 18px row symbols, drawn after the SF Symbols the apps use
+    open: '<path d="M2.5 5.5A1.5 1.5 0 0 1 4 4h3l1.5 1.5h5.5A1.5 1.5 0 0 1 15.5 7v6a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 13z"/><path d="M9 8v4.5M6.75 10.25h4.5"/>',
+    clipboard: '<rect x="4" y="3.5" width="10" height="12" rx="2"/><path d="M7 2.5h4v2.2H7zM7 9h4M7 12h2.5"/>',
+    tray: '<path d="M2.5 10.5V13A1.5 1.5 0 0 0 4 14.5h10a1.5 1.5 0 0 0 1.5-1.5v-2.5h-3.6a2.9 2.9 0 0 1-5.8 0z"/><path d="M9 2.5v6.5M6.4 6.4 9 9l2.6-2.6"/>',
+    folder: '<path d="M2.5 5.5A1.5 1.5 0 0 1 4 4h3l1.5 1.5h5.5A1.5 1.5 0 0 1 15.5 7v6a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 13z"/>',
+    review: '<path d="M2.5 5.5A1.5 1.5 0 0 1 4 4h3l1.5 1.5h5.5A1.5 1.5 0 0 1 15.5 7v6a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 13z"/><path d="M7.6 8.6a1.5 1.5 0 1 1 2.1 1.4c-.5.2-.7.6-.7 1v.2M9 12.9v.1"/>',
+    window: '<rect x="2.5" y="3.5" width="13" height="11" rx="2"/><path d="M2.5 6.5h13"/>',
+    gear: '<circle cx="9" cy="9" r="2.3"/><path d="M9 2.2v2.1M9 13.7v2.1M2.2 9h2.1M13.7 9h2.1M4.2 4.2l1.5 1.5M12.3 12.3l1.5 1.5M4.2 13.8l1.5-1.5M12.3 5.7l1.5-1.5"/>',
+    info: '<circle cx="9" cy="9" r="6.5"/><path d="M9 8.2v4.3M9 5.7v.1"/>',
+    power: '<path d="M9 2.5v6"/><path d="M5.3 4.9a5.4 5.4 0 1 0 7.4 0"/>',
+    search: '<circle cx="8" cy="8" r="4.6"/><path d="m11.4 11.4 4 4"/>',
+    plus: '<path d="M9 3.5v11M3.5 9h11"/>',
+    heart: '<path d="M9 15s-6-3.5-6-8a3.2 3.2 0 0 1 6-1.6A3.2 3.2 0 0 1 15 7c0 4.5-6 8-6 8z"/>',
+    history: '<circle cx="9.5" cy="9" r="6"/><path d="M9.5 5.8V9l2.3 1.4M2 7.2l1.6 1.9 1.9-1.5"/>',
+    lock: '<rect x="4" y="8" width="10" height="7.5" rx="1.8" fill="currentColor" stroke="none"/><path d="M6.2 8V6a2.8 2.8 0 0 1 5.6 0v2"/>',
+    unlock: '<rect x="4" y="8" width="10" height="7.5" rx="1.8" fill="currentColor" stroke="none"/><path d="M6.2 8V6a2.8 2.8 0 0 1 5.4-1"/>',
+    pause: '<path d="M6.5 4.5v9M11.5 4.5v9" stroke-width="2.6"/>',
+    play: '<path d="M6 4.2v9.6L14 9z" fill="currentColor" stroke="none"/>',
+  };
+  const sym = (n) => `<svg viewBox="0 0 18 18" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${SYM[n] || ''}</svg>`;
+  const CHECK = '<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="m2.2 6.4 2.4 2.4 5.2-5.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const FILE = { img: '#4aa3df', doc: '#e5484d', vid: '#8e5cf0' };
+  const fileGlyph = (k) => `<svg viewBox="0 0 22 26" width="18" height="22" aria-hidden="true"><path d="M2.5 1h11.5l5.5 5.5v17a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 1 23.5v-21A1.5 1.5 0 0 1 2.5 1z" fill="#fff" stroke="#c8c8cc"/><rect x="4" y="13" width="14" height="8" rx="1.5" fill="${FILE[k] || FILE.img}"/></svg>`;
+  const SERVICE = { STRIPE: ['#635bff', 'S'], GITHUB: ['#24292f', 'G'], OPENAI: ['#10a37f', 'O'] };
+  const extraPanel = (anchor) => {
+    const spec = menuFor.extra;
+    const val = (v) => (typeof v === 'function' ? v() : v);
+    const p = showPanel('', 'fmb-menu fmb-xp', anchor);
+    const render = () => {
+      const [status, live] = spec.status();
+      const btn = spec.button ? `<button type="button" class="fmb-xp__btn" aria-label="${val(spec.button.label)}" title="${val(spec.button.label)}">${sym(val(spec.button.icon))}</button>` : '';
+      const row = ([label, keys = '', action = null, ic = '', extra = '']) => {
+        const on = action === 'watch' ? routinesOn : action === 'dropzone' ? dropzoneOn : true;
+        const tail = extra === 'check' ? `<kbd>${on ? CHECK : ''}</kbd>` : `<kbd>${keys}</kbd>`;
+        return `<div class="fmb-item fmb-xp__row${extra === 'off' ? ' is-off' : ''}"${extra === 'off' ? '' : ` data-act="${action || ''}"`}><i>${sym(ic)}</i><span></span>${tail}</div>`;
+      };
+      const recent = (r) => r.key
+        ? `<div class="fmb-item fmb-xp__row fmb-xp__recent" data-copy="${r.key}"><i class="fmb-xp__svc" style="background:${(SERVICE[r.key.split('_')[0]] || ['#8a8a8e'])[0]}">${(SERVICE[r.key.split('_')[0]] || ['', '•'])[1]}</i><code></code><kbd>${r.note}</kbd></div>`
+        : `<div class="fmb-item fmb-xp__row fmb-xp__recent"><i class="fmb-xp__file">${fileGlyph(r.file)}</i><span></span><kbd class="fmb-xp__note">${r.note}</kbd></div>`;
+      const groups = val(spec.groups);
+      p.innerHTML = `
+        <div class="fmb-xp__head"><img src="${icon()}" alt="" width="30" height="30" /><span><b>${app}</b><small><i class="fmb-xp__dot${live ? ' is-live' : ''}"></i>${status}</small></span>${btn}</div>
+        ${groups.map((g) => `<hr class="fmb-sep" /><div class="fmb-xp__group">${typeof g[0] === 'string'
+          ? `<p class="fmb-label">${g[0]}</p>${g.slice(1).map(recent).join('')}`
+          : g.map(row).join('')}</div>`).join('')}`;
+      // Labels go in as text.
+      const rows = groups.flatMap((g) => (typeof g[0] === 'string' ? g.slice(1).map((r) => r.key || r.name) : g.map((r) => r[0])));
+      p.querySelectorAll('.fmb-xp__row').forEach((el, i) => { (el.querySelector('span') || el.querySelector('code')).textContent = rows[i]; });
+      p.querySelector('.fmb-xp__btn')?.addEventListener('click', () => press(val(spec.button.action)));
+      p.querySelectorAll('.fmb-xp__row[data-act]').forEach((el) => el.addEventListener('click', () => press(el.dataset.act)));
+      p.querySelectorAll('[data-copy]').forEach((el) => el.addEventListener('click', () => { closePanel(); toast(`Copied ${el.dataset.copy}. The clipboard clears in 60 seconds.`); }));
+      p.querySelectorAll('.fmb-xp__recent:not([data-copy])').forEach((el) => el.addEventListener('click', closePanel));
+    };
+    const press = (action) => {
+      if (action === 'watch') { routinesOn = !routinesOn; return render(); }
+      if (action === 'dropzone') { dropzoneOn = !dropzoneOn; render(); return toast(dropzoneOn ? 'The floating dropzone pops up in a corner whenever you drag files.' : 'Floating dropzone off.'); }
+      closePanel();
+      if (action === 'unlock') return $('[data-unlock]')?.click();
+      if (action === 'review') return toast('91 files want a second look in Review.');
+      run(action || null);
+    };
+    render();
   };
   // Each app's own Control Center tile: [title, icon, subtitle(), press()].
   const appTile = {
@@ -386,6 +480,7 @@
       case 'hide': return minimize(true);
       case 'restore': return restore();
       case 'fullscreen': return document.fullscreenElement ? document.exitFullscreen() : desk.requestFullscreen?.().catch(() => {});
+      case 'clipboard': return toast('Compressed the clipboard image: 1.4 MB → 212 KB.');
       case 'help': return ($('#faq') || $('footer'))?.scrollIntoView({ behavior: still() ? 'auto' : 'smooth', block: 'start' });
       default: return emit(action);
     }
@@ -461,7 +556,7 @@
     let sorted = false;
     const sort = async () => {
       if (sorted) { toast('Nothing new to sort. The desktop is tidy.'); return; }
-      sorted = true;
+      sorted = true; binkySorted = true;
       layer.classList.add('is-sorting');
       const fileEls = $$('.fmb-file', layer); const folderEls = $$('.fmb-folder', layer);
       for (let i = 0; i < fileEls.length; i++) {

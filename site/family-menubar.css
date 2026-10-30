@@ -231,3 +231,34 @@ html.fmb-sheet-open { overflow: hidden; }
 @media (max-width: 640px) {
   .menubar [data-mb="file"], .menubar [data-mb="edit"], .menubar [data-mb="view"] { display: none; }
 }
+
+/* The menu bar icon's panel, as in the apps (macOS 27 style): a header with status and one round button,
+   then grouped rows with a leading symbol. 300 wide like the real one. */
+.fmb-xp { width: min(300px, calc(100% - 16px)); padding: 0; border-radius: 12px; }
+.fmb-xp .fmb-sep { margin: 0 12px; }
+.fmb-xp__head { display: flex; align-items: center; gap: 10px; padding: 12px 12px 10px; }
+.fmb-xp__head img { flex: none; border-radius: 22.5%; }
+.fmb-xp__head > span { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.fmb-xp__head b { font-size: 13px; font-weight: 700; }
+.fmb-xp__head small { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--fmb-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fmb-xp__dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--fmb-dim); }
+.fmb-xp__dot.is-live { background: #34c759; }
+.fmb-xp__btn { appearance: none; border: 0; flex: none; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; color: var(--fmb-ink); cursor: default;
+  background: rgb(127 127 127 / 0.16); box-shadow: inset 0 0.5px 0 rgb(255 255 255 / 0.5), 0 0 0 0.5px rgb(0 0 0 / 0.08); transition: background 0.15s; }
+.fmb-xp__btn svg { width: 13px; height: 13px; }
+@media (hover: hover) { .fmb-xp__btn:hover { background: rgb(127 127 127 / 0.26); } }
+.fmb-xp__group { display: grid; gap: 2px; padding: 6px; }
+.fmb-xp__group .fmb-label { margin: 4px 10px 2px; }
+.fmb-xp__row { gap: 8px; height: 26px; }
+.fmb-xp__row > i { flex: none; width: 18px; display: grid; place-items: center; }
+.fmb-xp__row > span, .fmb-xp__row > code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.fmb-xp__row kbd { display: flex; align-items: center; }
+.fmb-xp__recent { height: 30px; }
+.fmb-xp__recent > i { width: 22px; }
+.fmb-xp__recent > span { font-size: 12px; }
+.fmb-xp__recent > code { font: 500 12px ui-monospace, 'SF Mono', Menlo, monospace; }
+.fmb-xp__svc { height: 22px; border-radius: 6px; color: #fff; font: 700 11px/1 -apple-system, system-ui, sans-serif; font-style: normal; }
+.fmb-xp__note { font-variant-numeric: tabular-nums; font-size: 12px; }
+/* Slinky shows "Copy" only on hover. */
+.fmb-xp__recent[data-copy] kbd { visibility: hidden; }
+@media (hover: hover) { .fmb-xp__recent[data-copy]:hover kbd { visibility: visible; } }

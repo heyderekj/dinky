@@ -7,20 +7,22 @@ A tiny macOS app that shrinks images, videos, audio, and PDFs. Drag, drop, get s
 - **Download:** [Dinky for macOS (DMG)](https://github.com/heyderekj/dinky/releases/download/v2.16.0/Dinky-2.16.0.dmg) — or install with [Homebrew](https://brew.sh): `brew tap heyderekj/dinky https://github.com/heyderekj/dinky` then `brew install --cask dinky`
 - **Source:** [GitHub — heyderekj/dinky](https://github.com/heyderekj/dinky)
 - **Support:** [derek@testamentmade.com](mailto:derek@testamentmade.com)
-- **Version:** 35 MB · v2.16.0 · Apple Silicon · macOS 15 Sequoia or later
+- **Version:** 15 MB · v2.16.0 · Apple Silicon · macOS 15 Sequoia or later
 - **Note:** 1.x (from 1.0) was images only; **2.0** added videos and PDFs. **2.10** added audio compression and an optional video FPS cap. Older 1.x downloads stay on GitHub for archival use.
 
 ## Highlights
 
 - **Honest compression** — still images **convert** to WebP, AVIF, HEIC, JPEG, or lossless PNG (new files; not same-extension JPEG/PNG squeeze like ImageOptim); PDFs offer flatten vs best-effort preserve with clear tradeoffs ([comparison pages](https://dinkyfiles.com/compare/imageoptim/) cover ImageOptim, TinyPNG, HandBrake, Acrobat, and more)
-- **Drag and drop** — images, videos, audio, or PDFs on the window, Dock, or file picker
+- **Drag and drop** — images, videos, audio, PDFs, or a whole folder on the window, Dock, or file picker
+- **Floating dropzone** — optional: start dragging files anywhere and a small dropzone pops up in a screen corner; drop on it to compress without opening the window, then drag the smaller files back out
+- **Menu bar panel** — Open Files, Clipboard Compress, the floating dropzone switch, and your latest results (drag one out or click to show it in Finder)
 - **Clipboard compress** — paste a copied image with ⌘⇧V; the hotkey works system-wide, even when Dinky isn't focused
 - **Compress from a URL** — drop or paste a direct media link and Dinky downloads it (max 500 MB) before compressing
 - **Images** — WebP, AVIF, lossless PNG, HEIC, or JPEG; Smart Quality (photo vs. graphic); max width, scale by percentage, and target file size
 - **Videos** — MP4 export with codec and quality presets; optional FPS cap
 - **Audio** — AAC (M4A), ALAC, WAV, AIFF, FLAC, MP3; cross-convert via macOS `afconvert`; MP3 encode via bundled LAME
 - **PDFs** — preserve or flatten; optional on-device OCR on scans, then compress
-- **Batch speed** — Fast / Faster / Fastest (parallel job caps)
+- **Batch speed** — Gentle / Balanced / Maximum (one, three, or eight jobs at once)
 - **Watch folder** — auto-compress files dropped into a watched folder
 - **Originals** — keep, move to Trash, or move to a Backup folder (global setting; watch folders can override it)
 - **Custom keyboard shortcuts** — rebind Open Files, Clipboard Compress, Compress Now, Clear, and Delete

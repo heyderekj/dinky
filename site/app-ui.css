@@ -234,14 +234,21 @@
 .dk-scopes span { height: 34px; border-radius: 8px; display: grid; place-items: center; color: var(--dk-2); background: var(--dk-fill); }
 .dk-scopes span .dk-i { width: 17px; height: 17px; stroke-width: 1.6; }
 .dk-scopes span.is-on { color: #fff; background: var(--dk-grad); }
-.dk-chips { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
-.dk-chips > * {
-  all: unset; box-sizing: border-box; padding: 5px 0; border-radius: 6px; text-align: center; font: 11px var(--dk-font);
-  color: var(--dk-2); background: var(--dk-fill); cursor: default;
+.dk-chips { /* SlidingTrack: one track, equal segments, a gradient pill that slides to the pick (--i of --n). */
+  position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); padding: 2px; border-radius: 8px; background: var(--dk-fill);
 }
-.dk-chips > [aria-checked='true'], .dk-chips > .is-on { font-weight: 600; color: #fff; background: var(--dk-grad); }
+.dk-chips::before {
+  content: ''; position: absolute; top: 2px; bottom: 2px; left: 2px; width: calc((100% - 4px) / var(--n, 6)); border-radius: 6px;
+  background: var(--dk-grad); box-shadow: 0 1px 3px rgb(64 90 230 / 0.35); translate: calc(var(--i, 0) * 100%) 0;
+  transition: translate 0.38s cubic-bezier(.34,1.3,.5,1);
+}
+.dk-chips > * {
+  all: unset; position: relative; box-sizing: border-box; padding: 4px 0; border-radius: 6px; text-align: center; font: 11px var(--dk-font);
+  color: var(--dk-2); cursor: default; white-space: nowrap; transition: color 0.2s;
+}
+.dk-chips > [aria-checked='true'], .dk-chips > .is-on { font-weight: 600; color: #fff; }
 .dk-chips > button:focus-visible { outline: 2px solid var(--dk-accent); outline-offset: 1px; }
-.dk-chips--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (prefers-reduced-motion: reduce) { .dk-chips::before { transition: none; } }
 .dk-div { height: 1px; margin: 4px 0; background: var(--dk-sep); }
 .dk-switch { position: relative; flex: none; width: 26px; height: 15px; border-radius: 99px; background: var(--dk-fill); box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.06); }
 .dk-switch::after { content: ''; position: absolute; top: 1.5px; left: 1.5px; width: 19px; height: 12px; border-radius: 99px; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / 0.25); }
@@ -271,7 +278,7 @@
 /* ---------- Preferences window (PreferencesView › Watch) ---------- */
 .dk-prefs { flex-direction: row; padding: 8px; gap: 0; }
 .dk-prefs__side {
-  position: relative; flex: none; width: 196px; display: flex; flex-direction: column; gap: 1px; padding: 0 8px 10px; border-radius: 16px;
+  position: relative; flex: none; width: 196px; display: flex; flex-direction: column; gap: 1px; padding: 0 8px 10px; border-radius: 16px; overflow: hidden;
   background: var(--dk-panel); box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.08), 0 8px 24px -14px rgb(20 10 70 / 0.35);
 }
 /* As tall as the toolbar beside it (48px), so the lights and the title share a middle. */
@@ -452,3 +459,126 @@
 /* Controls read a touch heavier (macOS draws 13px controls bolder than the web does) and never wrap. */
 .dk-btn, .dk-seg button, .dk-chips > button { font-weight: 500; white-space: nowrap; }
 .dk-chips > [aria-checked='true'], .dk-chips > .is-on { font-weight: 600; }
+
+/* ---------- Floating dropzone (FloatingDropzoneView): files dragged from another app ----------
+   No Dinky window: another app's window, the drag, and the dropzone in the screen's bottom-right corner.
+   app-ui.js steps data-state: idle → pill → near → over → working → done. */
+.dk-fz {
+  position: relative; flex: none; width: var(--w); height: var(--h); text-align: left;
+  font-family: var(--dk-font); font-size: 13px; line-height: 1.3; letter-spacing: -0.003em; color: var(--dk-text);
+  -webkit-font-smoothing: antialiased; -webkit-user-select: none; user-select: none; cursor: default;
+}
+.dk-fz__app, .dk-fz__pill, .dk-fz__track, .dk-fz__target, .dk-fz__work, .dk-fz__done {
+  background: var(--dk-panel); -webkit-backdrop-filter: blur(30px) saturate(1.8); backdrop-filter: blur(30px) saturate(1.8); box-shadow: var(--dk-shadow);
+}
+.dk-fz__app { position: absolute; left: 6px; top: 10px; width: 340px; height: 150px; border-radius: 18px; overflow: hidden; }
+.dk-fz__tb { display: flex; align-items: center; gap: 12px; height: 38px; padding: 0 12px; }
+.dk-fz__tb b { font-size: 13px; font-weight: 700; }
+.dk-fz__files { display: flex; gap: 14px; padding: 12px 18px; }
+/* Finder icons in the other app's window: the document icon and its name. */
+.dk-fz__file { width: 88px; display: grid; justify-items: center; gap: 4px; font-size: 10px; text-align: center; }
+.dk-fz__file .dk-fz__doc { width: 42px; height: 50px; filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.18)); }
+.dk-fz__file > span { max-width: 88px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* FinderStyleFileCard: a plain card, a 1pt separator stroke and a soft shadow, the system document icon inside. */
+.dk-fz__card {
+  position: relative; flex: none; width: 46px; height: 62px; border-radius: 7px; display: grid; place-items: center;
+  background: #fff; box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.1), 0 3px 6px rgb(0 0 0 / 0.12);
+}
+.dk-fz__card .dk-fz__doc { width: 76%; height: 76%; }
+@media (prefers-color-scheme: dark) { .dk-fz__card { background: #1e1e1e; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12), 0 5px 10px rgb(0 0 0 / 0.38); } }
+.dk-fz__res .dk-fz__doc { flex: none; width: 19px; height: 22px; }
+/* The files in the other app go faint while they're dragged. */
+:is(.dk-fz[data-state='pill'], .dk-fz[data-state='near'], .dk-fz[data-state='over']) .dk-fz__file { opacity: 0.45; }
+
+/* The drag image: the three files, stacked, with a count badge. */
+.dk-fz__drag { position: absolute; z-index: 5; left: 40px; top: 66px; width: 70px; height: 76px; pointer-events: none;
+  transition: translate 0.9s cubic-bezier(.45,.05,.3,1), opacity 0.3s ease, scale 0.3s ease; }
+.dk-fz__drag .dk-fz__card { position: absolute; left: 10px; top: 4px; }
+.dk-fz__drag .dk-fz__card:nth-child(1) { rotate: -8deg; translate: -8px 2px; }
+.dk-fz__drag .dk-fz__card:nth-child(3) { rotate: 7deg; translate: 8px 0; }
+.dk-fz__count { position: absolute; right: -2px; top: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 99px; display: grid; place-items: center;
+  font: 700 11px var(--dk-font); font-style: normal; color: #fff; background: #ff3b30; box-shadow: 0 1px 3px rgb(0 0 0 / 0.3); }
+.dk-fz[data-state='idle'] .dk-fz__drag { opacity: 0; }
+.dk-fz[data-state='pill'] .dk-fz__drag { translate: 120px 150px; }
+.dk-fz[data-state='near'] .dk-fz__drag { translate: 230px 250px; }
+.dk-fz[data-state='over'] .dk-fz__drag { translate: 250px 300px; }
+.dk-fz[data-state='working'] .dk-fz__drag, .dk-fz[data-state='done'] .dk-fz__drag { translate: 250px 300px; opacity: 0; scale: 0.4; }
+
+/* Everything in the corner, 14pt in from the screen's edges. */
+.dk-fz__zone { position: absolute; right: 14px; bottom: 14px; width: 260px; height: 320px; }
+.dk-fz__zone > * { position: absolute; right: 0; bottom: 0; opacity: 0; scale: 0.85; transform-origin: bottom right; pointer-events: none;
+  transition: opacity 0.3s ease, scale 0.45s cubic-bezier(.34,1.4,.5,1); }
+
+/* Far away: the pill, with a card per dragged kind. */
+.dk-fz__pill { display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 22px 0 76px; border-radius: 99px; white-space: nowrap; }
+.dk-fz__pill::before { content: ''; position: absolute; inset: -1.5px; z-index: -1; border-radius: inherit; padding: 1.5px;
+  background: conic-gradient(from var(--fz-a, 0deg), rgb(71 143 255), rgb(133 71 245), rgb(237 97 199), rgb(71 143 255));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+  filter: drop-shadow(0 0 6px rgb(133 71 245 / 0.55)); animation: dk-fz-ring 3.2s linear infinite; }
+@property --fz-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@keyframes dk-fz-ring { to { --fz-a: 360deg; } }
+.dk-fz__fan { position: absolute; left: 12px; top: 10px; width: 58px; height: 36px; }
+.dk-fz__fan .dk-fz__card { position: absolute; top: 0; width: 26px; height: 35px; border-radius: 4px; animation: dk-fz-bob 1.6s ease-in-out infinite alternate; }
+.dk-fz__fan .dk-fz__card:nth-child(1) { left: 0; rotate: -8deg; }
+.dk-fz__fan .dk-fz__card:nth-child(2) { left: 16px; animation-delay: -0.5s; }
+.dk-fz__fan .dk-fz__card:nth-child(3) { left: 32px; rotate: 8deg; animation-delay: -1s; }
+@keyframes dk-fz-bob { to { translate: 0 -3px; } }
+.dk-fz__words { display: grid; gap: 1px; }
+.dk-fz__words b { font-size: 13px; font-weight: 600; }
+.dk-fz__words small { font-size: 11px; color: var(--dk-2); }
+.dk-fz__go { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--dk-drop); }
+.dk-fz__go .dk-i { width: 11px; height: 11px; stroke-width: 3.2; animation: dk-bounce 1.55s ease-in-out infinite; }
+.dk-fz[data-state='pill'] .dk-fz__pill { opacity: 1; scale: 1; }
+
+/* Near: the big target, and the preset track above it (the current preset nearest the target). */
+.dk-fz__target { width: 260px; padding: 18px 12px 16px; border-radius: 26px; display: grid; justify-items: center; gap: 6px; text-align: center; }
+.dk-fz__target .dk-target { width: 100px; height: 82px; }
+.dk-fz__target .dk-target i { width: 100px; height: 100px; top: -9px; left: 0; }
+.dk-fz__target .dk-target i + i { width: 78px; height: 78px; top: 2px; left: 11px; }
+.dk-fz__target .dk-disc { width: 52px; height: 52px; }
+.dk-fz__target .dk-disc .dk-i { width: 21px; height: 21px; stroke-width: 3; }
+.dk-fz__target b { display: grid; font-size: 17px; font-weight: 600; }
+.dk-fz__target b > * { grid-area: 1 / 1; transition: opacity 0.2s; }
+.dk-fz__lg { opacity: 0; }
+.dk-fz[data-state='over'] .dk-fz__mk { opacity: 0; }
+.dk-fz[data-state='over'] .dk-fz__lg { opacity: 1; }
+.dk-fz[data-state='over'] .dk-fz__target .dk-disc { scale: 1.12; transition: scale 0.25s; }
+.dk-fz__target small { font-size: 11px; color: var(--dk-2); }
+.dk-fz__track { bottom: 186px; width: 260px; padding: 4px; border-radius: 20px; display: grid; gap: 2px; }
+.dk-fz__track span { height: 38px; padding: 0 14px; border-radius: 16px; display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 500; }
+.dk-fz__track .is-on { color: #fff; font-weight: 600; background: var(--dk-grad); box-shadow: 0 1px 4px rgb(115 77 242 / 0.35); }
+.dk-fz__track small { font-size: 11px; font-weight: 400; opacity: 0.75; }
+.dk-fz[data-state='near'] .dk-fz__target, .dk-fz[data-state='over'] .dk-fz__target,
+.dk-fz[data-state='near'] .dk-fz__track, .dk-fz[data-state='over'] .dk-fz__track { opacity: 1; scale: 1; }
+
+/* Working: the size counting down. */
+.dk-fz__work { width: 260px; padding: 16px; border-radius: 26px; display: grid; gap: 4px; }
+.dk-fz__work b { font-size: 13px; font-weight: 600; }
+.dk-fz__work small { font-size: 11px; color: var(--dk-2); font-variant-numeric: tabular-nums; }
+.dk-fz__bar { height: 4px; margin-top: 6px; border-radius: 99px; background: var(--dk-fill); overflow: hidden; }
+.dk-fz__bar i { display: block; height: 100%; width: calc(var(--p, 0) * 100%); border-radius: inherit; background: var(--dk-progress); }
+.dk-fz[data-state='working'] .dk-fz__work { opacity: 1; scale: 1; }
+
+/* Done: what was saved, and the results to drag out. */
+.dk-fz__done { width: 260px; padding: 14px; border-radius: 26px; display: grid; gap: 4px; }
+.dk-fz__head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.dk-fz__ok { width: 30px; height: 30px; display: grid; place-items: center; color: rgb(110 90 245); }
+.dk-fz__ok .dk-i { width: 28px; height: 28px; }
+.dk-fz__head > span:nth-child(2) { flex: 1; display: grid; gap: 1px; }
+.dk-fz__head b { font-size: 13px; font-weight: 600; }
+.dk-fz__head small { font-size: 11px; color: var(--dk-2); }
+.dk-fz__x { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 9px; font-weight: 700; color: var(--dk-2); background: var(--dk-fill); }
+.dk-fz__res { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 6px; border-radius: 9px; font-size: 12px; background: var(--dk-fill-2); }
+.dk-fz__res > span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dk-fz__res b { padding: 2px 6px; border-radius: 99px; font-size: 10.5px; font-weight: 600; color: rgb(30 140 70); background: rgb(52 199 89 / 0.16); font-variant-numeric: tabular-nums; }
+@media (prefers-color-scheme: dark) { .dk-fz__res b { color: rgb(80 215 120); } }
+.dk-fz__open { justify-self: center; margin-top: 6px; font-size: 11px; font-weight: 500; color: var(--dk-accent); }
+.dk-fz[data-state='done'] .dk-fz__done { opacity: 1; scale: 1; }
+/* The first result lifts and tilts once: it can be dragged out. */
+.dk-fz[data-state='done'] .dk-fz__res:first-of-type { animation: dk-fz-nudge 0.9s 0.6s ease-in-out; }
+@keyframes dk-fz-nudge { 40% { translate: -6px -4px; rotate: -2deg; box-shadow: 0 6px 14px rgb(0 0 0 / 0.18); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .dk-fz__drag, .dk-fz__zone > * { transition: none !important; }
+  .dk-fz__pill::before, .dk-fz__fan .dk-fz__card, .dk-fz__go .dk-i, .dk-fz__res { animation: none !important; }
+}

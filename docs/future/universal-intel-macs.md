@@ -18,7 +18,7 @@ Binky went universal in the same pass, because it ships no helper binaries and o
 ## Effort / risk (when you pick this up)
 
 - **Feasibility:** High for someone comfortable vendoring signed binaries; mostly repetitive `lipo` + qpdf/dylib hygiene, not a rewrite.
-- **Ongoing tax:** Every release refreshes **two** arch slices (or scripted universal refresh); installed size likely **~1.5–2×** native-heavy portions (ballpark **~50–70 MB** vs ~35 MB until measured).
+- **Ongoing tax:** Every release refreshes **two** arch slices (or scripted universal refresh); installed size likely **~1.5–2×** native-heavy portions (ballpark **~50–70 MB** vs ~15 MB until measured).
 - **Testing:** Rosetta (`arch -x86_64`) on Apple Silicon catches some x86_64 regressions; **a real Intel Mac pass** before calling Intel “supported” is still the gold standard.
 
 ## References in-repo
