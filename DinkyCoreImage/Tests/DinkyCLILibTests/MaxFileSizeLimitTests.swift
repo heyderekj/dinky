@@ -52,9 +52,18 @@ final class MaxFileSizeLimitTests: XCTestCase {
         XCTAssertLessThanOrEqual(impossible, unlimited)
     }
 
+    /// An impossible cap stops at the quality floor (40 for photos) instead of grinding a photo
+    /// down to blocky quality 10.
+    func testUnreachableLimitStopsAtPhotoQualityFloor() async throws {
+        let photo = try writePhotoLikePNG(named: "photo")
+        let atFloor = try await compressedSize(photo, content: .photo, limitKB: nil, qualityOverride: 40)
+        let impossible = try await compressedSize(photo, content: .photo, limitKB: 1)
+        XCTAssertEqual(impossible, atFloor)
+    }
+
     // MARK: - Helpers
 
-    private func compressedSize(_ source: URL, content: ContentType, limitKB: Int?) async throws -> Int64 {
+    private func compressedSize(_ source: URL, content: ContentType, limitKB: Int?, qualityOverride: Int? = nil) async throws -> Int64 {
         let out = workDir.appendingPathComponent("\(source.deletingPathExtension().lastPathComponent)-\(UUID().uuidString).webp")
         let r = try await DinkyImageCompression(binDirectory: bin).compress(
             source: source,
@@ -68,7 +77,7 @@ final class MaxFileSizeLimitTests: XCTestCase {
             parallelCompressionLimit: 1,
             collisionNamingStyle: .finderDuplicate,
             collisionCustomPattern: "",
-            qualityOverride: nil,
+            qualityOverride: qualityOverride,
             chromaSubsampling: .auto,
             webpLossless: false,
             pngOutputMode: .lossless,

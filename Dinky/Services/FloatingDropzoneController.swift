@@ -22,7 +22,7 @@ final class FloatingDropzoneController: ObservableObject {
 
     @Published private(set) var stage: Stage = .hidden
     @Published private(set) var dragged: FileDragWatcher.DraggedFiles?
-    /// 0 when the pointer is far away, 1 when it's on the dropzone. Drives the swell.
+    /// 0 when the pointer is far away, 1 when it's on the dropzone. Brightens the ring and lifts the cards.
     @Published private(set) var proximity: CGFloat = 0
     /// Near enough to show the full target and the preset tiles.
     @Published private(set) var isExpanded = false
@@ -49,7 +49,7 @@ final class FloatingDropzoneController: ObservableObject {
     private var hideTask: Task<Void, Never>?
     private var resizeTask: Task<Void, Never>?
 
-    /// Room for the collapsed pill plus the swell and shadow around it.
+    /// Room for the collapsed pill plus its ring glow, ripple and shadow.
     static let collapsedSize = CGSize(width: 280, height: 150)
     /// Room for the full target with preset tiles, progress or results.
     static let expandedSize = CGSize(width: 320, height: 430)
@@ -124,7 +124,7 @@ final class FloatingDropzoneController: ObservableObject {
         guard let frame = panel?.frame else { return }
         let target = pillCenter(in: frame)
         let distance = hypot(point.x - target.x, point.y - target.y)
-        // Starts swelling ~420pt out, full size within ~90pt.
+        // Starts brightening ~420pt out, full strength within ~90pt.
         let p = min(1, max(0, 1 - (distance - 90) / 330))
         proximity = p
         // Hysteresis so the panel doesn't flicker open and shut at the boundary.

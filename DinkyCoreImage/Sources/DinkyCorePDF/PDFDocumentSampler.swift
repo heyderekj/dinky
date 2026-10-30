@@ -62,32 +62,16 @@ public enum PDFDocumentSampler: Sendable {
     }
 
     static func thumbnailStats(for page: PDFPage) -> ThumbStats? {
-        let bounds = page.bounds(for: .mediaBox)
-        guard bounds.width > 1, bounds.height > 1 else { return nil }
+        let size = PDFPageRaster.displaySize(of: page)
+        guard size.width > 1, size.height > 1 else { return nil }
 
         let maxEdge: CGFloat = 256
-        let scale = min(maxEdge / bounds.width, maxEdge / bounds.height, 4)
-        let pixelWidth = max(1, Int(bounds.width * scale))
-        let pixelHeight = max(1, Int(bounds.height * scale))
+        let scale = min(maxEdge / size.width, maxEdge / size.height, 4)
+        let pixelWidth = max(1, Int(size.width * scale))
+        let pixelHeight = max(1, Int(size.height * scale))
 
-        guard let ctx = CGContext(
-            data: nil,
-            width: pixelWidth,
-            height: pixelHeight,
-            bitsPerComponent: 8,
-            bytesPerRow: 0,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return nil }
-
-        ctx.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
-        ctx.fill(CGRect(x: 0, y: 0, width: pixelWidth, height: pixelHeight))
-        ctx.scaleBy(x: scale, y: scale)
-
-        let nsCtx = NSGraphicsContext(cgContext: ctx, flipped: false)
-        NSGraphicsContext.current = nsCtx
-        page.draw(with: .mediaBox, to: ctx)
-        NSGraphicsContext.current = nil
+        guard let ctx = PDFPageRaster.render(page, pixelWidth: pixelWidth, pixelHeight: pixelHeight,
+                                             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
 
         guard let data = ctx.data else { return nil }
         let count = pixelWidth * pixelHeight

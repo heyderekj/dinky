@@ -35,13 +35,15 @@ private let qualityByContent: [ContentType: [CompressionFormat: Int]] = [
     .mixed:   [.webp: 87, .avif: 82, .heic: 83, .jpeg: 85],
 ]
 
-// Floor for the binary-search target-size mode. Graphics shouldn't
-// ever drop below this quality floor even when chasing a file size target.
+// Floor for the binary-search target-size mode: no size limit drops below this quality.
+// When even the floor doesn't fit, the smallest attempt is kept over the limit — a few KB
+// over beats a blocky photo (quality 10 used to be allowed).
 private let targetSizeFloor: [ContentType: Int] = [
-    .photo:   10,
+    .photo:   40,
     .graphic: 50,
-    .mixed:   25,
+    .mixed:   45,
 ]
+private let targetSizeFloorUnclassified = 40
 
 // MARK: - ImageIO decode
 
@@ -541,7 +543,7 @@ public final class DinkyImageCompression: Sendable {
             )
             report(1)
         } else if let targetKB = goals.maxFileSizeKB {
-            let floor = detected.flatMap { targetSizeFloor[$0] } ?? 10
+            let floor = detected.flatMap { targetSizeFloor[$0] } ?? targetSizeFloorUnclassified
             report(0.34)
             try await compressToTargetSize(
                 source: workURL, targetBytes: Int64(targetKB) * 1024,
@@ -638,7 +640,7 @@ public final class DinkyImageCompression: Sendable {
         source: URL, targetBytes: Int64,
         format: CompressionFormat, strip: Bool, output: inout URL,
         unlimitedQuality: Int, unlimitedNearLossless: Int?,
-        qualityFloor: Int = 10,
+        qualityFloor: Int = targetSizeFloorUnclassified,
         content: ContentType?,
         avifJobs: Int,
         chromaSubsampling: ChromaSubsampling,

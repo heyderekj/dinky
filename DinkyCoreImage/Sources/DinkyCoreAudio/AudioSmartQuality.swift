@@ -48,6 +48,36 @@ public enum AudioSmartQuality: Sendable {
         }
     }
 
+    /// What the source track is, for ``isLossyReencodeWithoutRealSavings(_:format:tier:)``.
+    public struct SourceInfo: Sendable {
+        public let bitsPerSecond: Double
+        /// nil when the codec couldn't be read.
+        public let isLossless: Bool?
+
+        public init(bitsPerSecond: Double, isLossless: Bool?) {
+            self.bitsPerSecond = bitsPerSecond
+            self.isLossless = isLossless
+        }
+    }
+
+    public static func sourceInfo(asset: AVURLAsset) async -> SourceInfo? {
+        guard let track = try? await asset.loadTracks(withMediaType: .audio).first,
+              let rate = try? await track.load(.estimatedDataRate), rate > 0 else { return nil }
+        let formatID = await sourceFormatID(track)
+        return SourceInfo(bitsPerSecond: Double(rate), isLossless: formatID.map(losslessFormatIDs.contains))
+    }
+
+    /// A lossy source re-encoded to a lossy target at more than 80% of its bitrate only adds a
+    /// second generation of artifacts — the "savings" were mostly dropped cover art and tags.
+    public static func isLossyReencodeWithoutRealSavings(
+        _ source: SourceInfo,
+        format: AudioConversionFormat,
+        tier: AudioConversionQualityTier
+    ) -> Bool {
+        guard source.isLossless == false, !format.isLossless else { return false }
+        return Double(targetBitrate(format: format, tier: tier)) > source.bitsPerSecond * 0.8
+    }
+
     /// Codecs that store audio without loss; anything else (AAC, MP3, Opus…) is already lossy.
     static let losslessFormatIDs: Set<AudioFormatID> = [
         kAudioFormatLinearPCM, kAudioFormatAppleLossless, kAudioFormatFLAC,
@@ -69,7 +99,7 @@ public enum AudioSmartQuality: Sendable {
             let format: AudioConversionFormat = userFormat.isLossless ? .aacM4A : userFormat
             let fits = [AudioConversionQualityTier.archival, .balanced, .smallest].first {
                 Double(targetBitrate(format: format, tier: $0)) <= bps * 0.8
-            } ?? .smallest
+            } ?? .smallest // too lean for any tier: the caller skips it (isLossyReencodeWithoutRealSavings)
             // Never above what the user asked for.
             return Decision(format: format, tier: rank(fits) < rank(userTier) ? fits : userTier)
         }

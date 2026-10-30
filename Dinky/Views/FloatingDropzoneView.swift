@@ -4,8 +4,8 @@ import DinkyCoreShared
 import UniformTypeIdentifiers
 
 /// The floating dropzone's content: a dinky copy of the main drop zone that lives in a screen
-/// corner. A pill while files are dragged far away, swelling as they get closer; the full target
-/// with preset tiles when they're near; squished cards and a shrinking byte count while working;
+/// corner. A pill while files are dragged far away, its ring brightening as they get closer; the
+/// full target with preset tiles when they're near; squished cards and a shrinking byte count while working;
 /// sparkles and draggable results when done.
 struct FloatingDropzoneView: View {
     @ObservedObject var controller: FloatingDropzoneController
@@ -20,6 +20,8 @@ struct FloatingDropzoneView: View {
     @State private var chosenPreset: UUID?
     /// Files are over the preset track itself.
     @State private var trackTargeted = false
+    /// Bumped to send one scale-out ripple off the ring: on expanding, and on files arriving.
+    @State private var ripple = 0
 
     private var corner: ScreenCorner { controller.corner }
 
@@ -72,7 +74,10 @@ struct FloatingDropzoneView: View {
         .animation(spring, value: controller.isExpanded)
         .onHover { controller.isHovering = $0 }
         .onChange(of: mainTargeted) { _, targeted in
-            if targeted { controller.dragEnteredTarget() }
+            if targeted { controller.dragEnteredTarget(); ripple += 1 }
+        }
+        .onChange(of: controller.isExpanded) { _, expanded in
+            if expanded { ripple += 1 }
         }
         // Each new drag starts back on the active preset.
         .onChange(of: controller.stage) { _, stage in
@@ -127,9 +132,13 @@ struct FloatingDropzoneView: View {
             BrandRing(isCapsule: isPill, cornerRadius: DropzoneLayout.cardCorner,
                       intensity: ringIntensity, speed: mainTargeted ? 2.2 : 1,
                       // The blurred glow redraws every frame; skip it while compression wants the CPU.
-                      glows: controller.stage != .working, reduceMotion: reduceMotion)
+                      glows: controller.stage != .working, ripple: ripple, rippleAnchor: anchor,
+                      reduceMotion: reduceMotion)
                 .frame(width: rect.width, height: rect.height)
                 .offset(x: rect.minX, y: rect.minY)
+                // Moves with the glass morph instead of jumping to the new shape's bounds.
+                .animation(spring, value: controller.isExpanded)
+                .animation(spring, value: controller.stage)
 
             breakoutCards
                 .frame(width: 48, height: 40)
@@ -211,11 +220,8 @@ struct FloatingDropzoneView: View {
         .frame(height: 56)
         .contentShape(Capsule())
         .dropzoneGlass(Capsule(), id: "main", in: glass)
-        // The cards lift further out of the pill the closer the pointer gets.
-        // Swells toward the pointer, like the Dock magnifying under it.
-        .scaleEffect(reduceMotion ? 1 : 1 + 0.12 * controller.proximity, anchor: anchor)
+        // The pill holds still as the pointer nears; the ring brightens and the cards lift instead.
         .anchorPreference(key: MainShapeBounds.self, value: .bounds) { $0 }
-        .animation(reduceMotion ? nil : .interactiveSpring(response: 0.3, dampingFraction: 0.7), value: controller.proximity)
         .onDrop(of: [.fileURL, .url], isTargeted: $mainTargeted) { controller.accept($0, presetID: nil) }
         .accessibilityElement(children: .combine)
     }
@@ -818,7 +824,8 @@ private struct MainShapeBounds: PreferenceKey {
 }
 
 /// A thin ring in the Dinky gradient that slowly circles the dropzone, with a soft glow that
-/// brightens as files get close and peaks when they're over it.
+/// brightens as files get close and peaks when they're over it. One shape whose corners round
+/// out to a capsule for the pill, so it morphs along with the glass.
 private struct BrandRing: View {
     let isCapsule: Bool
     let cornerRadius: CGFloat
@@ -827,7 +834,15 @@ private struct BrandRing: View {
     /// Turns per 4 seconds.
     let speed: Double
     var glows = true
+    /// Each change sends a copy of the ring scaling out and fading from `rippleAnchor`.
+    var ripple = 0
+    var rippleAnchor: UnitPoint = .center
     let reduceMotion: Bool
+
+    private struct Ripple {
+        var scale: CGFloat = 1
+        var opacity: Double = 0
+    }
 
     private static let colors: [Color] = [
         DropZoneStyle.gradientColors[0],
@@ -842,27 +857,43 @@ private struct BrandRing: View {
             let turns = reduceMotion ? 0 : context.date.timeIntervalSinceReferenceDate / 4 * speed
             let gradient = AngularGradient(colors: Self.colors, center: .center,
                                            angle: .degrees(turns.truncatingRemainder(dividingBy: 1) * 360))
-            ZStack {
-                if glows {
-                    ring(lineWidth: 7, style: gradient)
-                        .blur(radius: 9)
-                        .opacity(0.6 * intensity)
+            GeometryReader { proxy in
+                let radius = isCapsule ? proxy.size.height / 2 : cornerRadius
+                ZStack {
+                    if glows {
+                        ring(radius: radius, lineWidth: 7, style: gradient)
+                            .blur(radius: 9)
+                            .opacity(0.6 * intensity)
+                    }
+                    ring(radius: radius, lineWidth: 1.5, style: gradient)
+                        .opacity(0.25 + 0.75 * intensity)
+                    if !reduceMotion {
+                        ring(radius: radius, lineWidth: 1.5, style: gradient)
+                            .keyframeAnimator(initialValue: Ripple(), trigger: ripple) { wave, v in
+                                wave
+                                    .scaleEffect(v.scale, anchor: rippleAnchor)
+                                    .opacity(v.opacity)
+                            } keyframes: { _ in
+                                KeyframeTrack(\.scale) {
+                                    MoveKeyframe(1)
+                                    CubicKeyframe(1.18, duration: 0.5)
+                                    MoveKeyframe(1)
+                                }
+                                KeyframeTrack(\.opacity) {
+                                    MoveKeyframe(0.9)
+                                    CubicKeyframe(0, duration: 0.5)
+                                }
+                            }
+                    }
                 }
-                ring(lineWidth: 1.5, style: gradient)
-                    .opacity(0.25 + 0.75 * intensity)
             }
         }
         .animation(.easeInOut(duration: 0.3), value: intensity)
         .accessibilityHidden(true)
     }
 
-    @ViewBuilder
-    private func ring(lineWidth: CGFloat, style: AngularGradient) -> some View {
-        if isCapsule {
-            Capsule().strokeBorder(style, lineWidth: lineWidth)
-        } else {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous).strokeBorder(style, lineWidth: lineWidth)
-        }
+    private func ring(radius: CGFloat, lineWidth: CGFloat, style: AngularGradient) -> some View {
+        RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(style, lineWidth: lineWidth)
     }
 }
 

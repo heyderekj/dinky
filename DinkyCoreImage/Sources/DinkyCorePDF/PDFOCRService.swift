@@ -81,38 +81,19 @@ public enum PDFOCRService: Sendable {
             throw PDFOCRError.renderFailed
         }
         let observations = try recognizeText(cgImage: cgImage, languages: languages)
-        let mediaBox = page.bounds(for: .mediaBox)
+        let mediaBox = CGRect(origin: .zero, size: PDFPageRaster.displaySize(of: page))
         return try buildSinglePagePDF(mediaBox: mediaBox, cgImage: cgImage, observations: observations)
     }
 
     private static func renderPageImage(page: PDFPage) -> CGImage? {
-        let bounds = page.bounds(for: .mediaBox)
-        guard bounds.width > 1, bounds.height > 1 else { return nil }
+        let size = PDFPageRaster.displaySize(of: page)
+        guard size.width > 1, size.height > 1 else { return nil }
         let scale = renderDPI / 72.0
-        let pixelWidth = max(1, Int(bounds.width * scale))
-        let pixelHeight = max(1, Int(bounds.height * scale))
+        let pixelWidth = max(1, Int(size.width * scale))
+        let pixelHeight = max(1, Int(size.height * scale))
 
-        guard let ctx = CGContext(
-            data: nil,
-            width: pixelWidth,
-            height: pixelHeight,
-            bitsPerComponent: 8,
-            bytesPerRow: 0,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return nil }
-
-        ctx.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
-        ctx.fill(CGRect(x: 0, y: 0, width: pixelWidth, height: pixelHeight))
-
-        NSGraphicsContext.saveGraphicsState()
-        NSGraphicsContext.current = NSGraphicsContext(cgContext: ctx, flipped: false)
-        ctx.scaleBy(x: scale, y: scale)
-        page.draw(with: .mediaBox, to: ctx)
-        NSGraphicsContext.current = nil
-        NSGraphicsContext.restoreGraphicsState()
-
-        return ctx.makeImage()
+        return PDFPageRaster.render(page, pixelWidth: pixelWidth, pixelHeight: pixelHeight,
+                                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)?.makeImage()
     }
 
     private static func recognizeText(cgImage: CGImage, languages: [String]) throws -> [VNRecognizedTextObservation] {

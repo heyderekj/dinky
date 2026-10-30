@@ -1737,23 +1737,15 @@ private struct PresetsTab: View {
 
                 settingsSubHeader(icon: "doc.richtext", String(localized: "Quality", comment: "Settings UI: Media PDF subsection."))
                 QualityChipPicker(
-                    options: pdfFlattenChipOptionsForPreset(snapshot),
+                    options: PDFQuality.allCases.map { ($0.displayName, $0.rawValue, $0.description) },
                     selected: binding(\.pdfQualityRaw, snapshot: snapshot)
                 )
                 if livePDF.smartQuality {
                     settingsHelperText(String(localized: "Manual tier is the fallback when smart analysis can’t run.", comment: "Settings UI: PDF smart flatten helper."))
                 }
-                if livePDF.pdfMaxFileSizeEnabled,
-                   PDFQuality.flattenUIShowableTiers(maxFileSizeEnabled: true, pdfMaxFileSizeKB: livePDF.pdfMaxFileSizeKB).count < PDFQuality.allCases.count {
-                    settingsHelperText(String(localized: "Tighter max-size targets only list lower starting tiers; Dinky still steps down through the chain if needed.", comment: "Settings UI: PDF max size limits tier chips helper."))
-                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .onAppear { snapPresetPdfFlattenQuality(snapshot) }
-        .onChange(of: livePDF.pdfOutputModeRaw) { _, _ in snapPresetPdfFlattenQuality(snapshot) }
-        .onChange(of: livePDF.pdfMaxFileSizeEnabled) { _, _ in snapPresetPdfFlattenQuality(snapshot) }
-        .onChange(of: livePDF.pdfMaxFileSizeKB) { _, _ in snapPresetPdfFlattenQuality(snapshot) }
     }
 
     @ViewBuilder
@@ -1921,27 +1913,6 @@ private struct PresetsTab: View {
         var presets = prefs.savedPresets
         presets[idx][keyPath: keyPath] = value
         prefs.savedPresets = presets
-    }
-
-    private func pdfFlattenChipOptionsForPreset(_ snapshot: CompressionPreset) -> [(String, String, String)] {
-        let live = prefs.savedPresets.first(where: { $0.id == snapshot.id }) ?? snapshot
-        let tiers = PDFQuality.flattenUIShowableTiers(
-            maxFileSizeEnabled: live.pdfMaxFileSizeEnabled,
-            pdfMaxFileSizeKB: live.pdfMaxFileSizeKB
-        )
-        return tiers.map { ($0.displayName, $0.rawValue, $0.description) }
-    }
-
-    private func snapPresetPdfFlattenQuality(_ snapshot: CompressionPreset) {
-        let live = prefs.savedPresets.first(where: { $0.id == snapshot.id }) ?? snapshot
-        guard PDFOutputMode(rawValue: live.pdfOutputModeRaw) == .flattenPages else { return }
-        let allowed = PDFQuality.flattenUIShowableTiers(
-            maxFileSizeEnabled: live.pdfMaxFileSizeEnabled,
-            pdfMaxFileSizeKB: live.pdfMaxFileSizeKB
-        )
-        let current = PDFQuality(rawValue: live.pdfQualityRaw) ?? .medium
-        let snapped = PDFQuality.snapFlattenStartTier(current, allowed: allowed)
-        if snapped != current { set(\.pdfQualityRaw, to: snapped.rawValue, for: snapshot) }
     }
 
     private func mbBinding(for snapshot: CompressionPreset) -> Binding<Double> {
