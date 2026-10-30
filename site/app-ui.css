@@ -471,14 +471,14 @@
 .dk-fz__app, .dk-fz__pill, .dk-fz__track, .dk-fz__target, .dk-fz__work, .dk-fz__done {
   background: var(--dk-panel); -webkit-backdrop-filter: blur(30px) saturate(1.8); backdrop-filter: blur(30px) saturate(1.8); box-shadow: var(--dk-shadow);
 }
-.dk-fz__app { position: absolute; left: 6px; top: 10px; width: 250px; height: 176px; border-radius: 18px; overflow: hidden; }
+.dk-fz__app { position: absolute; left: 6px; top: 10px; width: 340px; height: 150px; border-radius: 18px; overflow: hidden; }
 .dk-fz__tb { display: flex; align-items: center; gap: 12px; height: 38px; padding: 0 12px; }
 .dk-fz__tb b { font-size: 13px; font-weight: 700; }
-.dk-fz__files { display: flex; gap: 6px; padding: 14px 10px; }
+.dk-fz__files { display: flex; gap: 14px; padding: 12px 18px; }
 /* Finder icons in the other app's window: the document icon and its name. */
-.dk-fz__file { width: 70px; display: grid; justify-items: center; gap: 4px; font-size: 10px; text-align: center; }
+.dk-fz__file { width: 88px; display: grid; justify-items: center; gap: 4px; font-size: 10px; text-align: center; }
 .dk-fz__file .dk-fz__doc { width: 42px; height: 50px; filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.18)); }
-.dk-fz__file > span { max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dk-fz__file > span { max-width: 88px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* FinderStyleFileCard: a plain card, a 1pt separator stroke and a soft shadow, the system document icon inside. */
 .dk-fz__card {
   position: relative; flex: none; width: 46px; height: 62px; border-radius: 7px; display: grid; place-items: center;
