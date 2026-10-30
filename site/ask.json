@@ -100,7 +100,7 @@
   {
    "name": "Dinky vs Clop",
    "url": "/compare/clop/",
-   "text": "— macOS compression & clipboard workflows Dinky Clop Price Free (MIT) Freemium (Pro for some features) Source Open source on GitHub Proprietary Installed size (approx.) ~15 MB ~90 MB class (verify current release) Primary UI Window drop zone + sidebar, menu bar panel, floating dropzone Menu bar + clipboard-first flows Watch folder Included Pro tier (verify vendor) Still images WebP, AVIF, HEIC, JPEG, lossless PNG Resize, convert, compress (see Clop) Video MP4 export with presets; optional FPS cap Yes (see Clop) Audio Yes — AAC, ALAC, WAV, AIFF, FLAC, MP3 Evaluate on vendor site PDF Flatten, preserve, optional OCR Yes (see Clop) Processing Local on your Mac Local on your Mac"
+   "text": "— macOS compression & clipboard workflows Dinky Clop Price Free (MIT) Freemium (Pro for some features) Source Open source on GitHub Proprietary Installed size (approx.) ~15 MB ~90 MB class (verify current release) Primary UI Window drop zone + sidebar, menu bar panel, floating dropzone Menu bar + clipboard-first flows Floating dropzone Free; pops up in a corner of your choice while you drag, with a preset on each row Yes (see Clop) Watch folder Included Pro tier (verify vendor) Still images WebP, AVIF, HEIC, JPEG, lossless PNG Resize, convert, compress (see Clop) Video MP4 export with presets; optional FPS cap Yes (see Clop) Audio Yes — AAC, ALAC, WAV, AIFF, FLAC, MP3 Evaluate on vendor site"
   },
   {
    "name": "Dinky vs CloudConvert",
