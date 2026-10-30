@@ -36,7 +36,9 @@ Hey! I'm [Derek Castelli](https://www.heyderekj.com), a full-time freelance web 
 
 ## Features
 
-- **Drag and drop** — drop images, videos, or PDFs onto the window, the Dock icon, or the file picker
+- **Drag and drop** — drop images, videos, audio, PDFs, or a whole folder onto the window, the Dock icon, or the file picker
+- **Floating dropzone** — optional: start dragging files anywhere and a small dropzone pops up in a screen corner; drop on it to compress without opening the window, then drag the smaller files back out
+- **Menu bar panel** — Open Files, Clipboard Compress, the floating dropzone switch, and your latest results (drag one out or click to show it in Finder)
 - **Clipboard compress** — paste a copied image straight into Dinky with ⌘⇧V; the hotkey works system-wide, even when Dinky isn't focused
 - **Compress from a URL** — drop or paste a direct `http(s)` link to an image, video, or PDF; Dinky downloads it (max 500 MB) into a temp folder, compresses, and cleans up after itself
 - **Format conversion (images)** — Auto, WebP, AVIF, lossless PNG, HEIC, or JPEG; Auto picks WebP or AVIF per image, and JPEG is there for apps that can't open WebP
@@ -45,12 +47,12 @@ Hey! I'm [Derek Castelli](https://www.heyderekj.com), a full-time freelance web 
 - **Compression presets** — save named presets with format, quality, limits, destination, watch folder, and filename settings; apply in one click
 - **Before & after preview** — side-by-side or slider view to compare original and compressed (images)
 - **Watch folder** — point Dinky at a folder and new supported files are compressed automatically; global or per-preset with its own folder
-- **Batch speed** — cap parallel jobs: one at a time (Fast), up to three (Faster), or up to eight (Fastest)
+- **Batch speed** — cap parallel jobs: one at a time (Gentle), up to three (Balanced), or up to eight (Maximum)
 - **Batch order** (optional) — start with the largest files first to finish the full batch sooner; default is smallest first for quicker early feedback
 - **Max width or scale** — resize on the way out to a max width (web presets or a custom value), a percentage of the original, or both (images)
 - **Max file size** — binary-searches the quality level to hit an exact MB target (images)
 - **Batch compression** — multiple files compress concurrently, live results as they finish
-- **Manual mode** — drop files first, then right-click each one to choose format individually
+- **Wait for Compress Now** — drop files first, then right-click each one to choose format individually
 - **Show in Finder** — jump straight to any compressed file from the results list
 - **PNG lossless** — run oxipng on PNGs when you need to keep transparency or format fidelity
 - **Destination** — save next to the original, to Downloads, or pick a custom folder; presets can have their own unique output folder
@@ -64,9 +66,9 @@ Hey! I'm [Derek Castelli](https://www.heyderekj.com), a full-time freelance web 
 - **Launch at login** — opt in once and Dinky's ready the moment you log in (handy alongside Watch Folders for set-and-forget compression)
 - **Easy updating** — one click checks for a new release, installs, and relaunches; no browser, no re-drag
 - **Skip threshold** — skip files below a minimum savings target: Off, 2%, 5%, or 10%
-- **Advanced** — strip metadata, sanitize filenames for web, open output folder automatically
+- **Advanced** — strip metadata, sanitize filenames for web, show results in Finder when done
 - **Quirky idle animation** — three choreographed card-drop variants that loop then hold until you come back
-- 35 MB installed. Dinky style.
+- 15 MB installed. Dinky style.
 
 ### What others don't do
 
@@ -77,7 +79,7 @@ Hey! I'm [Derek Castelli](https://www.heyderekj.com), a full-time freelance web 
 - **Presets for everything, not just quality** — save format, quality, max width, scale, max file size, destination, watch folder, and filename rules together, then apply in one click. Different presets for blog images, social video, and CMS PDFs without touching settings each time.
 - **Notifications with a personality** — other apps either don't notify at all or send a generic "Done." Dinky's notification (and chime) changes based on how many files you compressed and how much you saved. Small things, but they add up.
 - **Built into macOS** — Finder Quick Action, "Open with" handler, clipboard paste with ⌘⇧V, Dock-icon drops, and a native Apple Shortcuts action for automations. No browser tab, no upload, nothing leaves your Mac.
-- **Free, open source, and tiny** — Optimage is $15 and image-only. ImageOptim is free but lossless and image-only. Dinky is free, open source, handles images + video + PDFs, converts formats, and at 35 MB fits in a fraction of the space Optimage takes up.
+- **Free, open source, and tiny** — Optimage is $15 and image-only. ImageOptim is free but lossless and image-only. Dinky is free, open source, handles images + video + PDFs, converts formats, and at 15 MB fits in a fraction of the space Optimage takes up.
 
 ## Why it exists
 
@@ -87,9 +89,9 @@ I liked [Squoosh](https://github.com/GoogleChromeLabs/squoosh) but didn't want t
 
 ## How it works
 
-Built entirely in Swift and SwiftUI, targeting macOS 15 Sequoia and later. On macOS 26 Tahoe you get the full liquid glass UI; on Sequoia it uses the frosted material fallback. No Electron, no web views, no third-party UI frameworks. Image compression logic is shared with an in-tree Swift package (`DinkyCoreImage`) and optional `dinky` CLI — no network-downloaded dependencies. The whole app is 35 MB, still appropriately dinky.
+Built entirely in Swift and SwiftUI, targeting macOS 15 Sequoia and later. On macOS 26 Tahoe you get the full liquid glass UI; on Sequoia it uses the frosted material fallback. No Electron, no web views, no third-party UI frameworks. Image compression logic is shared with an in-tree Swift package (`DinkyCoreImage`) and optional `dinky` CLI — no network-downloaded dependencies. The whole app is 15 MB, still appropriately dinky.
 
-Compression runs through a native `actor`-based service. **Images** use bundled CLI encoders (cwebp, avifenc, oxipng) plus **ImageIO** for HEIC and JPEG output. **Video** uses AVFoundation export. **PDFs** use **PDFKit** plus **ImageIO** for flattening, and bundled **qpdf** (then PDFKit) on the preserve-text path; **Vision** can add an invisible text layer on scan-like inputs before those steps when OCR is enabled. See `docs/PDF_COMPRESSION.md` for modes, metrics logging (`pdf_metrics` in Console), and manual fixture checks. Multiple files can run concurrently according to your batch speed setting; heavy PDF flattening and HEIC transcoding run off the actor so parallel slots stay useful, and AVIF encoder threads scale with batch width so many concurrent jobs don’t each claim all cores.
+Compression runs through native Swift concurrency, with jobs in parallel off the main thread. **Images** use bundled CLI encoders (cwebp, avifenc, oxipng) plus **ImageIO** for HEIC and JPEG output. **Video** uses AVFoundation export. **PDFs** use **PDFKit** plus **ImageIO** for flattening, and bundled **qpdf** (then PDFKit) on the preserve-text path; **Vision** can add an invisible text layer on scan-like inputs before those steps when OCR is enabled. See `docs/PDF_COMPRESSION.md` for modes, metrics logging (`pdf_metrics` in Console), and manual fixture checks. Multiple files can run concurrently according to your batch speed setting; heavy PDF flattening and HEIC transcoding run off the actor so parallel slots stay useful, and AVIF encoder threads scale with batch width so many concurrent jobs don’t each claim all cores.
 
 The sidebar stores preferences via `@AppStorage`. The results list updates live as each file finishes. Error details are tappable. The idle animation on the drop zone runs through three choreographed variants then holds — portrait, landscape, and wide cards dragged in by a pinch cursor from whatever corner the window is closest to.
 
@@ -99,7 +101,7 @@ The app registers as an "Open with" handler and exposes a Finder Quick Action so
 
 - SwiftUI (macOS 15+, liquid glass on macOS 26)
 - AppKit for window and event integration
-- `actor` concurrency model for compression
+- Swift concurrency for compression, with jobs in parallel off the main thread
 - `@AppStorage` / `UserDefaults` for preferences
 - `NSServices` for Finder integration
 - Claude Sonnet 4.6, Opus 4.7, and Cursor
