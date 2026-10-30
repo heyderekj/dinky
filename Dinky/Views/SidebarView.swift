@@ -169,30 +169,10 @@ struct SidebarView: View {
         .onChange(of: prefs.showPDFsSection) { _, _ in syncScopeIfNeeded() }
         .onChange(of: prefs.showVideosSection) { _, _ in syncScopeIfNeeded() }
         .onChange(of: prefs.showAudioSection) { _, _ in syncScopeIfNeeded() }
-        .onAppear { snapPdfFlattenQualityIfNeeded() }
-        .onChange(of: prefs.pdfMaxFileSizeEnabled) { _, _ in snapPdfFlattenQualityIfNeeded() }
-        .onChange(of: prefs.pdfMaxFileSizeKB) { _, _ in snapPdfFlattenQualityIfNeeded() }
-        .onChange(of: prefs.pdfOutputModeRaw) { _, _ in snapPdfFlattenQualityIfNeeded() }
-    }
-
-    /// Keeps manual flatten tier in sync with max-size UI (higher tiers hidden for tight caps).
-    private func snapPdfFlattenQualityIfNeeded() {
-        guard prefs.pdfOutputMode == .flattenPages else { return }
-        let allowed = PDFQuality.flattenUIShowableTiers(
-            maxFileSizeEnabled: prefs.pdfMaxFileSizeEnabled,
-            pdfMaxFileSizeKB: prefs.pdfMaxFileSizeKB
-        )
-        let current = PDFQuality(rawValue: prefs.pdfQualityRaw) ?? .medium
-        let snapped = PDFQuality.snapFlattenStartTier(current, allowed: allowed)
-        if snapped != current { prefs.pdfQualityRaw = snapped.rawValue }
     }
 
     private var pdfFlattenQualityChipOptions: [(String, String, String)] {
-        let tiers = PDFQuality.flattenUIShowableTiers(
-            maxFileSizeEnabled: prefs.pdfMaxFileSizeEnabled,
-            pdfMaxFileSizeKB: prefs.pdfMaxFileSizeKB
-        )
-        return tiers.map { ($0.displayName, $0.rawValue, $0.description) }
+        PDFQuality.allCases.map { ($0.displayName, $0.rawValue, $0.description) }
     }
 
     // MARK: - Presets (shared)
@@ -1026,14 +1006,6 @@ struct SidebarView: View {
                 )
                 if prefs.smartQuality {
                     settingsHelperText(String(localized: "Dinky picks a tier from each document. The choice below is the manual fallback if analysis fails.", comment: "Sidebar PDF: smart flatten helper."))
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .top).combined(with: .opacity.animation(.easeInOut(duration: 0.15).delay(0.1))),
-                            removal:   .move(edge: .top).combined(with: .opacity.animation(.easeIn(duration: 0.08)))
-                        ))
-                }
-                if prefs.pdfMaxFileSizeEnabled,
-                   PDFQuality.flattenUIShowableTiers(maxFileSizeEnabled: true, pdfMaxFileSizeKB: prefs.pdfMaxFileSizeKB).count < PDFQuality.allCases.count {
-                    settingsHelperText(String(localized: "Tighter max-size targets only list lower starting tiers; Dinky still steps down through the chain if needed.", comment: "Sidebar PDF: max size limits tier chips helper."))
                         .transition(.asymmetric(
                             insertion: .move(edge: .top).combined(with: .opacity.animation(.easeInOut(duration: 0.15).delay(0.1))),
                             removal:   .move(edge: .top).combined(with: .opacity.animation(.easeIn(duration: 0.08)))

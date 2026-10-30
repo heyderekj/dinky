@@ -422,11 +422,7 @@ struct CompressionConfirmationSheet: View {
     // MARK: - Controls
 
     private var pdfFlattenChipOptions: [(String, String, String)] {
-        let tiers = PDFQuality.flattenUIShowableTiers(
-            maxFileSizeEnabled: prefs.pdfMaxFileSizeEnabled,
-            pdfMaxFileSizeKB: prefs.pdfMaxFileSizeKB
-        )
-        return tiers.map { ($0.displayName, $0.rawValue, $0.description) }
+        PDFQuality.allCases.map { ($0.displayName, $0.rawValue, $0.description) }
     }
 
     private func clearActivePresetForManualEdit() {
@@ -520,7 +516,6 @@ struct CompressionConfirmationSheet: View {
             set: { new in
                 clearActivePresetForManualEdit()
                 prefs.pdfOutputModeRaw = new.rawValue
-                snapPdfFlattenQualityIfNeeded()
             }
         )
     }
@@ -757,10 +752,6 @@ struct CompressionConfirmationSheet: View {
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .adaptiveGlass(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .onAppear { snapPdfFlattenQualityIfNeeded() }
-        .onChange(of: prefs.pdfOutputModeRaw) { _, _ in snapPdfFlattenQualityIfNeeded() }
-        .onChange(of: prefs.pdfMaxFileSizeEnabled) { _, _ in snapPdfFlattenQualityIfNeeded() }
-        .onChange(of: prefs.pdfMaxFileSizeKB) { _, _ in snapPdfFlattenQualityIfNeeded() }
     }
 
     private func confirmMediaSectionHeader(systemImage: String, title: String) -> some View {
@@ -773,18 +764,6 @@ struct CompressionConfirmationSheet: View {
                 .foregroundStyle(.secondary)
         }
         .padding(.top, 2)
-    }
-
-    /// Keeps flatten tier in sync with max-size UI (matches ``SidebarView``).
-    private func snapPdfFlattenQualityIfNeeded() {
-        guard prefs.pdfOutputMode == .flattenPages else { return }
-        let allowed = PDFQuality.flattenUIShowableTiers(
-            maxFileSizeEnabled: prefs.pdfMaxFileSizeEnabled,
-            pdfMaxFileSizeKB: prefs.pdfMaxFileSizeKB
-        )
-        let current = PDFQuality(rawValue: prefs.pdfQualityRaw) ?? .medium
-        let snapped = PDFQuality.snapFlattenStartTier(current, allowed: allowed)
-        if snapped != current { prefs.pdfQualityRaw = snapped.rawValue }
     }
 
     private func pickCustomFolder() {

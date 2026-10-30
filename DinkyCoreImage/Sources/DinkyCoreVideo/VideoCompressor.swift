@@ -51,7 +51,8 @@ public enum VideoQuality: String, CaseIterable, Identifiable, Sendable, Codable 
         switch codec {
         case .h264:
             switch self {
-            case .medium: return AVAssetExportPreset1280x720
+            // Same 1080p as HEVC Balanced: the 720p preset quietly shrank every 1080p video.
+            case .medium: return AVAssetExportPreset1920x1080
             case .high: return AVAssetExportPresetHighestQuality
             }
         case .hevc:
@@ -69,8 +70,9 @@ public enum VideoQuality: String, CaseIterable, Identifiable, Sendable, Codable 
         switch codec {
         case .h264:
             switch lines {
-            case ...480: return AVAssetExportPreset640x480
-            case 481...720: return AVAssetExportPreset1280x720
+            // 640×480 fits 16:9 video to 640×360; 960×540 is the nearest preset that gives ~480 lines.
+            case ...540: return AVAssetExportPreset960x540
+            case 541...720: return AVAssetExportPreset1280x720
             case 721...1080: return AVAssetExportPreset1920x1080
             default: return AVAssetExportPreset3840x2160
             }
@@ -87,15 +89,20 @@ public enum VideoQuality: String, CaseIterable, Identifiable, Sendable, Codable 
     /// pick a bitrate that actually shrinks the file rather than leaning on
     /// a preset's fixed bitrate (which can produce a *larger* file when the
     /// source is already efficiently encoded).
-    public func targetSizeFactor(for codec: VideoCodecFamily) -> Double {
+    public func targetSizeFactor(for codec: VideoCodecFamily, sourceIsHEVC: Bool = false) -> Double {
         let base: Double
         switch self {
         case .medium: base = 0.55
         case .high: base = 0.75
         }
         // HEVC is ~40% more efficient than H.264, so we can squeeze a bit more.
-        return codec == .hevc ? base * 0.85 : base
+        if codec == .hevc { return base * 0.85 }
+        // HEVC → H.264 needs ~1.6× the bits for the same picture; 55% of an HEVC file's bytes
+        // starved the less efficient codec.
+        return sourceIsHEVC ? base * Self.hevcToH264BitrateRatio : base
     }
+
+    static let hevcToH264BitrateRatio = 1.6
 
     /// Bitrate (bits/sec) below which we treat the source as already lean for this tier.
     var skipIfEstimatedBitrateBelow: Double {
@@ -290,7 +297,7 @@ public enum VideoCompressor: Sendable {
         }
 
         if !usePassthrough, originalBytes > 0 {
-            let factor = quality.targetSizeFactor(for: effectiveCodec)
+            let factor = quality.targetSizeFactor(for: effectiveCodec, sourceIsHEVC: primarySub == kCMVideoCodecType_HEVC)
             let target = Int64(Double(originalBytes) * factor)
             var bounded = max(Int64(512 * 1024), min(originalBytes - 1024, target))
             bounded = min(bounded, originalBytes - 1024)
@@ -402,7 +409,11 @@ public enum VideoCompressor: Sendable {
             return true
         }
 
-        if !sourceMatchesTarget { return false }
+        if !sourceMatchesTarget {
+            // HEVC → H.264: judge the source as the H.264 bitrate it would take to match it.
+            guard isHEVC, codec == .h264, estimatedRate > 0 else { return false }
+            return Double(estimatedRate) * VideoQuality.hevcToH264BitrateRatio < quality.skipIfEstimatedBitrateBelow
+        }
 
         if originalBytes > 0, originalBytes < 1_048_576 {
             return true

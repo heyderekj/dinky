@@ -54,4 +54,32 @@ final class AudioSmartQualityTests: XCTestCase {
         XCTAssertEqual(d.format, .mp3)
         XCTAssertEqual(d.tier, .smallest)
     }
+
+    // MARK: - Lossy → lossy re-encodes with no real saving
+
+    private func pointless(_ kbps: Double, lossless: Bool?, _ format: AudioConversionFormat,
+                           _ tier: AudioConversionQualityTier) -> Bool {
+        AudioSmartQuality.isLossyReencodeWithoutRealSavings(
+            .init(bitsPerSecond: kbps * 1000, isLossless: lossless), format: format, tier: tier)
+    }
+
+    /// A 128 kbps MP3 re-encoded to 128 kbps MP3 only looked smaller because cover art was dropped.
+    func testSameBitrateMP3ReencodeIsSkipped() {
+        let d = decide(128, lossless: false, .mp3, .balanced)
+        XCTAssertTrue(pointless(128, lossless: false, d.format, d.tier))
+    }
+
+    func testDefaultAACBalancedOn128kMP3IsSkipped() {
+        XCTAssertTrue(pointless(128, lossless: false, .aacM4A, .balanced))
+    }
+
+    func testRealStepDownIsAllowed() {
+        XCTAssertFalse(pointless(320, lossless: false, .aacM4A, .balanced))   // 128 ≤ 256
+        XCTAssertFalse(pointless(128, lossless: false, .aacM4A, .smallest))   // 96 ≤ 102
+    }
+
+    func testLosslessOrUnknownSourcesAreNeverSkipped() {
+        XCTAssertFalse(pointless(1411, lossless: true, .aacM4A, .archival))
+        XCTAssertFalse(pointless(128, lossless: nil, .aacM4A, .balanced))
+    }
 }

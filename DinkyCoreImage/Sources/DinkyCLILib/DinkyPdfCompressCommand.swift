@@ -178,8 +178,9 @@ public enum DinkyPdfCompressCommand: Sendable {
 
             let targetBytes: Int64? = opts.targetKB.map { Int64($0) * 1024 }
 
+            // Only a size target steps flatten below the chosen quality.
             let qualities: [PDFQuality] =
-                opts.outputMode == .flattenPages
+                opts.outputMode == .flattenPages && targetBytes != nil
                 ? PDFQuality.flattenQualityFallbackChain(startingAt: pdfQuality)
                 : [pdfQuality]
 

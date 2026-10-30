@@ -81,27 +81,6 @@ public enum PDFQuality: String, CaseIterable, Identifiable, Sendable, Codable {
         guard let i = flattenTierDescending.firstIndex(of: first) else { return [first] }
         return Array(flattenTierDescending[i...])
     }
-
-    public static func flattenUIShowableTiers(maxFileSizeEnabled: Bool, pdfMaxFileSizeKB: Int) -> [PDFQuality] {
-        guard maxFileSizeEnabled else { return PDFQuality.allCases }
-        let mb = Double(pdfMaxFileSizeKB) / 1024.0
-        if mb <= 6 {
-            return [.smallest, .low]
-        }
-        if mb <= 12 {
-            return [.smallest, .low, .medium]
-        }
-        return [.smallest, .low, .medium, .high]
-    }
-
-    public static func snapFlattenStartTier(_ current: PDFQuality, allowed: [PDFQuality]) -> PDFQuality {
-        guard !allowed.isEmpty else { return current }
-        if allowed.contains(current) { return current }
-        for q in flattenQualityFallbackChain(startingAt: current) {
-            if allowed.contains(q) { return q }
-        }
-        return allowed[0]
-    }
 }
 
 public enum PDFCompressor: Sendable {
@@ -202,11 +181,12 @@ public enum PDFCompressor: Sendable {
 
         for i in 0..<pageCount {
             guard let page = document.page(at: i) else { continue }
-            let bounds = page.bounds(for: .mediaBox)
+            let size = PDFPageRaster.displaySize(of: page)
+            guard size.width > 0, size.height > 0 else { continue }
 
             let baseScale = flattenDpi / 72.0
-            var rasterW = bounds.width * baseScale
-            var rasterH = bounds.height * baseScale
+            var rasterW = size.width * baseScale
+            var rasterH = size.height * baseScale
             let longEdge = max(rasterW, rasterH)
             if longEdge > maxEdgePx {
                 let factor = maxEdgePx / longEdge
@@ -215,48 +195,13 @@ public enum PDFCompressor: Sendable {
             }
             let pixelWidth = max(1, Int(rasterW.rounded(.down)))
             let pixelHeight = max(1, Int(rasterH.rounded(.down)))
-            let renderScale = min(CGFloat(pixelWidth) / bounds.width, CGFloat(pixelHeight) / bounds.height)
 
-            let colorSpace = grayscale ? CGColorSpaceCreateDeviceGray() : CGColorSpaceCreateDeviceRGB()
-            let bitmapInfo = grayscale
-                ? CGImageAlphaInfo.none.rawValue
-                : CGImageAlphaInfo.noneSkipLast.rawValue
-            guard let ctx = CGContext(
-                data: nil,
-                width: pixelWidth,
-                height: pixelHeight,
-                bitsPerComponent: 8,
-                bytesPerRow: 0,
-                space: colorSpace,
-                bitmapInfo: bitmapInfo
-            ) else { throw PDFCompressionError.renderFailed(i) }
-
-            ctx.setFillColor(grayscale ? CGColor(gray: 1, alpha: 1) : CGColor(red: 1, green: 1, blue: 1, alpha: 1))
-            ctx.fill(CGRect(x: 0, y: 0, width: pixelWidth, height: pixelHeight))
-            ctx.scaleBy(x: renderScale, y: renderScale)
-
-            let nsCtx = NSGraphicsContext(cgContext: ctx, flipped: false)
-            NSGraphicsContext.current = nsCtx
-            page.draw(with: .mediaBox, to: ctx)
-            NSGraphicsContext.current = nil
-
-            guard let cgImage = ctx.makeImage() else { continue }
-
-            let jpegData = NSMutableData()
-            guard let dest = CGImageDestinationCreateWithData(jpegData, "public.jpeg" as CFString, 1, nil) else {
-                continue
+            guard let ctx = PDFPageRaster.render(page, pixelWidth: pixelWidth, pixelHeight: pixelHeight, grayscale: grayscale) else {
+                throw PDFCompressionError.renderFailed(i)
             }
-            let opts: [CFString: Any] = [
-                kCGImageDestinationLossyCompressionQuality: flattenJpegQ,
-                kCGImageDestinationOptimizeColorForSharing: true,
-                kCGImagePropertyJFIFIsProgressive: true,
-            ]
-            CGImageDestinationAddImage(dest, cgImage, opts as CFDictionary)
-            guard CGImageDestinationFinalize(dest) else { continue }
-
-            guard let nsImage = NSImage(data: jpegData as Data),
-                  let renderedPage = PDFPage(image: nsImage) else { continue }
-            renderedPage.setBounds(bounds, for: .mediaBox)
+            guard let cgImage = ctx.makeImage(),
+                  let jpeg = PDFPageRaster.jpegData(cgImage, quality: flattenJpegQ),
+                  let renderedPage = PDFPageRaster.imagePage(jpeg: jpeg, size: size) else { continue }
             output.insert(renderedPage, at: output.pageCount)
             progress?(0.1 + 0.78 * Float(i + 1) / Float(pageCount))
         }

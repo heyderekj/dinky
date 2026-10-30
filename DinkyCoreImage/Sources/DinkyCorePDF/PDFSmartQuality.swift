@@ -8,7 +8,7 @@ import PDFKit
 public enum PDFSmartQuality: Sendable {
     public static func inferQuality(url: URL, fallback: PDFQuality) -> PDFQuality {
         guard let s = PDFDocumentSampler.sample(url: url) else { return fallback }
-        return inferQualityFromSignals(s, fallback: fallback)
+        return textFloor(inferQualityFromSignals(s, fallback: fallback), s)
     }
 
     public static func inferFlattenQualityAndMono(
@@ -24,7 +24,13 @@ public enum PDFSmartQuality: Sendable {
         if autoGrayscaleMonoScans && mono >= 0.5 {
             q = stepOneTierSmaller(q)
         }
-        return (q, mono)
+        return (textFloor(q, s), mono)
+    }
+
+    /// Real text turns to mush below ~120 DPI, so born-digital text pages never go under Medium.
+    private static func textFloor(_ q: PDFQuality, _ s: PDFDocumentSignals) -> PDFQuality {
+        guard s.scanLikelihood == 0 else { return q }
+        return q == .smallest || q == .low ? .medium : q
     }
 
     private static func stepOneTierSmaller(_ q: PDFQuality) -> PDFQuality {

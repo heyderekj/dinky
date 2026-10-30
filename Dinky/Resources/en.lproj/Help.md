@@ -69,7 +69,7 @@ Toggle **Settings → General → Use simple sidebar** off (or flip individual s
 
 - **Images** — format (Auto, WebP, AVIF, lossless PNG, HEIC, or JPEG), content hint (photo / illustration / screenshot), max width, scale by percentage, max file size. With **Smart quality** off and a fixed format, you also get AVIF chroma, lossless WebP, or optimized PNG options in the sidebar.
 - **Videos** — codec family (H.264 / HEVC / AV1), quality tier, strip audio.
-- **PDFs** — preserve text & links, or flatten to images for the smallest possible file.
+- **PDFs** — preserve text & links, or flatten to images for the smallest possible file. Flatten never goes below the quality you pick to chase a smaller file: when a PDF is already smaller than its flattened pages would be (most text documents), Dinky keeps its text instead.
 
 ---
 

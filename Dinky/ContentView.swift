@@ -1475,7 +1475,9 @@ final class ContentViewModel: ObservableObject {
                 item.compressionProgress = ocrPhaseFraction + Double(p) * (1.0 - ocrPhaseFraction)
             }
         }
-        let qualityAttempts: [PDFQuality] = outputMode == .flattenPages
+        // Only a size target steps flatten below the chosen quality, and never past Smallest (72 DPI):
+        // chasing "any smaller file" turned text PDFs into unreadable blur.
+        let qualityAttempts: [PDFQuality] = outputMode == .flattenPages && pdfTargetBytes != nil
             ? PDFQuality.flattenQualityFallbackChain(startingAt: pdfQuality)
             : [pdfQuality]
 
@@ -1518,41 +1520,30 @@ final class ContentViewModel: ObservableObject {
             }
 
             if chosenResult == nil, outputMode == .flattenPages {
-                // Never force grayscale for bailouts — only the user’s “Grayscale PDFs” setting applies.
-                let bailouts: [(lastResort: Bool, ultra: Bool)] = [
-                    (true, false),
-                    (false, true),
-                ]
-                for pass in bailouts {
-                    // With a size target: continue even after a successful result if not under target yet.
-                    let bailoutTargetMet = pdfTargetBytes.map { (chosenOutSize) <= $0 } ?? false
-                    guard chosenResult == nil || (!bailoutTargetMet && pdfTargetBytes != nil) else { break }
-                    do {
-                        let attemptURL = nextAttemptURL()
-                        let lr = try await CompressionService.shared.compressPDF(
-                            source: sourceForCompression,
-                            outputMode: outputMode,
-                            quality: pdfQuality,
-                            grayscale: effectiveGrayscale,
-                            stripMetadata: strip,
-                            outputURL: attemptURL,
-                            flattenLastResort: pass.lastResort,
-                            flattenUltra: pass.ultra,
-                            preserveQpdfSteps: preserveQpdfSteps,
-                            collisionNamingStyle: collisionStyle,
-                            collisionCustomPattern: collisionCustomPattern(for: item),
-                            progressHandler: pdfProgress
-                        )
-                        if lr.outputURL != attemptURL { attemptURLs.append(lr.outputURL) }
-                        let outSize = sizeOf(lr.outputURL) ?? lr.outputSize
-                        lastAttemptedOutSize = outSize
-                        if outSize < lr.originalSize, chosenResult == nil || outSize < chosenOutSize {
-                            chosenResult = lr
-                            chosenOutSize = outSize
-                        }
-                    } catch {
-                        // Bailout flatten failed — try next pass or fall through to zero-gain.
+                // Rasterizing can't beat this file at a readable quality (text and vector PDFs are
+                // already small), so keep its text and just tidy the structure instead.
+                do {
+                    let attemptURL = nextAttemptURL()
+                    let pr = try await CompressionService.shared.compressPDF(
+                        source: sourceForCompression,
+                        outputMode: .preserveStructure,
+                        quality: pdfQuality,
+                        grayscale: false,
+                        stripMetadata: strip,
+                        outputURL: attemptURL,
+                        collisionNamingStyle: collisionStyle,
+                        collisionCustomPattern: collisionCustomPattern(for: item),
+                        progressHandler: pdfProgress
+                    )
+                    if pr.outputURL != attemptURL { attemptURLs.append(pr.outputURL) }
+                    let outSize = sizeOf(pr.outputURL) ?? pr.outputSize
+                    lastAttemptedOutSize = outSize
+                    if outSize < pr.originalSize {
+                        chosenResult = pr
+                        chosenOutSize = outSize
                     }
+                } catch {
+                    // Not smaller either — falls through to zero-gain and the original is kept.
                 }
             }
 
@@ -1789,6 +1780,13 @@ final class ContentViewModel: ObservableObject {
             let decision = await AudioSmartQuality.decide(asset: asset, userFormat: fallbackFormat, userTier: fallbackTier)
             targetFormat = decision.format
             qualityTier = decision.tier
+        }
+        if !wasForced, let info = await AudioSmartQuality.sourceInfo(asset: asset),
+           AudioSmartQuality.isLossyReencodeWithoutRealSavings(info, format: targetFormat, tier: qualityTier) {
+            await MainActor.run {
+                item.status = .skipped(savedPercent: nil, threshold: self.prefs.minimumSavingsPercent)
+            }
+            return
         }
 
         var intendedOutput: URL = {
