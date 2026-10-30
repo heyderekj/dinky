@@ -474,17 +474,21 @@
 .dk-fz__app { position: absolute; left: 6px; top: 10px; width: 250px; height: 176px; border-radius: 18px; overflow: hidden; }
 .dk-fz__tb { display: flex; align-items: center; gap: 12px; height: 38px; padding: 0 12px; }
 .dk-fz__tb b { font-size: 13px; font-weight: 700; }
-.dk-fz__files { display: flex; gap: 18px; padding: 18px 22px; }
+.dk-fz__files { display: flex; gap: 6px; padding: 14px 10px; }
+/* Finder icons in the other app's window: the document icon and its name. */
+.dk-fz__file { width: 70px; display: grid; justify-items: center; gap: 4px; font-size: 10px; text-align: center; }
+.dk-fz__file .dk-fz__doc { width: 42px; height: 50px; filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.18)); }
+.dk-fz__file > span { max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* FinderStyleFileCard: a plain card, a 1pt separator stroke and a soft shadow, the system document icon inside. */
 .dk-fz__card {
-  position: relative; flex: none; width: 46px; height: 62px; border-radius: 6px; display: grid; place-items: center;
-  background: #fff; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.09), 0 3px 6px rgb(0 0 0 / 0.12);
+  position: relative; flex: none; width: 46px; height: 62px; border-radius: 7px; display: grid; place-items: center;
+  background: #fff; box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.1), 0 3px 6px rgb(0 0 0 / 0.12);
 }
-.dk-fz__card .dk-i { width: 20px; height: 20px; stroke-width: 1.6; }
-.dk-fz__card b { position: absolute; bottom: 7px; font-size: 6.5px; font-weight: 700; letter-spacing: 0.04em; color: rgb(0 0 0 / 0.45); }
-.dk-fz__card--image { color: #3b82f6; } .dk-fz__card--video { color: #8c48f0; } .dk-fz__card--pdf { color: #e5484d; }
-@media (prefers-color-scheme: dark) { .dk-fz__card { background: #2b2a33; box-shadow: 0 0 0 1px rgb(255 255 255 / 0.1), 0 5px 10px rgb(0 0 0 / 0.38); } .dk-fz__card b { color: rgb(255 255 255 / 0.5); } }
-/* The files in the other app go faint while they're being dragged. */
-.dk-fz:not([data-state='idle']) .dk-fz__files .dk-fz__card { opacity: 0.4; }
+.dk-fz__card .dk-fz__doc { width: 76%; height: 76%; }
+@media (prefers-color-scheme: dark) { .dk-fz__card { background: #1e1e1e; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12), 0 5px 10px rgb(0 0 0 / 0.38); } }
+.dk-fz__res .dk-fz__doc { flex: none; width: 19px; height: 22px; }
+/* The files in the other app go faint while they're dragged. */
+:is(.dk-fz[data-state='pill'], .dk-fz[data-state='near'], .dk-fz[data-state='over']) .dk-fz__file { opacity: 0.45; }
 
 /* The drag image: the three files, stacked, with a count badge. */
 .dk-fz__drag { position: absolute; z-index: 5; left: 40px; top: 66px; width: 70px; height: 76px; pointer-events: none;
@@ -515,8 +519,6 @@
 @keyframes dk-fz-ring { to { --fz-a: 360deg; } }
 .dk-fz__fan { position: absolute; left: 12px; top: 10px; width: 58px; height: 36px; }
 .dk-fz__fan .dk-fz__card { position: absolute; top: 0; width: 26px; height: 35px; border-radius: 4px; animation: dk-fz-bob 1.6s ease-in-out infinite alternate; }
-.dk-fz__fan .dk-fz__card .dk-i { width: 12px; height: 12px; }
-.dk-fz__fan .dk-fz__card b { display: none; }
 .dk-fz__fan .dk-fz__card:nth-child(1) { left: 0; rotate: -8deg; }
 .dk-fz__fan .dk-fz__card:nth-child(2) { left: 16px; animation-delay: -0.5s; }
 .dk-fz__fan .dk-fz__card:nth-child(3) { left: 32px; rotate: 8deg; animation-delay: -1s; }
@@ -570,8 +572,6 @@
 .dk-fz__res > span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dk-fz__res b { padding: 2px 6px; border-radius: 99px; font-size: 10.5px; font-weight: 600; color: rgb(30 140 70); background: rgb(52 199 89 / 0.16); font-variant-numeric: tabular-nums; }
 @media (prefers-color-scheme: dark) { .dk-fz__res b { color: rgb(80 215 120); } }
-.dk-fz__ico { flex: none; width: 18px; height: 22px; border-radius: 3px; display: grid; place-items: center; background: #fff; box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.15); }
-.dk-fz__ico .dk-i { width: 11px; height: 11px; stroke-width: 2; }
 .dk-fz__open { justify-self: center; margin-top: 6px; font-size: 11px; font-weight: 500; color: var(--dk-accent); }
 .dk-fz[data-state='done'] .dk-fz__done { opacity: 1; scale: 1; }
 /* The first result lifts and tilts once: it can be dragged out. */
