@@ -63,11 +63,11 @@
       view: [['Quick Sort', '⌘1'], ['Routines', '⌘2'], '-', ['Enter Full Screen', '⌃⌘F', 'fullscreen']],
       help: [['Binky Help', '⇧⌘?', 'help']],
       extra: {
-        status: () => (routinesOn ? [binkySorted ? 'Sorted 5 · just now' : 'Sorted 198 · 4 min. ago', true] : ['Watching paused.', false]),
+        status: () => (routinesOn ? [binkySorted ? 'Sorted 5 · just now' : 'Sorted 215 · 4 min. ago', true] : ['Watching paused.', false]),
         button: { icon: () => (routinesOn ? 'pause' : 'play'), label: () => (routinesOn ? 'Pause watching' : 'Resume watching'), action: 'watch' },
         groups: [
-          [['Sort All Folders', '', 'sort', 'tray'], ['Sort Downloads', '', 'sort', 'folder'], ['Sort Desktop', '', 'sort', 'folder']],
-          [['8 want a second look.', '', 'review', 'review']],
+          [['Sort All Folders', '', 'sort', 'tray'], ['Sort Auto-install DMGs', '', 'sort', 'folder'], ['Sort Sort my Downloads', '', 'sort', 'folder']],
+          [['91 want a second look.', '', 'review', 'review']],
           [['Show Binky', '', 'restore', 'window'], ['History…', '', null, 'history'], ['Settings…', '⌘,', null, 'gear'], ['About Binky', '', 'about', 'info'], ['Quit Binky', '⌘Q', null, 'power']],
         ],
       },
@@ -363,7 +363,7 @@
       if (action === 'watch') { routinesOn = !routinesOn; return render(); }
       if (action === 'dropzone') { dropzoneOn = !dropzoneOn; render(); return toast(dropzoneOn ? 'The floating dropzone pops up in a corner whenever you drag files.' : 'Floating dropzone off.'); }
       closePanel();
-      if (action === 'review') return toast('8 files want a second look in Review.');
+      if (action === 'review') return toast('91 files want a second look in Review.');
       run(action || null);
     };
     render();
