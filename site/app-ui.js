@@ -197,6 +197,38 @@
     whenShown(demo, () => play());
   }
 
+  /* ---------- 1b. Floating dropzone: drag from another app → pill → target → working → done ---------- */
+  const fz = $('[data-fz-demo]');
+  if (fz) {
+    const now = $('[data-fz-now]', fz);
+    let run = 0;
+    async function play() {
+      const me = ++run;
+      const alive = () => me === run;
+      if (still()) { fz.style.setProperty('--p', 1); fz.dataset.state = 'done'; return; }
+      fz.style.setProperty('--p', 0);
+      for (const [state, ms] of [['idle', 600], ['pill', 1100], ['near', 950], ['over', 900]]) {
+        fz.dataset.state = state;
+        await wait(ms); if (!alive()) return;
+      }
+      fz.dataset.state = 'working';
+      const from = 14.62, to = 2.48, ms = 1800, t0 = performance.now();
+      await new Promise((resolve) => {
+        const step = (t) => {
+          if (!alive()) { resolve(); return; }
+          const p = Math.min(1, (t - t0) / ms);
+          const eased = 1 - Math.pow(1 - p, 1.6);
+          fz.style.setProperty('--p', eased.toFixed(3));
+          now.textContent = mb(from - (from - to) * eased);
+          if (p < 1) frame(step); else resolve();
+        };
+        frame(step);
+      });
+      if (alive()) fz.dataset.state = 'done';
+    }
+    whenShown(fz, play);
+  }
+
   /* ---------- Scenes with a list that compresses when shown (clipboard, kinds, watch folder, kept file) ---------- */
   for (const win of $$('[data-batch]')) {
     const rows = $$('.dk-row[data-dur]', win);
@@ -217,12 +249,13 @@
     whenShown(win, play);
   }
 
-  /* ---------- 2. Sidebar format picker: real radio chips ---------- */
+  /* ---------- 2. Sidebar format picker: a real radio group on one sliding track ---------- */
   for (const group of $$('[data-format-picker]')) {
     const chips = $$('[role="radio"]', group);
     const desc = group.parentElement.querySelector('[data-format-desc]');
     const pick = (chip, focus) => {
       chips.forEach((c) => { const on = c === chip; c.setAttribute('aria-checked', on); c.tabIndex = on ? 0 : -1; });
+      group.style.setProperty('--i', chips.indexOf(chip));
       if (desc) desc.textContent = chip.dataset.desc;
       if (focus) chip.focus();
     };
