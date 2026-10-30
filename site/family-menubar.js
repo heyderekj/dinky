@@ -26,6 +26,7 @@
   ];
   const edit = [['Undo', '⌘Z', null, true], ['Redo', '⇧⌘Z', null, true], '-', ['Cut', '⌘X'], ['Copy', '⌘C'], ['Paste', '⌘V'], ['Select All', '⌘A'], '-', ['Find…', '⌘F', 'spotlight']];
   const windowMenu = [['Minimize', '⌘M', 'minimize'], ['Zoom', '', 'fullscreen'], '-', ['Bring All to Front', '', 'restore']];
+  const slinkyLocked = () => !!$('[data-mb-window].is-locked');
   const MENUS = {
     Slinky: {
       app: [['About Slinky', '', 'about'], ['Check for Updates…', '', 'upToDate'], '-', ['Lock Slinky', '⌃⌘L', 'lock'], '-', ['Settings…', '⌘,'], '-', ['Hide Slinky', '⌘H', 'hide'], ['Quit Slinky', '⌘Q']],
@@ -33,12 +34,15 @@
       view: [['All Items', '⌘1'], ['Keys & Tokens', '⌘2'], ['Recovery Codes', '⌘3'], ['Recovery Keys', '⌘4'], ['Health', '⌘5'], ['Recently Deleted', '⌘6'], ['Activity', '⌘7'], ['People', '⌘8'], '-', ['Show Sidebar', '⌃⌘S', 'toggle-sidebar'], '-', ['Enter Full Screen', '⌃⌘F', 'fullscreen']],
       help: [['Slinky Help', '', 'help']],
       extra: {
-        status: () => ($('[data-mb-window].is-locked') ? ['Locked', false] : ['Unlocked', true]),
-        button: { icon: 'lock', label: 'Lock Slinky', action: 'lock' },
-        groups: [
-          [['Quick Access', '⌥⌘K', 'quick-access', 'search'], ['Add Item…', '⌘N', 'add-item', 'plus']],
-          [['2 things to look at in Health', '', null, 'heart']],
-          ['Recently Copied', { key: 'STRIPE_SECRET_KEY', note: 'Copy' }, { key: 'GITHUB_TOKEN', note: 'Copy' }],
+        status: () => (slinkyLocked() ? ['Locked', false] : ['Unlocked', true]),
+        button: { icon: () => (slinkyLocked() ? 'lock' : 'unlock'), label: () => (slinkyLocked() ? 'Unlock Slinky' : 'Lock Slinky'), action: () => (slinkyLocked() ? 'unlock' : 'lock') },
+        // Locked, the panel keeps only what doesn't need the vault, as in the app.
+        groups: () => [
+          [['Quick Access', '⌥⌘K', 'quick-access', 'search'], ['Add Item…', '⌘N', 'add-item', 'plus', slinkyLocked() ? 'off' : '']],
+          ...(slinkyLocked() ? [] : [
+            [['1 thing to look at in Health', '', null, 'heart']],
+            ['Recently Copied', { key: 'STRIPE_SECRET_KEY', note: 'Copy' }, { key: 'GITHUB_TOKEN', note: 'Copy' }],
+          ]),
           [['Open Slinky', '', 'restore', 'window'], ['Settings…', '⌘,', null, 'gear'], ['About Slinky', '', 'about', 'info'], ['Quit Slinky', '⌘Q', null, 'power']],
         ],
       },
@@ -337,32 +341,34 @@
     const p = showPanel('', 'fmb-menu fmb-xp', anchor);
     const render = () => {
       const [status, live] = spec.status();
-      const btn = spec.button ? `<button type="button" class="fmb-xp__btn" aria-label="${val(spec.button.label)}" title="${val(spec.button.label)}">${sym(spec.button.icon === 'lock' && $('[data-mb-window].is-locked') ? 'lock' : spec.button.icon === 'lock' ? 'unlock' : val(spec.button.icon))}</button>` : '';
+      const btn = spec.button ? `<button type="button" class="fmb-xp__btn" aria-label="${val(spec.button.label)}" title="${val(spec.button.label)}">${sym(val(spec.button.icon))}</button>` : '';
       const row = ([label, keys = '', action = null, ic = '', extra = '']) => {
         const on = action === 'watch' ? routinesOn : action === 'dropzone' ? dropzoneOn : true;
         const tail = extra === 'check' ? `<kbd>${on ? CHECK : ''}</kbd>` : `<kbd>${keys}</kbd>`;
-        return `<div class="fmb-item fmb-xp__row" data-act="${action || ''}"><i>${sym(ic)}</i><span></span>${tail}</div>`;
+        return `<div class="fmb-item fmb-xp__row${extra === 'off' ? ' is-off' : ''}"${extra === 'off' ? '' : ` data-act="${action || ''}"`}><i>${sym(ic)}</i><span></span>${tail}</div>`;
       };
       const recent = (r) => r.key
         ? `<div class="fmb-item fmb-xp__row fmb-xp__recent" data-copy="${r.key}"><i class="fmb-xp__svc" style="background:${(SERVICE[r.key.split('_')[0]] || ['#8a8a8e'])[0]}">${(SERVICE[r.key.split('_')[0]] || ['', '•'])[1]}</i><code></code><kbd>${r.note}</kbd></div>`
         : `<div class="fmb-item fmb-xp__row fmb-xp__recent"><i class="fmb-xp__file">${fileGlyph(r.file)}</i><span></span><kbd class="fmb-xp__note">${r.note}</kbd></div>`;
+      const groups = val(spec.groups);
       p.innerHTML = `
         <div class="fmb-xp__head"><img src="${icon()}" alt="" width="30" height="30" /><span><b>${app}</b><small><i class="fmb-xp__dot${live ? ' is-live' : ''}"></i>${status}</small></span>${btn}</div>
-        ${spec.groups.map((g) => `<hr class="fmb-sep" /><div class="fmb-xp__group">${typeof g[0] === 'string'
+        ${groups.map((g) => `<hr class="fmb-sep" /><div class="fmb-xp__group">${typeof g[0] === 'string'
           ? `<p class="fmb-label">${g[0]}</p>${g.slice(1).map(recent).join('')}`
           : g.map(row).join('')}</div>`).join('')}`;
       // Labels go in as text.
-      const rows = spec.groups.flatMap((g) => (typeof g[0] === 'string' ? g.slice(1).map((r) => r.key || r.name) : g.map((r) => r[0])));
+      const rows = groups.flatMap((g) => (typeof g[0] === 'string' ? g.slice(1).map((r) => r.key || r.name) : g.map((r) => r[0])));
       p.querySelectorAll('.fmb-xp__row').forEach((el, i) => { (el.querySelector('span') || el.querySelector('code')).textContent = rows[i]; });
-      p.querySelector('.fmb-xp__btn')?.addEventListener('click', () => press(spec.button.action));
+      p.querySelector('.fmb-xp__btn')?.addEventListener('click', () => press(val(spec.button.action)));
       p.querySelectorAll('.fmb-xp__row[data-act]').forEach((el) => el.addEventListener('click', () => press(el.dataset.act)));
-      p.querySelectorAll('[data-copy]').forEach((el) => el.addEventListener('click', () => { closePanel(); toast(`Copied ${el.dataset.copy}. It clears from the clipboard in 30 seconds.`); }));
+      p.querySelectorAll('[data-copy]').forEach((el) => el.addEventListener('click', () => { closePanel(); toast(`Copied ${el.dataset.copy}. The clipboard clears in 60 seconds.`); }));
       p.querySelectorAll('.fmb-xp__recent:not([data-copy])').forEach((el) => el.addEventListener('click', closePanel));
     };
     const press = (action) => {
       if (action === 'watch') { routinesOn = !routinesOn; return render(); }
       if (action === 'dropzone') { dropzoneOn = !dropzoneOn; render(); return toast(dropzoneOn ? 'The floating dropzone pops up in a corner whenever you drag files.' : 'Floating dropzone off.'); }
       closePanel();
+      if (action === 'unlock') return $('[data-unlock]')?.click();
       if (action === 'review') return toast('91 files want a second look in Review.');
       run(action || null);
     };
