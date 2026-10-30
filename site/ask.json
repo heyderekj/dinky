@@ -23,7 +23,7 @@
   {
    "id": "faq-macos-says-dinky-can-t-be-opened-what-do-i-do",
    "q": "macOS says Dinky can't be opened — what do I do?",
-   "a": "That's Gatekeeper — macOS blocks first launch for apps outside the App Store and Apple Developer Program."
+   "a": "Dinky isn’t notarized yet, so macOS stops the first launch. Click Open Anyway in System Settings › Privacy & Security."
   },
   {
    "id": "faq-only-mac",

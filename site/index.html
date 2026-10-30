@@ -662,7 +662,7 @@
     .modal-overlay.open { display: flex; }
     html.modal-scroll-locked { overflow: hidden; overscroll-behavior: none; }
     .modal {
-      position: relative; width: 100%; max-width: 540px; max-height: min(90vh, 740px); max-height: min(90dvh, 740px); overflow-y: auto; overscroll-behavior: contain;
+      position: relative; width: 100%; max-width: 580px; max-height: min(90vh, 740px); max-height: min(90dvh, 740px); overflow-y: auto; overscroll-behavior: contain;
       padding: 28px; border-radius: 26px; background: var(--card); color: var(--ink);
       box-shadow: 0 0 0 1px var(--hair), var(--shadow-lift);
       animation: modal-in 0.35s var(--ease);
@@ -679,7 +679,7 @@
     .install-modal-tabstrip { margin: 0 0 18px; }
     .install-modal-tabstrip .cmp-segmented { max-width: none; width: 100%; }
     .gatekeeper-lead, .install-modal-sublead { margin: 0 0 16px; font-size: 14.5px; line-height: 1.55; color: var(--ink-soft); }
-    .install-steps { list-style: none; padding: 0; counter-reset: steps; display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px; }
+    .install-steps { list-style: none; padding: 0; counter-reset: steps; display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
     .install-steps li { counter-increment: steps; display: flex; gap: 12px; align-items: flex-start; font-size: 15px; line-height: 1.5; }
     .install-steps li::before {
       content: counter(steps); flex-shrink: 0; min-width: 24px; height: 24px; margin-top: 0;
@@ -708,6 +708,42 @@
     }
     .copy-btn:hover { background: rgb(255 255 255 / 0.2); color: #fff; }
     .copy-btn.copied { color: var(--success); }
+    .install-still { margin: 14px 0 8px; font-size: 13.5px; line-height: 1.5; color: var(--muted); }
+    .install-homebrew-foot code { font-size: 12px; background: var(--surface); padding: 2px 6px; border-radius: 4px; }
+    /* Open Anyway: System Settings › Privacy & Security, drawn at a readable size, with the button to click ringed. */
+    .oa { --oa-bg: #f5f5f7; --oa-side: #ebebed; --oa-ink: #1d1d1f; --oa-dim: rgb(60 60 67 / 0.6); --oa-row: #fff; --oa-line: rgb(0 0 0 / 0.08);
+      display: flex; margin: 4px 0 2px; border-radius: 16px; overflow: hidden; background: var(--oa-bg); color: var(--oa-ink);
+      box-shadow: 0 0 0 1px var(--oa-line), 0 12px 28px -14px rgb(0 0 0 / 0.4); font: 13px/1.35 -apple-system, BlinkMacSystemFont, system-ui, sans-serif; text-align: left; }
+    @media (prefers-color-scheme: dark) { .oa { --oa-bg: #1f1f21; --oa-side: #2a2a2d; --oa-ink: #f5f5f7; --oa-dim: rgb(235 235 245 / 0.55); --oa-row: #2c2c2f; --oa-line: rgb(255 255 255 / 0.1); } }
+    .gatekeeper-lead + .oa { margin-bottom: 4px; }
+    .oa__side { flex: none; width: 192px; min-width: 0; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 3px; padding: 14px 10px 16px; background: var(--oa-side); }
+    .oa__lights { display: flex; gap: 7px; padding: 0 6px 12px; }
+    .oa__lights i { width: 11px; height: 11px; border-radius: 50%; background: #ff5f57; }
+    .oa__lights i + i { background: #febc2e; } .oa__lights i + i + i { background: #28c840; }
+    .oa__item { min-width: 0; display: flex; align-items: center; gap: 7px; padding: 5px 8px; font-size: 12.5px; border-radius: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--oa-dim); }
+    .oa__item.is-on { color: #fff; font-weight: 500; background: #0a7aff; }
+    .oa__tile { flex: none; width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; background: #0a7aff; }
+    .oa__item.is-on .oa__tile { box-shadow: 0 0 0 1.5px rgb(255 255 255 / 0.55); }
+    .oa__tile--gray { background: color-mix(in oklch, var(--oa-dim) 40%, transparent); }
+    .oa__tile svg { width: 14px; height: 14px; fill: none; stroke: #fff; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .oa__main { flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 8px; padding: 18px 22px 22px 18px; }
+    .oa__title { font-size: 15px; font-weight: 700; padding-bottom: 6px; }
+    .oa__sec { font-size: 12px; font-weight: 600; color: var(--oa-dim); }
+    .oa__group { min-width: 0; display: grid; border-radius: 11px; background: var(--oa-row); box-shadow: 0 0 0 1px var(--oa-line); }
+    .oa__row > span:first-child { flex: 1; min-width: 0; }
+    .oa__row { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 16px; }
+    .oa__row + .oa__row { border-top: 1px solid var(--oa-line); }
+    .oa__row--quiet { color: var(--oa-dim); font-size: 12px; }
+    .oa__row--quiet > span:first-child { flex: none; white-space: nowrap; }
+    .oa__pop { flex: 1 1 auto; min-width: 0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .oa__pop::after { content: ' ⌃'; display: inline-block; rotate: 180deg; margin-left: 4px; font-size: 10px; }
+    .oa__btn { flex: none; position: relative; padding: 5px 12px; border-radius: 999px; font-weight: 600; white-space: nowrap; color: var(--oa-ink); background: color-mix(in oklch, var(--oa-dim) 22%, transparent); }
+    .oa__btn::after { content: ''; position: absolute; inset: -4px; border-radius: inherit; border: 2px solid var(--brand); animation: oa-ring 1.6s ease-in-out infinite; }
+    @keyframes oa-ring { 50% { inset: -7px; opacity: 0.35; } }
+    @media (prefers-reduced-motion: reduce) { .oa__btn::after { animation: none; } }
+    /* Narrow dialogs (phones, small windows) drop the sidebar and the quiet row, so nothing runs off the edge. */
+    .modal:has(.oa) { container-type: inline-size; }
+    @container (max-width: 460px) { .oa__side, .oa__row--quiet { display: none; } .oa__row + .oa__row { border-top: 0; } }
     .install-callout { display: flex; align-items: flex-start; gap: 10px; margin-top: 20px; padding: 14px 16px; border-radius: 14px; background: color-mix(in oklch, var(--brand) 9%, transparent); }
     .install-callout-icon { width: 18px; height: 18px; flex-shrink: 0; margin-top: 2px; color: var(--brand); }
     .install-callout p { font-size: 14px; line-height: 1.5; color: var(--ink-soft); }
@@ -906,7 +942,7 @@
     <div class="modal">
       <button class="modal-close" onclick="document.getElementById('install-modal').classList.remove('open','install-modal--help')" aria-label="Close">✕</button>
       <h2>How to install Dinky</h2>
-      <p class="install-modal-lead">Pick the path that fits you — both put Dinky in Applications. Current releases need an <strong>Apple Silicon (M-series) Mac</strong>; Intel-based Macs are not supported.</p>
+      <p class="install-modal-lead">Both put Dinky in Applications. Needs an <strong>Apple silicon</strong> Mac with macOS 15 Sequoia or later.</p>
       <div class="install-modal-tabstrip">
         <div class="cmp-segmented" role="tablist" aria-label="Install method">
           <button type="button" class="cmp-tab is-active" role="tab" aria-selected="true" aria-controls="install-panel-dmg" id="install-tab-dmg" data-install-tab="dmg">Download &amp; install</button>
@@ -914,27 +950,28 @@
         </div>
       </div>
       <div id="install-panel-dmg" role="tabpanel" aria-labelledby="install-tab-dmg" data-install-panel="dmg">
-        <p class="install-modal-sublead">If Dinky’s icon in Applications has a <strong>slash through it</strong>, macOS can’t run this build on your Mac (wrong CPU architecture). Current DMGs are <strong>Apple Silicon only</strong>—Intel Macs need a different machine, not another install step. Otherwise, macOS may say Dinky can’t be opened — that’s Gatekeeper, not a virus. The quarantine step below takes less than a minute.</p>
         <ol class="install-steps">
           <li>
             <span>
-              Open the <strong>installer</strong> from your Downloads, then drag <strong>Dinky</strong> into your <strong>Applications</strong> folder.
+              Open the <strong>installer</strong> from your Downloads and drag <strong>Dinky</strong> into <strong>Applications</strong>.
               <span class="install-fallback">Download didn't start? <a href="https://github.com/heyderekj/dinky/releases/download/v2.17.0/Dinky-2.17.0.dmg" onclick="if(window.fathom)fathom.trackEvent('Download macOS')">Download again</a>.</span>
             </span>
           </li>
           <li>
             <div class="install-step-stack">
-              <p>Open <strong>Terminal</strong> and paste this command:</p>
-              <div class="code-block">
-                <code id="xattr-cmd">xattr -dr com.apple.quarantine /Applications/Dinky.app</code>
-                <button class="copy-btn" onclick="copyCmd(this)">Copy</button>
-              </div>
+              <p>Open Dinky. Since it isn’t notarized yet, macOS stops it once: open <strong>System Settings › Privacy &amp; Security</strong>, scroll down to <strong>Security</strong> and click <strong>Open Anyway</strong>, then confirm with Touch ID or your password.</p>
             </div>
           </li>
         </ol>
+        <div class="oa" role="img" aria-label="System Settings, Privacy &amp; Security. Under Security: “Dinky” was blocked to protect your Mac, with an Open Anyway button beside it."><div class="oa__side" aria-hidden="true"><span class="oa__lights"><i></i><i></i><i></i></span><span class="oa__item"><i class="oa__tile oa__tile--gray"></i>Screen Time</span><span class="oa__item"><i class="oa__tile oa__tile--gray"></i>Lock Screen</span><span class="oa__item is-on"><i class="oa__tile"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 12V6.5a1.2 1.2 0 0 1 2.4 0V11M11.4 10.5V5a1.2 1.2 0 0 1 2.4 0v5.5M13.8 10.5V6.2a1.2 1.2 0 0 1 2.4 0V14a5.5 5.5 0 0 1-5.5 5.5h-.4a5 5 0 0 1-4-2l-2.6-3.6a1.2 1.2 0 0 1 1.9-1.4L9 14"/></svg></i>Privacy &amp; Security</span><span class="oa__item"><i class="oa__tile oa__tile--gray"></i>Touch ID &amp; Password</span><span class="oa__item"><i class="oa__tile oa__tile--gray"></i>Users &amp; Groups</span></div><div class="oa__main" aria-hidden="true"><b class="oa__title">Privacy &amp; Security</b><span class="oa__sec">Security</span><div class="oa__group"><div class="oa__row oa__row--quiet"><span>Allow applications from</span><span class="oa__pop">App Store &amp; Known Developers</span></div><div class="oa__row"><span>“Dinky” was blocked to protect your Mac.</span><span class="oa__btn">Open Anyway</span></div></div></div></div>
+        <p class="install-still">Still blocked? Paste this into Terminal:</p>
+        <div class="code-block">
+                <code id="xattr-cmd">xattr -dr com.apple.quarantine /Applications/Dinky.app</code>
+                <button class="copy-btn" onclick="copyCmd(this)">Copy</button>
+              </div>
       </div>
       <div id="install-panel-brew" role="tabpanel" aria-labelledby="install-tab-brew" data-install-panel="brew" hidden>
-        <p class="install-homebrew-note">Requires an <strong>Apple Silicon</strong> Mac, <a href="https://brew.sh" target="_blank" rel="noopener noreferrer">Homebrew</a>, and macOS 15 or later. In Terminal, run once to add this repo as a tap, then install the app:</p>
+        <p class="install-homebrew-note">With <a href="https://brew.sh" target="_blank" rel="noopener noreferrer">Homebrew</a>, add the tap once, then install:</p>
         <div class="install-code-stack">
           <div class="code-block">
             <code>brew tap heyderekj/dinky https://github.com/heyderekj/dinky</code>
@@ -945,14 +982,14 @@
             <button class="copy-btn" onclick="copyCmd(this)">Copy</button>
           </div>
         </div>
-        <p class="install-homebrew-foot"><strong>Upgrading Dinky:</strong> in Terminal, run <code style="font-size: 12px; background: var(--surface); padding: 2px 6px; border-radius: 4px;">brew update &amp;&amp; brew upgrade --cask dinky</code> when you want a newer release. <strong>If macOS blocks the first launch,</strong> switch to the <strong>Download &amp; install</strong> tab and run the Terminal command in step 2.</p>
+        <p class="install-homebrew-foot">Upgrade later with <code>brew upgrade --cask dinky</code>. If macOS blocks the first launch, use <strong>Open Anyway</strong> as in step 2 of Download &amp; install.</p>
       </div>
       <div class="install-callout">
         <!-- arrow-path (same icon as Easy updating feature) -->
         <svg class="install-callout-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path fill-rule="evenodd" d="M4.755 10.059a7.5 7.5 0 0 1 12.548-3.364l1.903 1.903h-3.183a.75.75 0 1 0 0 1.5h4.992a.75.75 0 0 0 .75-.75V4.356a.75.75 0 0 0-1.5 0v3.18l-1.9-1.9A9 9 0 0 0 3.306 9.67a.75.75 0 1 0 1.45.388Zm15.408 3.352a.75.75 0 0 0-.919.53 7.5 7.5 0 0 1-12.548 3.364l-1.902-1.903h3.183a.75.75 0 0 0 0-1.5H2.984a.75.75 0 0 0-.75.75v4.992a.75.75 0 0 0 1.5 0v-3.18l1.9 1.9a9 9 0 0 0 15.059-4.035.75.75 0 0 0-.53-.918Z" clip-rule="evenodd"/>
         </svg>
-        <p><strong>Easy updating</strong> — once you're set up, one click checks for new releases whenever they become available.</p>
+        <p><strong>Easy updating.</strong> One click checks for new releases.</p>
       </div>
     </div>
   </div>
@@ -962,11 +999,14 @@
     <div class="modal">
       <button class="modal-close" onclick="document.getElementById('gatekeeper-modal').classList.remove('open')" aria-label="Close">✕</button>
       <h2>macOS blocked Dinky</h2>
-      <p class="gatekeeper-lead">Because Dinky isn’t from the App Store, macOS quarantines it on first run. Paste this into Terminal to remove the flag (this fixes Gatekeeper only — it won’t help if the app icon already has a slash through it on an Intel Mac; those builds need Apple Silicon):</p>
+      <p class="gatekeeper-lead">Dinky isn’t notarized yet, so macOS stops the first launch. Open <strong>System Settings › Privacy &amp; Security</strong>, scroll down to <strong>Security</strong> and click <strong>Open Anyway</strong>, then confirm with Touch ID or your password. You only do this once.</p>
+      <div class="oa" role="img" aria-label="System Settings, Privacy &amp; Security. Under Security: “Dinky” was blocked to protect your Mac, with an Open Anyway button beside it."><div class="oa__side" aria-hidden="true"><span class="oa__lights"><i></i><i></i><i></i></span><span class="oa__item"><i class="oa__tile oa__tile--gray"></i>Screen Time</span><span class="oa__item"><i class="oa__tile oa__tile--gray"></i>Lock Screen</span><span class="oa__item is-on"><i class="oa__tile"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 12V6.5a1.2 1.2 0 0 1 2.4 0V11M11.4 10.5V5a1.2 1.2 0 0 1 2.4 0v5.5M13.8 10.5V6.2a1.2 1.2 0 0 1 2.4 0V14a5.5 5.5 0 0 1-5.5 5.5h-.4a5 5 0 0 1-4-2l-2.6-3.6a1.2 1.2 0 0 1 1.9-1.4L9 14"/></svg></i>Privacy &amp; Security</span><span class="oa__item"><i class="oa__tile oa__tile--gray"></i>Touch ID &amp; Password</span><span class="oa__item"><i class="oa__tile oa__tile--gray"></i>Users &amp; Groups</span></div><div class="oa__main" aria-hidden="true"><b class="oa__title">Privacy &amp; Security</b><span class="oa__sec">Security</span><div class="oa__group"><div class="oa__row oa__row--quiet"><span>Allow applications from</span><span class="oa__pop">App Store &amp; Known Developers</span></div><div class="oa__row"><span>“Dinky” was blocked to protect your Mac.</span><span class="oa__btn">Open Anyway</span></div></div></div></div>
+      <p class="install-still">No Open Anyway button? Paste this into Terminal:</p>
       <div class="code-block">
         <code id="xattr-cmd-gk">xattr -dr com.apple.quarantine /Applications/Dinky.app</code>
         <button class="copy-btn" onclick="copyCmd(this)">Copy</button>
       </div>
+      <p class="install-still">A slash through the icon means this Mac can’t run Dinky. It needs Apple silicon.</p>
     </div>
   </div>
 
@@ -1498,7 +1538,7 @@
       <details class="faq-item" id="faq-does-dinky-send-my-files-anywhere"><summary class="faq-q">Does Dinky send my files anywhere?</summary><p class="faq-a">Nope. Everything runs locally on your Mac — no Dinky servers, no account. Once a day the app checks GitHub for a newer release (that&apos;s the only automatic outbound request). URL Drop only hits a URL you give it. Details: <a href="#data">Your data, in plain English</a>.</p></details>
 
       <details class="faq-item" id="faq-what-happens-to-my-originals"><summary class="faq-q">What happens to my originals?</summary><p class="faq-a">In Settings → Original Files, choose Keep, Move to Trash, or a backup folder. Default is Keep. <a href="#faq-watch-folder">Watch Folders</a> can use a different setting — handy if you want a watched folder to empty itself into Trash while everything else stays put.</p></details>
-      <details class="faq-item" id="faq-macos-says-dinky-can-t-be-opened-what-do-i-do"><summary class="faq-q">macOS says Dinky can't be opened — what do I do?</summary><p class="faq-a">That's Gatekeeper — macOS blocks first launch for apps outside the App Store and Apple Developer Program. <button type="button" class="faq-inline-link" onclick="document.getElementById('gatekeeper-modal').classList.add('open')">How to fix it →</button></p></details>
+      <details class="faq-item" id="faq-macos-says-dinky-can-t-be-opened-what-do-i-do"><summary class="faq-q">macOS says Dinky can't be opened — what do I do?</summary><p class="faq-a">Dinky isn’t notarized yet, so macOS stops the first launch. Click <strong>Open Anyway</strong> in System Settings › Privacy &amp; Security. <button type="button" class="faq-inline-link" onclick="document.getElementById('gatekeeper-modal').classList.add('open')">How to fix it →</button></p></details>
 
       <details class="faq-item faq-more" id="faq-only-mac"><summary class="faq-q">Only Mac?</summary><p class="faq-a">Yes. It’s SwiftUI + macOS frameworks; a Windows or Linux port would be a different app.</p></details>
 
